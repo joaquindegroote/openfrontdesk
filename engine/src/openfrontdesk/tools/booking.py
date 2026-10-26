@@ -84,24 +84,58 @@ class HandoffParams(BaseModel):
     )
 
 
-def _describe_booking(ctx: ToolContext, params: BookParams) -> str:
-    who = f" with {params.practitioner_id}" if params.practitioner_id else ""
+# Action summaries use the words the customer saw (service names, prices, practitioner names):
+# the confirmation judge compares them with the conversation, where ids never appear.
+
+
+async def _service_label(ctx: ToolContext, service_id: str) -> str:
+    services = {s.id: s for s in await ctx.backend.list_services()}
+    service = services.get(service_id)
+    if service is None:
+        return f"service '{service_id}'"
+    deposit = f", ${service.deposit} deposit" if service.deposit else ", no deposit"
+    return f"{service.name} ({service.duration_minutes} min, ${service.price}{deposit})"
+
+
+def _practitioner_label(ctx: ToolContext, practitioner_id: str | None) -> str:
+    if practitioner_id is None:
+        return "any available practitioner"
+    for event in reversed(ctx.events):
+        if event.tool == "find_available_slots" and event.status == "ok":
+            for slot in event.result.get("slots", []):
+                if slot["practitioner_id"] == practitioner_id:
+                    return slot["practitioner_name"]
+    return practitioner_id
+
+
+async def _describe_registration(ctx: ToolContext, params: RegisterCustomerParams) -> str:
+    return f"Register new customer {params.name} ({params.phone})."
+
+
+async def _describe_booking(ctx: ToolContext, params: BookParams) -> str:
     return (
-        f"Book '{params.service_id}' for customer {params.customer_id} on "
-        f"{short_label(params.start, ctx.business.tz)}{who}."
+        f"Book {await _service_label(ctx, params.service_id)} on "
+        f"{short_label(params.start, ctx.business.tz)} with "
+        f"{_practitioner_label(ctx, params.practitioner_id)}."
     )
 
 
-def _describe_cancellation(ctx: ToolContext, params: CancelParams) -> str:
+async def _describe_cancellation(ctx: ToolContext, params: CancelParams) -> str:
+    appointment = await ctx.backend.get_appointment(params.appointment_id)
     quote = latest_quote(ctx.events, params.appointment_id)
     fee = f"late-cancellation fee ${quote['fee']}" if quote and quote["fee"] else "no fee"
-    return f"Cancel appointment {params.appointment_id} ({fee})."
-
-
-def _describe_reschedule(ctx: ToolContext, params: RescheduleParams) -> str:
     return (
-        f"Move appointment {params.appointment_id} to "
-        f"{short_label(params.new_start, ctx.business.tz)}."
+        f"Cancel {await _service_label(ctx, appointment.service_id)} on "
+        f"{short_label(appointment.start, ctx.business.tz)} ({fee})."
+    )
+
+
+async def _describe_reschedule(ctx: ToolContext, params: RescheduleParams) -> str:
+    appointment = await ctx.backend.get_appointment(params.appointment_id)
+    tz = ctx.business.tz
+    return (
+        f"Move {await _service_label(ctx, appointment.service_id)} from "
+        f"{short_label(appointment.start, tz)} to {short_label(params.new_start, tz)}."
     )
 
 
@@ -147,10 +181,7 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
             return {"found": False}
         return {"found": True, "customer": customer.model_dump(mode="json")}
 
-    @registry.tool(
-        side_effect="write",
-        describe=lambda ctx, p: f"Register new customer {p.name} ({p.phone}).",
-    )
+    @registry.tool(side_effect="write", describe=_describe_registration)
     async def register_customer(ctx: ToolContext, params: RegisterCustomerParams) -> dict[str, Any]:
         """Register a new customer. Only after find_customer found no match."""
         customer = await ctx.backend.create_customer(params.name, params.phone, params.email)

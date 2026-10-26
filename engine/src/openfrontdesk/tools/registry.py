@@ -13,7 +13,7 @@ from openfrontdesk.guardrails.base import Guard
 from openfrontdesk.llm import ToolSpec
 
 Handler = Callable[[ToolContext, Any], Awaitable[Any]]
-Describe = Callable[[ToolContext, Any], str]
+Describe = Callable[[ToolContext, Any], Awaitable[str]]
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,8 @@ class Tool:
     handler: Handler
     side_effect: SideEffect = "read"
     guards: tuple[Guard, ...] = ()
-    # One-line summary of a proposed write, shown to the judge and kept in the audit trail.
+    # One-line summary of a proposed write in the customer's terms (names, prices, times),
+    # shown to the judge and kept in the audit trail.
     describe: Describe | None = None
 
     def spec(self) -> ToolSpec:

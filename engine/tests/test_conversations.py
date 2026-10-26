@@ -66,7 +66,11 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
     assert appointment.status == "confirmed"
 
     judge_prompt = harness.judge.calls[0].messages[-1].content
-    assert "Book 'checkup' for customer pat_0003 on Tue Nov 3, 9:00 AM" in judge_prompt
+    # The judge sees the action in the customer's terms, not internal ids.
+    assert (
+        "Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 9:00 AM "
+        "with Dr. Maya Chen." in judge_prompt
+    )
     assert "Customer: Yes, book it" in judge_prompt
     assert third["messages"][-1] == {
         **third["messages"][-1],

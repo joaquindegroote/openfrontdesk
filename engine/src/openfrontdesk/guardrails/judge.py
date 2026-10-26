@@ -17,7 +17,12 @@ Confirmed means all of these are true:
   action: what it is, the date and time, and any price, deposit or fee.
 - The customer's latest relevant message clearly agrees ("yes", "book it", "that works",
   "go ahead", "please cancel it").
-- What the customer agreed to matches the action exactly: same service, date, time and fee.
+- What the customer agreed to is the same action: same service, date, time, and the same price,
+  deposit or fee.
+
+The action description is written by the system, so names may be worded or abbreviated
+differently than in the conversation. Judge whether it is the same service, practitioner, time
+and amount, not whether the wording matches.
 
 Not confirmed: questions, hesitation, agreement to a different option, or a confirmation given
 before the details changed.

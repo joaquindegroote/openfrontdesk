@@ -74,7 +74,7 @@ class ToolExecutor:
 
         # From here on, events record the validated arguments (defaults filled, types normalized).
         call = call.model_copy(update={"arguments": params.model_dump(mode="json")})
-        summary = tool.describe(ctx, params) if tool.describe else None
+        summary = await _summarize(tool, ctx, params)
         checks: list[CheckResult] = []
         if tool.guards:
             action = ProposedAction(tool=tool.name, params=params, summary=summary or tool.name)
@@ -111,12 +111,24 @@ class ToolExecutor:
             result = {
                 "status": "handed_off",
                 "instructions": (
-                    "A staff member will continue this conversation. Tell the customer briefly. "
-                    "Do not call more tools."
+                    "A member of the front-desk team will reply in this same conversation. Tell "
+                    "the customer that in one sentence. Don't promise calls, emails or wait "
+                    "times. Do not call more tools."
                 ),
             }
             return _event(call, tool.side_effect, "ok", result, summary, checks), output
         return _event(call, tool.side_effect, "ok", output, summary, checks), None
+
+
+async def _summarize(tool: Tool, ctx: ToolContext, params: BaseModel) -> str | None:
+    if tool.describe is None:
+        return None
+    try:
+        return await tool.describe(ctx, params)
+    except Exception:
+        # Describing needs the booking system; if it's down, fall back to the raw arguments.
+        logger.warning("could not describe action", exc_info=True, extra={"tool": tool.name})
+        return f"{tool.name} {json.dumps(params.model_dump(mode='json'))}"
 
 
 def idempotency_key(ctx: ToolContext, tool: Tool, params: BaseModel) -> str:
