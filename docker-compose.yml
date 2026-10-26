@@ -1,0 +1,65 @@
+name: openfrontdesk
+
+services:
+  postgres:
+    image: postgres:17.10-alpine
+    environment:
+      POSTGRES_USER: ofd
+      POSTGRES_PASSWORD: ofd
+      POSTGRES_DB: ofd
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ofd"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Trace viewer for agent turns, LLM calls, tool calls and guardrail checks.
+  phoenix:
+    image: arizephoenix/phoenix:version-20.21.4
+    ports:
+      - "6006:6006"
+
+  # The business's booking system (a mock). Set CLINIC_CHAOS_* to make it misbehave.
+  clinic-api:
+    build:
+      context: .
+      dockerfile: clinic-api/Dockerfile
+    environment:
+      CLINIC_CHAOS_ERROR_RATE: ${CLINIC_CHAOS_ERROR_RATE:-0}
+      CLINIC_CHAOS_LATENCY_MS: ${CLINIC_CHAOS_LATENCY_MS:-0}
+    ports:
+      - "8001:8001"
+
+  engine:
+    build:
+      context: .
+      dockerfile: engine/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OFD_DATABASE_URL: postgresql+asyncpg://ofd:ofd@postgres:5432/ofd
+      OFD_BACKEND_URL: http://clinic-api:8001
+      OFD_OTLP_ENDPOINT: http://phoenix:6006/v1/traces
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clinic-api:
+        condition: service_started
+      phoenix:
+        condition: service_started
+
+  console:
+    build:
+      context: console
+    ports:
+      - "3000:3000"
+    depends_on:
+      - engine
+
+volumes:
+  pgdata:
