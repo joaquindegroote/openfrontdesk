@@ -1,0 +1,29 @@
+# Virtual workspace root: the deployable packages live in engine/ and clinic-api/.
+[tool.uv.workspace]
+members = ["engine", "clinic-api"]
+
+[dependency-groups]
+dev = [
+    "openfrontdesk",
+    "clinic-api",
+    "httpx>=0.28",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+]
+
+[tool.uv.sources]
+openfrontdesk = { workspace = true }
+clinic-api = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "RUF"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["clinic-api/tests", "engine/tests"]
