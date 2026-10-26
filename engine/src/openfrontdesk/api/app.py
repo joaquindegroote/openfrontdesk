@@ -64,8 +64,12 @@ def create_app(
         booking = backend or ClinicHttpBackend.from_url(
             settings.backend_url, timeout_s=settings.backend_timeout_s
         )
-        agent_llm = llm or _openai(settings, settings.llm_model)
-        judge = judge_llm or _openai(settings, settings.judge_model) or agent_llm
+        agent_llm = llm or _openai(settings, settings.llm_model, settings.llm_reasoning_effort)
+        judge = (
+            judge_llm
+            or _openai(settings, settings.judge_model, settings.judge_reasoning_effort)
+            or agent_llm
+        )
         agent = None
         if agent_llm is not None and judge is not None:
             tools = build_booking_tools(judge)
@@ -190,7 +194,9 @@ def _routes(business: BusinessProfile) -> APIRouter:
     return router
 
 
-def _openai(settings: Settings, model: str) -> OpenAIChatClient | None:
+def _openai(settings: Settings, model: str, effort: str | None) -> OpenAIChatClient | None:
     if settings.openai_api_key is None:
         return None
-    return OpenAIChatClient(model, api_key=settings.openai_api_key.get_secret_value())
+    return OpenAIChatClient(
+        model, api_key=settings.openai_api_key.get_secret_value(), reasoning_effort=effort
+    )

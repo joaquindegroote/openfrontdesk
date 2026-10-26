@@ -9,8 +9,8 @@ from datetime import UTC, datetime
 
 from openfrontdesk.agent.context import HandoffRequest, ToolContext, ToolEvent
 from openfrontdesk.agent.loop import HANDOFF_REPLY, Agent, TurnResult
-from openfrontdesk.agent.prompt import render_system_prompt
-from openfrontdesk.backends import BookingBackend
+from openfrontdesk.agent.prompt import BookingSnapshot, render_system_prompt
+from openfrontdesk.backends import BookingBackend, Customer, Service
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.ids import new_id
 from openfrontdesk.llm import ChatMessage, Usage
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 ACTIVE = "active"
 HANDED_OFF = "handed_off"
+SERVICES_TTL_S = 300
 
 
 class ConversationNotFoundError(Exception):
@@ -57,6 +58,7 @@ class ConversationService:
         self.clock = clock or (lambda: datetime.now(business.tz))
         # Serializes turns per conversation within this process.
         self._locks: dict[str, asyncio.Lock] = {}
+        self._services: tuple[float, list[Service]] | None = None
 
     async def start(
         self, *, channel: str, customer_phone: str | None, customer_name: str | None
@@ -127,7 +129,10 @@ class ConversationService:
         try:
             result = await self.agent.run_turn(
                 system_prompt=render_system_prompt(
-                    self.business, now=now, customer_phone=conversation.customer_phone
+                    self.business,
+                    now=now,
+                    customer_phone=conversation.customer_phone,
+                    snapshot=await self._snapshot(conversation.customer_phone),
                 ),
                 history=history,
                 user_message=ChatMessage.user(text),
@@ -169,6 +174,38 @@ class ConversationService:
             events=result.events,
             turn=turn,
         )
+
+    async def _snapshot(self, customer_phone: str | None) -> BookingSnapshot:
+        """Prefetch what nearly every turn needs. Optional: failures leave it to the tools."""
+        services, (customer, looked_up) = await asyncio.gather(
+            self._cached_services(), self._lookup_customer(customer_phone)
+        )
+        return BookingSnapshot(
+            services=services,
+            customer=customer,
+            customer_not_found=looked_up and customer is None,
+        )
+
+    async def _cached_services(self) -> list[Service]:
+        now = time.monotonic()
+        if self._services is not None and now - self._services[0] < SERVICES_TTL_S:
+            return self._services[1]
+        try:
+            services = await self.backend.list_services()
+        except Exception:
+            logger.warning("could not prefetch services", exc_info=True)
+            return []
+        self._services = (now, services)
+        return services
+
+    async def _lookup_customer(self, phone: str | None) -> tuple[Customer | None, bool]:
+        if not phone:
+            return None, False
+        try:
+            return await self.backend.find_customer(phone), True
+        except Exception:
+            logger.warning("could not prefetch customer", exc_info=True)
+            return None, False
 
 
 def _failed_turn(ctx: ToolContext, text: str, history_length: int, prior_events: int) -> TurnResult:

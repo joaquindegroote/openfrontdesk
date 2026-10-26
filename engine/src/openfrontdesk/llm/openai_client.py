@@ -19,8 +19,10 @@ class OpenAIChatClient:
         base_url: str | None = None,
         client: AsyncOpenAI | None = None,
         timeout_s: float = 60.0,
+        reasoning_effort: str | None = None,
     ) -> None:
         self.model = model
+        self.reasoning_effort = reasoning_effort
         self._client = client or AsyncOpenAI(
             api_key=api_key, base_url=base_url, timeout=timeout_s, max_retries=2
         )
@@ -50,6 +52,8 @@ class OpenAIChatClient:
             ]
         if json_mode:
             request["response_format"] = {"type": "json_object"}
+        if self.reasoning_effort:
+            request["reasoning_effort"] = self.reasoning_effort
 
         response = await self._client.chat.completions.create(**request)
         message = response.choices[0].message

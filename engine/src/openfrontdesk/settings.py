@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +20,9 @@ class Settings(BaseSettings):
     )
     llm_model: str = "gpt-5-mini"
     judge_model: str = "gpt-5-mini"
+    # For reasoning models (gpt-5 family). Lower is faster; unset it for models without it.
+    llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = "low"
+    judge_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = "low"
     max_agent_steps: int = 8
     tool_timeout_s: float = 20.0
 

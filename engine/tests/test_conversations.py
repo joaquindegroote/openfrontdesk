@@ -79,6 +79,25 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
     }
 
 
+def test_known_customer_and_services_are_preloaded_into_the_prompt(harness: Harness) -> None:
+    conversation = harness.start(PRIYA)
+    harness.llm.extend([reply("Hi Priya! How can I help?")])
+    harness.say(conversation, "Hi")
+
+    system_prompt = harness.llm.calls[0].messages[0].content
+    assert "This customer is Priya Shah (customer_id pat_0003)" in system_prompt
+    assert "- In-office whitening (id whitening): 90 min, $350, $100 deposit." in system_prompt
+
+
+def test_unknown_phone_is_flagged_for_registration(harness: Harness) -> None:
+    conversation = harness.start("+15550100199")
+    harness.llm.extend([reply("Welcome! What's your full name?")])
+    harness.say(conversation, "Hi, I'm new")
+
+    system_prompt = harness.llm.calls[0].messages[0].content
+    assert "nobody is registered with that number" in system_prompt
+
+
 def test_unconfirmed_booking_is_blocked_before_reaching_the_clinic(harness: Harness) -> None:
     conversation = harness.start(PRIYA)
     harness.llm.extend(
