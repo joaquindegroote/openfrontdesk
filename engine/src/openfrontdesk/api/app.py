@@ -1,6 +1,5 @@
 """HTTP API. Run with: uvicorn openfrontdesk.api.app:create_app --factory --port 8000"""
 
-import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -11,8 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from openfrontdesk import __version__
-from openfrontdesk.agent.executor import ToolExecutor
-from openfrontdesk.agent.loop import Agent
 from openfrontdesk.api.schemas import (
     BusinessOut,
     ConversationCreate,
@@ -27,10 +24,8 @@ from openfrontdesk.api.schemas import (
     visible_messages,
 )
 from openfrontdesk.backends import BookingBackend
-from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.llm import LLMClient
-from openfrontdesk.llm.openai_client import OpenAIChatClient
 from openfrontdesk.observability import configure_tracing
 from openfrontdesk.service import (
     AssistantNotConfiguredError,
@@ -38,10 +33,7 @@ from openfrontdesk.service import (
     ConversationService,
 )
 from openfrontdesk.settings import Settings
-from openfrontdesk.storage import ConversationRepository, Database
-from openfrontdesk.tools.booking import build_booking_tools
-
-logger = logging.getLogger(__name__)
+from openfrontdesk.wiring import open_conversation_service
 
 
 def create_app(
@@ -59,41 +51,11 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        db = Database(settings.database_url)
-        await db.create_all()
-        booking = backend or ClinicHttpBackend.from_url(
-            settings.backend_url, timeout_s=settings.backend_timeout_s
-        )
-        agent_llm = llm or _openai(settings, settings.llm_model, settings.llm_reasoning_effort)
-        judge = (
-            judge_llm
-            or _openai(settings, settings.judge_model, settings.judge_reasoning_effort)
-            or agent_llm
-        )
-        agent = None
-        if agent_llm is not None and judge is not None:
-            tools = build_booking_tools(judge)
-            agent = Agent(
-                agent_llm,
-                tools,
-                executor=ToolExecutor(tools, timeout_s=settings.tool_timeout_s),
-                max_steps=settings.max_agent_steps,
-            )
-        else:
-            logger.warning("no LLM configured; set OPENAI_API_KEY to enable the assistant")
-        app.state.service = ConversationService(
-            repo=ConversationRepository(db),
-            agent=agent,
-            business=business,
-            backend=booking,
-            clock=clock,
-        )
-        try:
+        async with open_conversation_service(
+            settings, business=business, llm=llm, judge_llm=judge_llm, backend=backend, clock=clock
+        ) as service:
+            app.state.service = service
             yield
-        finally:
-            if backend is None:
-                await booking.aclose()
-            await db.dispose()
 
     app = FastAPI(title="openfrontdesk", version=__version__, lifespan=lifespan)
     app.add_middleware(
@@ -192,11 +154,3 @@ def _routes(business: BusinessProfile) -> APIRouter:
         return ConversationOut.model_validate(await service.resume_assistant(conversation_id))
 
     return router
-
-
-def _openai(settings: Settings, model: str, effort: str | None) -> OpenAIChatClient | None:
-    if settings.openai_api_key is None:
-        return None
-    return OpenAIChatClient(
-        model, api_key=settings.openai_api_key.get_secret_value(), reasoning_effort=effort
-    )
