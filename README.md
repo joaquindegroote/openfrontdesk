@@ -54,6 +54,7 @@ flowchart LR
 | [`engine/`](engine/) | Python/FastAPI. Agent loop, typed tools, guardrails, handoff, persistence, tracing. |
 | [`clinic-api/`](clinic-api/) | Mock booking system for a fictional dental clinic, with real rules (opening hours, notice, double-booking, fees, deposits) and fault injection. |
 | [`console/`](console/) | Next.js. Chat demo with an "under the hood" panel, and the staff inbox. |
+| [`evals/`](evals/) | Simulated customers: an LLM plays a customer with a goal against the real engine. |
 | [`businesses/`](businesses/) | Business profiles: hours, policies, tone, FAQ, when to hand off. |
 
 More detail in [docs/architecture.md](docs/architecture.md).
@@ -127,6 +128,17 @@ cd console && npm run lint && npm run build
 
 The conversation tests drive the real API, agent loop, guardrails and clinic API in process,
 with a scripted model in place of the LLM, so they're fast, free and deterministic.
+
+### Simulated customers
+
+An LLM plays a customer with a goal and talks to the real engine and a fresh clinic, in
+process, until the request is done, handed off, or out of turns:
+
+```bash
+uv run python -m ofd_evals --name "Priya Shah" --phone +15550100103   --goal "Book a check-up tomorrow morning, as early as possible."
+```
+
+This is the base for the eval suite (scenarios, automatic checks and a results table are next).
 
 ## Roadmap
 

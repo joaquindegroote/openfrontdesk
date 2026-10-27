@@ -10,6 +10,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock .python-version ./
 COPY engine/pyproject.toml engine/pyproject.toml
 COPY clinic-api/pyproject.toml clinic-api/pyproject.toml
+COPY evals/pyproject.toml evals/pyproject.toml
 RUN uv sync --frozen --no-dev --package openfrontdesk --no-install-workspace
 
 COPY engine engine
