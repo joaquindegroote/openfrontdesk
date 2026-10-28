@@ -129,16 +129,20 @@ cd console && npm run lint && npm run build
 The conversation tests drive the real API, agent loop, guardrails and clinic API in process,
 with a scripted model in place of the LLM, so they're fast, free and deterministic.
 
-### Simulated customers
+### Evals with simulated customers
 
 An LLM plays a customer with a goal and talks to the real engine and a fresh clinic, in
-process, until the request is done, handed off, or out of turns:
+process, until the request is done, handed off, or out of turns. Scenarios live in
+[`evals/scenarios/`](evals/scenarios/): a persona, a frozen clock, and what must be true at the
+end (the clinic's real state, the tools that ran, how the conversation ended).
 
 ```bash
-uv run python -m ofd_evals --name "Priya Shah" --phone +15550100103   --goal "Book a check-up tomorrow morning, as early as possible."
+uv run python -m ofd_evals run                          # every scenario
+uv run python -m ofd_evals run -s free-reschedule -n 3  # one scenario, three runs
+uv run python -m ofd_evals chat --phone +15550100103 --goal "Book a check-up tomorrow morning"
 ```
 
-This is the base for the eval suite (scenarios, automatic checks and a results table are next).
+Automatic checks of the expectations and a results table are next.
 
 ## Roadmap
 
