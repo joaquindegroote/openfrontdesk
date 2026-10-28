@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from openfrontdesk.llm import ChatMessage, LLMClient
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 Speaker = Literal["customer", "assistant", "staff"]
 
@@ -28,6 +28,8 @@ Reply with JSON only: {{"message": "<your next message, or empty>", "done": true
 
 
 class Persona(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str
     goal: str = Field(description="What the customer wants, in their own words.")
     # Known to the channel, like a WhatsApp number. None means an anonymous web visitor.

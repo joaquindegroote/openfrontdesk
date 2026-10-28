@@ -1,0 +1,18 @@
+id: late-cancellation-accepts-fee
+title: Cancels a same-day cleaning and accepts the late fee
+now: 2026-11-02T08:00:00-05:00 # Emily's cleaning is at 11:00 today, inside the 24-hour window
+max_turns: 6
+customer:
+  name: Emily Johnson
+  phone: "+15550100101"
+  goal: Cancel today's cleaning because you're sick. If there's a fee, accept it.
+  style: Apologetic and brief.
+expect:
+  ends: customer_done
+  must_call: [get_cancellation_quote, cancel_appointment]
+  must_not_call: [book_appointment, reschedule_appointment]
+  appointments:
+    - patient: Emily Johnson
+      service: cleaning
+      status: cancelled
+      cancellation_fee: 50
