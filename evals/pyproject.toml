@@ -7,6 +7,7 @@ dependencies = [
     "openfrontdesk",
     "clinic-api",
     "httpx>=0.28",
+    "pyyaml>=6.0",
 ]
 
 [tool.uv.sources]

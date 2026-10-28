@@ -861,6 +861,7 @@ dependencies = [
     { name = "clinic-api" },
     { name = "httpx" },
     { name = "openfrontdesk" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -868,6 +869,7 @@ requires-dist = [
     { name = "clinic-api", editable = "clinic-api" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "openfrontdesk", editable = "engine" },
+    { name = "pyyaml", specifier = ">=6.0" },
 ]
 
 [[package]]

@@ -1,0 +1,20 @@
+id: free-reschedule
+title: Moves a check-up to the following week, free of charge
+now: 2026-11-02T08:00:00-05:00 # Carlos's check-up is on Saturday, more than 24 hours away
+max_turns: 8
+customer:
+  name: Carlos Rivera
+  phone: "+15550100102"
+  goal: >-
+    Move your upcoming check-up to an afternoon (after noon) the following week,
+    Monday November 9 to Friday November 13. Any weekday works. Don't cancel it.
+expect:
+  ends: customer_done
+  must_call: [reschedule_appointment]
+  must_not_call: [cancel_appointment, book_appointment]
+  appointments:
+    - patient: Carlos Rivera
+      service: checkup
+      status: confirmed
+      between: [2026-11-09, 2026-11-13]
+      starts_after: "12:00"

@@ -1,0 +1,17 @@
+id: book-earliest-checkup
+title: A returning patient books the earliest check-up tomorrow morning
+now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+max_turns: 6
+customer:
+  name: Priya Shah
+  phone: "+15550100103"
+  goal: Book a check-up for tomorrow morning, as early as possible.
+expect:
+  ends: customer_done
+  must_call: [book_appointment]
+  appointments:
+    - patient: Priya Shah
+      service: checkup
+      status: confirmed
+      day: 2026-11-03
+      starts_before: "12:00"
