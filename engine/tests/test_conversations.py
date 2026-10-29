@@ -85,7 +85,8 @@ def test_known_customer_and_services_are_preloaded_into_the_prompt(harness: Harn
     harness.say(conversation, "Hi")
 
     system_prompt = harness.llm.calls[0].messages[0].content
-    assert "This customer is Priya Shah (customer_id pat_0003)" in system_prompt
+    assert "This customer is Priya Shah, identified by the phone number" in system_prompt
+    assert "Their customer_id for tools is pat_0003." in system_prompt
     assert "- In-office whitening (id whitening): 90 min, $350, $100 deposit." in system_prompt
 
 
