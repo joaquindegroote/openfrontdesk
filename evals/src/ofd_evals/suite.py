@@ -16,7 +16,8 @@ from ofd_evals.scenarios import Scenario
 class ScenarioRun:
     scenario: Scenario
     record: ConversationRecord
-    # The clinic's state when the conversation ended, to check what really happened.
+    # The clinic's state before and after the conversation, to check what really happened.
+    initial_appointments: list[Appointment]
     appointments: list[Appointment]
     patient_names: dict[str, str]
 
@@ -30,11 +31,13 @@ async def run_scenario(
     judge_llm: LLMClient | None = None,
 ) -> ScenarioRun:
     async with eval_environment(settings, llm=llm, judge_llm=judge_llm, now=scenario.now) as env:
+        initial = list(env.store.appointments.values())
         customer = SimulatedCustomer(customer_llm, scenario.customer)
         record = await run_conversation(env.service, customer, max_turns=scenario.max_turns)
         return ScenarioRun(
             scenario=scenario,
             record=record,
+            initial_appointments=initial,
             appointments=list(env.store.appointments.values()),
             patient_names={p.id: p.name for p in env.store.patients.values()},
         )

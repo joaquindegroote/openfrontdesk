@@ -142,7 +142,18 @@ uv run python -m ofd_evals run -s free-reschedule -n 3  # one scenario, three ru
 uv run python -m ofd_evals chat --phone +15550100103 --goal "Book a check-up tomorrow morning"
 ```
 
-Automatic checks of the expectations and a results table are next.
+Every run is checked automatically, and the command exits non-zero if anything fails:
+
+- **The scenario's expectations**: how it ended, which tools ran, and the clinic's real
+  appointments (status, day, time of day, fees).
+- **Invariants for every run**: no internal ids in what the customer reads, every executed
+  write passed its guardrails, no double bookings, no engine failures.
+
+```
+| scenario | passed | avg turns | avg engine tokens | avg engine time |
+|---|---|---|---|---|
+| late-cancellation-accepts-fee | 2/2 | 2.0 | 11,492 | 15.6 s |
+```
 
 ## Roadmap
 
