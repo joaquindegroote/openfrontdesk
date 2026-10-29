@@ -19,6 +19,8 @@ class TurnRecord:
     latency_ms: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    # replied | handed_off | failed (the engine's own error path)
+    outcome: str = "replied"
 
 
 @dataclass
@@ -27,6 +29,7 @@ class ConversationRecord:
     turns: list[TurnRecord] = field(default_factory=list)
     stop_reason: StopReason = "max_turns"
     final_status: str = "active"
+    handoff_reason: str | None = None
     error: str | None = None
 
     @property
@@ -73,9 +76,11 @@ async def run_conversation(
                 latency_ms=outcome.turn.latency_ms if outcome.turn else 0,
                 input_tokens=outcome.turn.input_tokens if outcome.turn else 0,
                 output_tokens=outcome.turn.output_tokens if outcome.turn else 0,
+                outcome=outcome.turn.outcome if outcome.turn else "replied",
             )
         )
         record.final_status = outcome.conversation.status
+        record.handoff_reason = outcome.conversation.handoff_reason
         if outcome.conversation.status != "active":
             record.stop_reason = "handed_off"
             return record

@@ -7,11 +7,13 @@ uv run python -m ofd_evals chat --goal "Book a cleaning next week" --phone +1555
 
 import argparse
 import asyncio
+from collections.abc import Iterable
 
 from openfrontdesk.llm import LLMClient
 from openfrontdesk.settings import Settings
 from openfrontdesk.wiring import openai_client
 
+from ofd_evals.checks import CheckResult, check_run
 from ofd_evals.customer import Persona, SimulatedCustomer
 from ofd_evals.environment import eval_environment
 from ofd_evals.runner import ConversationRecord, run_conversation
@@ -80,15 +82,19 @@ async def _run(
             raise SystemExit(f"Unknown scenario(s): {', '.join(sorted(unknown))}")
         scenarios = [s for s in scenarios if s.id in selected]
 
-    runs: list[ScenarioRun] = []
+    results: list[tuple[ScenarioRun, list[CheckResult]]] = []
     for scenario in scenarios:
         for attempt in range(1, repeats + 1):
             run = await run_scenario(scenario, settings, customer_llm=customer_llm)
-            runs.append(run)
+            checks = check_run(run)
+            results.append((run, checks))
             if not quiet:
                 print(f"\n=== {scenario.id} (run {attempt}/{repeats}) ===")
                 _print_transcript(run.record)
-    _print_summary(runs)
+                _print_checks(checks)
+    _print_summary(results)
+    if not all(c.passed for _, checks in results for c in checks):
+        raise SystemExit(1)
 
 
 def _print_transcript(record: ConversationRecord) -> None:
@@ -109,15 +115,40 @@ def _print_transcript(record: ConversationRecord) -> None:
         print(f"error: {record.error}")
 
 
-def _print_summary(runs: list[ScenarioRun]) -> None:
-    print("\n| scenario | ended | turns | engine tokens | engine time |")
+def _print_checks(checks: list[CheckResult]) -> None:
+    for check in checks:
+        mark = "PASS" if check.passed else "FAIL"
+        print(f"  {mark}  {check.name}" + ("" if check.passed else f": {check.detail}"))
+
+
+def _print_summary(results: list[tuple[ScenarioRun, list[CheckResult]]]) -> None:
+    by_scenario: dict[str, list[tuple[ScenarioRun, list[CheckResult]]]] = {}
+    for run, checks in results:
+        by_scenario.setdefault(run.scenario.id, []).append((run, checks))
+
+    print("\n| scenario | passed | avg turns | avg engine tokens | avg engine time |")
     print("|---|---|---|---|---|")
-    for run in runs:
-        record = run.record
+    for scenario_id, runs in by_scenario.items():
+        passed = sum(all(c.passed for c in checks) for _, checks in runs)
+        records = [run.record for run, _ in runs]
         print(
-            f"| {run.scenario.id} | {record.stop_reason} | {len(record.turns)} | "
-            f"{record.tokens:,} | {record.latency_ms / 1000:.1f} s |"
+            f"| {scenario_id} | {passed}/{len(runs)} | "
+            f"{_mean(len(r.turns) for r in records):.1f} | "
+            f"{_mean(r.tokens for r in records):,.0f} | "
+            f"{_mean(r.latency_ms for r in records) / 1000:.1f} s |"
         )
+    total = sum(all(c.passed for c in checks) for _, checks in results)
+    print(f"\n{total}/{len(results)} runs passed every check.")
+    failures = sorted(
+        {(run.scenario.id, c.name) for run, checks in results for c in checks if not c.passed}
+    )
+    for scenario_id, name in failures:
+        print(f"  failed: {scenario_id}: {name}")
+
+
+def _mean(values: Iterable[float]) -> float:
+    items = list(values)
+    return sum(items) / len(items) if items else 0.0
 
 
 if __name__ == "__main__":
