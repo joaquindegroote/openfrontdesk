@@ -137,8 +137,9 @@ process, until the request is done, handed off, or out of turns. Scenarios live 
 end (the clinic's real state, the tools that ran, how the conversation ended).
 
 ```bash
-uv run python -m ofd_evals run                          # every scenario
-uv run python -m ofd_evals run -s free-reschedule -n 3  # one scenario, three runs
+uv run python -m ofd_evals run                            # every scenario
+uv run python -m ofd_evals run -s free-reschedule -n 3    # one scenario, three runs
+uv run python -m ofd_evals --engine-model gpt-5-nano run  # the assistant on another model
 uv run python -m ofd_evals chat --phone +15550100103 --goal "Book a check-up tomorrow morning"
 ```
 
