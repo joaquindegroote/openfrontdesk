@@ -60,6 +60,13 @@ class ClinicHttpBackend:
         body = {"name": name, "phone": phone, "email": email}
         return Customer.model_validate(await self._request("POST", "/patients", json=body))
 
+    async def send_verification_code(self, phone: str) -> None:
+        await self._request("POST", "/verifications", json={"phone": phone})
+
+    async def check_verification_code(self, phone: str, code: str) -> bool:
+        body = {"phone": phone, "code": code}
+        return bool((await self._request("POST", "/verifications/check", json=body))["verified"])
+
     async def list_appointments(self, customer_id: str) -> list[Appointment]:
         found = await self._request("GET", f"/patients/{customer_id}/appointments")
         return [_appointment(a) for a in found]

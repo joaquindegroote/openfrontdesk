@@ -22,6 +22,7 @@ from openfrontdesk.tools.registry import ToolRegistry
 MAX_SLOTS_SHOWN = 8
 MAX_SLOTS_PER_DAY = 3
 MAX_SEARCH_DAYS = 14
+MAX_CODES_PER_CONVERSATION = 3
 
 
 class NoParams(BaseModel):
@@ -37,6 +38,15 @@ class FindSlotsParams(BaseModel):
     )
     practitioner_id: str | None = Field(default=None, description="Only this practitioner.")
     part_of_day: Literal["any", "morning", "afternoon"] = "any"
+
+
+class PhoneParams(BaseModel):
+    phone: str = Field(description="The customer's phone number.")
+
+
+class VerifyPhoneParams(BaseModel):
+    phone: str = Field(description="The phone number the code was sent to.")
+    code: str = Field(description="The code the customer received, digits only.")
 
 
 class FindCustomerParams(BaseModel):
@@ -192,6 +202,30 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
             "searched": f"{date_from.isoformat()} to {date_to.isoformat()}",
             "total_open": len(slots),
             "slots": [_slot_view(s, ctx) for s in _spread(slots, ctx)],
+        }
+
+    @registry.tool(side_effect="write")
+    async def send_verification_code(ctx: ToolContext, params: PhoneParams) -> dict[str, Any]:
+        """Text a 6-digit code to a phone number, to confirm the customer holds it. Needed when
+        the chat doesn't come from that number."""
+        sent = sum(1 for e in ctx.events if e.tool == "send_verification_code" and e.status == "ok")
+        if sent >= MAX_CODES_PER_CONVERSATION:
+            return {
+                "sent": False,
+                "message": "Too many codes in this conversation. Offer a handoff instead.",
+            }
+        await ctx.backend.send_verification_code(params.phone)
+        return {"sent": True, "next_step": "Ask the customer for the 6-digit code they received."}
+
+    @registry.tool()
+    async def verify_phone(ctx: ToolContext, params: VerifyPhoneParams) -> dict[str, Any]:
+        """Check the code the customer received. Once it matches, that phone number is verified
+        for the rest of the conversation."""
+        if await ctx.backend.check_verification_code(params.phone, params.code):
+            return {"verified": True, "phone": params.phone}
+        return {
+            "verified": False,
+            "message": "That code doesn't match. Ask the customer to check it and try again.",
         }
 
     @registry.tool()

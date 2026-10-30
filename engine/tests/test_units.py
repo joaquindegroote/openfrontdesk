@@ -26,6 +26,8 @@ def test_tool_schemas_are_compact_and_typed() -> None:
     assert set(specs) == {
         "list_services",
         "find_available_slots",
+        "send_verification_code",
+        "verify_phone",
         "find_customer",
         "register_customer",
         "list_customer_appointments",

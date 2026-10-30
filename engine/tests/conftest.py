@@ -10,7 +10,7 @@ from openfrontdesk.api.app import create_app
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.llm.scripted import ScriptedLLM
 from openfrontdesk.settings import Settings
-from support import NOW, PROFILE, Harness, HarnessFactory
+from support import NOW, PROFILE, VERIFICATION_CODE, Harness, HarnessFactory
 
 
 @pytest.fixture
@@ -21,7 +21,12 @@ def make_harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[HarnessFactory]:
     def make(
         *, chaos: ChaosConfig | None = None, max_steps: int = 8, turn_timeout_s: float = 45.0
     ) -> Harness:
-        clinic = create_clinic_app(FixedClock(NOW), chaos=chaos or ChaosConfig(), filler=False)
+        clinic = create_clinic_app(
+            FixedClock(NOW),
+            chaos=chaos or ChaosConfig(),
+            filler=False,
+            verification_code=VERIFICATION_CODE,
+        )
         backend = ClinicHttpBackend(
             httpx.AsyncClient(transport=httpx.ASGITransport(app=clinic), base_url="http://clinic"),
             backoff_s=0,
