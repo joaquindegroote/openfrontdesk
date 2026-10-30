@@ -56,12 +56,14 @@ class ConversationService:
         business: BusinessProfile,
         backend: BookingBackend,
         clock: Callable[[], datetime] | None = None,
+        turn_timeout_s: float = 45.0,
     ) -> None:
         self.repo = repo
         self.agent = agent
         self.business = business
         self.backend = backend
         self.clock = clock or (lambda: datetime.now(business.tz))
+        self.turn_timeout_s = turn_timeout_s
         # Serializes turns per conversation within this process.
         self._locks: dict[str, asyncio.Lock] = {}
         self._services: tuple[float, list[Service]] | None = None
@@ -133,18 +135,33 @@ class ConversationService:
         prior_events = len(ctx.events)
         started = time.perf_counter()
         try:
-            result = await self.agent.run_turn(
-                system_prompt=render_system_prompt(
-                    self.business,
-                    now=now,
-                    customer_phone=conversation.customer_phone,
-                    snapshot=await self._snapshot(conversation.customer_phone),
-                ),
-                history=history,
-                user_message=ChatMessage.user(text),
-                ctx=ctx,
-            )
+            # One deadline for the whole turn: model calls retry on their own, and a slow model
+            # could otherwise keep the customer waiting for minutes.
+            async with asyncio.timeout(self.turn_timeout_s):
+                result = await self.agent.run_turn(
+                    system_prompt=render_system_prompt(
+                        self.business,
+                        now=now,
+                        customer_phone=conversation.customer_phone,
+                        snapshot=await self._snapshot(conversation.customer_phone),
+                    ),
+                    history=history,
+                    user_message=ChatMessage.user(text),
+                    ctx=ctx,
+                )
             outcome = "handed_off" if result.handoff else "replied"
+        except TimeoutError:
+            logger.warning(
+                "assistant turn timed out",
+                extra={"conversation_id": conversation.id, "timeout_s": self.turn_timeout_s},
+            )
+            timed_out = HandoffRequest(
+                reason="assistant_timeout",
+                summary=f"The assistant took more than {self.turn_timeout_s:.0f} s to answer.",
+                automatic=True,
+            )
+            result = _failed_turn(ctx, text, len(history), prior_events, timed_out)
+            outcome = "failed"
         except Exception:
             # The customer must never be left without an answer: hand off instead.
             logger.exception("assistant turn failed", extra={"conversation_id": conversation.id})
@@ -225,14 +242,21 @@ class ConversationService:
             return customer, True, None
 
 
-def _failed_turn(ctx: ToolContext, text: str, history_length: int, prior_events: int) -> TurnResult:
+def _failed_turn(
+    ctx: ToolContext,
+    text: str,
+    history_length: int,
+    prior_events: int,
+    handoff: HandoffRequest | None = None,
+) -> TurnResult:
     """Keep whatever the turn did before failing (tools may have run), then hand off."""
     done = _answer_open_tool_calls(ctx.transcript[history_length:]) or [ChatMessage.user(text)]
     return TurnResult(
         reply=HANDOFF_REPLY,
         new_messages=[*done, ChatMessage.assistant(HANDOFF_REPLY)],
         events=ctx.events[prior_events:],
-        handoff=HandoffRequest(
+        handoff=handoff
+        or HandoffRequest(
             reason="assistant_error",
             summary="The assistant failed while handling this message.",
             automatic=True,

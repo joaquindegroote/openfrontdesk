@@ -1,6 +1,8 @@
 """End-to-end conversations: engine API + agent loop + guards + the real clinic API in-process.
 The model is scripted, so these tests pin down the system's behavior, not the model's."""
 
+import asyncio
+
 import pytest
 from clinic_api.chaos import ChaosConfig
 from fastapi.testclient import TestClient
@@ -399,6 +401,25 @@ def test_a_failed_turn_leaves_no_tool_call_without_a_result(
     assert len(calls) == 1
     assert [m.tool_call_id for m in results] == calls
     assert '"error": "interrupted"' in (results[0].content or "")
+
+
+def test_a_slow_turn_hands_off_instead_of_keeping_the_customer_waiting(
+    make_harness: HarnessFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness = make_harness(turn_timeout_s=0.2)
+
+    async def slow_model(*args: object, **kwargs: object) -> object:
+        await asyncio.sleep(5)
+        return reply("Too late.")
+
+    monkeypatch.setattr(harness.llm, "complete", slow_model)
+    conversation = harness.start(PRIYA)
+    result = harness.say(conversation, "Hi, can I book a check-up?")
+
+    assert result["turn"]["outcome"] == "failed"
+    assert result["turn"]["latency_ms"] < 2000
+    assert result["conversation"]["handoff_reason"] == "assistant_timeout"
+    assert result["messages"][-1]["text"] == HANDOFF_REPLY
 
 
 def test_step_budget_ends_in_a_handoff(make_harness: HarnessFactory) -> None:

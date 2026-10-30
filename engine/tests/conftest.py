@@ -18,7 +18,9 @@ def make_harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[HarnessFactory]:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     clients: list[TestClient] = []
 
-    def make(*, chaos: ChaosConfig | None = None, max_steps: int = 8) -> Harness:
+    def make(
+        *, chaos: ChaosConfig | None = None, max_steps: int = 8, turn_timeout_s: float = 45.0
+    ) -> Harness:
         clinic = create_clinic_app(FixedClock(NOW), chaos=chaos or ChaosConfig(), filler=False)
         backend = ClinicHttpBackend(
             httpx.AsyncClient(transport=httpx.ASGITransport(app=clinic), base_url="http://clinic"),
@@ -30,6 +32,7 @@ def make_harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[HarnessFactory]:
             database_url="sqlite+aiosqlite:///:memory:",
             business_profile=PROFILE,
             max_agent_steps=max_steps,
+            turn_timeout_s=turn_timeout_s,
         )
         app = create_app(settings, llm=llm, judge_llm=judge, backend=backend, clock=lambda: NOW)
         client = TestClient(app)

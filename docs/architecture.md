@@ -43,7 +43,7 @@ sequenceDiagram
 | Module | Responsibility |
 |---|---|
 | `api/` | FastAPI routes and response schemas. No business logic. |
-| `service.py` | Conversation lifecycle: who replies, per-conversation locking, persistence of each turn, failure handling. |
+| `service.py` | Conversation lifecycle: who replies, per-conversation locking, a deadline for each turn, persistence of each turn, and failure handling (a failed turn hands off and never stores a tool call without its result). |
 | `agent/loop.py` | The bounded loop for one turn: step budget, automatic handoff after repeated outages, closing message after a handoff. |
 | `agent/executor.py` | Runs one tool call: validation, guards, idempotency key, timeout, and turning every failure into a result the model can act on. |
 | `agent/prompt.py` | Renders the system prompt from the business profile and the current time in the business's timezone. |
