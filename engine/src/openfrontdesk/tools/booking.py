@@ -10,6 +10,7 @@ from openfrontdesk.backends import Appointment, Slot
 from openfrontdesk.guardrails import (
     CancellationFeeDisclosed,
     CustomerConfirmed,
+    FeeAccepted,
     NoDuplicateBooking,
     StartsInFuture,
 )
@@ -137,10 +138,16 @@ async def _describe_booking(ctx: ToolContext, params: BookParams) -> str:
 async def _describe_cancellation(ctx: ToolContext, params: CancelParams) -> str:
     appointment = await ctx.backend.get_appointment(params.appointment_id)
     quote = latest_quote(ctx.events, params.appointment_id)
-    fee = f"late-cancellation fee ${quote['fee']}" if quote and quote["fee"] else "no fee"
+    # Worded as a payment, so the judge checks the customer agreed to pay it, not just to cancel.
+    fee = (
+        f"The customer pays a ${quote['fee']} late-cancellation fee."
+        if quote and quote["fee"]
+        else "No fee."
+    )
+    services = {s.id: s.name for s in await ctx.backend.list_services()}
     return (
-        f"Cancel {await _service_label(ctx, appointment.service_id)} on "
-        f"{short_label(appointment.start, ctx.business.tz)} ({fee})."
+        f"Cancel {services.get(appointment.service_id, appointment.service_id)} on "
+        f"{short_label(appointment.start, ctx.business.tz)}. {fee}"
     )
 
 
@@ -246,7 +253,7 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
 
     @registry.tool(
         side_effect="write",
-        guards=[CancellationFeeDisclosed(), confirmed],
+        guards=[CancellationFeeDisclosed(), confirmed, FeeAccepted(judge)],
         describe=_describe_cancellation,
     )
     async def cancel_appointment(ctx: ToolContext, params: CancelParams) -> dict[str, Any]:
