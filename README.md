@@ -165,7 +165,7 @@ demand from the Actions tab with the scenarios, repeats and model to use. It nee
 `OPENAI_API_KEY` repository secret. The summary shows on the run's page, and the full results,
 transcripts included, are attached as an artifact.
 
-[Results for three models](docs/eval-results.md): pass rate per scenario, tokens and latency,
+[Results by model](docs/eval-results.md), OpenAI and Claude: pass rate per scenario, latency,
 and what they say.
 
 ```
