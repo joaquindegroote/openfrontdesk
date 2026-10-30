@@ -31,11 +31,18 @@ class BusinessProfile(BaseModel):
     tone: str
     policies: list[str]
     handoff_when: list[str]
+    # What the customer reads when a person takes over, by handoff reason, with "default" for
+    # the rest. Fixed words rather than generated ones: a handoff never repeats the customer's
+    # claims or promises an outcome.
+    handoff_replies: dict[str, str] = {}
     faq: list[FAQ] = []
 
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.timezone)
+
+    def handoff_reply(self, reason: str, fallback: str) -> str:
+        return self.handoff_replies.get(reason) or self.handoff_replies.get("default") or fallback
 
     @classmethod
     def load(cls, path: Path) -> Self:
