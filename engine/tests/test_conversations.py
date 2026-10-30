@@ -6,6 +6,7 @@ from clinic_api.chaos import ChaosConfig
 from fastapi.testclient import TestClient
 from openfrontdesk.agent.loop import HANDOFF_REPLY
 from openfrontdesk.api.app import create_app
+from openfrontdesk.guardrails import NoDuplicateBooking
 from openfrontdesk.llm.scripted import reply, tool_call
 from openfrontdesk.settings import Settings
 from support import (
@@ -362,6 +363,42 @@ def test_booking_system_outage_hands_off_to_staff(make_harness: HarnessFactory) 
     assert result["conversation"]["handoff_reason"] == "system_unavailable"
     assert harness.llm.calls[-1].tools == []  # the closing message can't call tools
     assert result["turn"]["outcome"] == "handed_off"
+
+
+def test_a_failed_turn_leaves_no_tool_call_without_a_result(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If a turn dies mid-tool, the stored history must still be one the model API accepts."""
+
+    async def crash(self: NoDuplicateBooking, ctx: object, action: object) -> None:
+        raise RuntimeError("guard crashed")
+
+    monkeypatch.setattr(NoDuplicateBooking, "check", crash)
+    conversation = harness.start(PRIYA)
+    harness.llm.extend(
+        [
+            tool_call(
+                "book_appointment",
+                customer_id="pat_0003",
+                service_id="checkup",
+                start="2026-11-03T09:00:00-05:00",
+            )
+        ]
+    )
+    failed = harness.say(conversation, "Book the 9:00 please")
+    assert failed["turn"]["outcome"] == "failed"
+    assert failed["conversation"]["handoff_reason"] == "assistant_error"
+
+    harness.client.post(f"/v1/conversations/{conversation}/resume")
+    harness.llm.extend([reply("Sorry about that! Shall I try the 9:00 again?")])
+    harness.say(conversation, "Hello?")
+
+    history = harness.llm.calls[-1].messages
+    calls = [c.id for m in history if m.role == "assistant" for c in m.tool_calls]
+    results = [m for m in history if m.role == "tool"]
+    assert len(calls) == 1
+    assert [m.tool_call_id for m in results] == calls
+    assert '"error": "interrupted"' in (results[0].content or "")
 
 
 def test_step_budget_ends_in_a_handoff(make_harness: HarnessFactory) -> None:
