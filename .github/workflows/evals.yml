@@ -1,0 +1,63 @@
+name: Evals
+
+# Simulated-customer evals against the real engine. They call a model, so they cost tokens and
+# don't run on every push: start them by hand, or let the weekly run catch regressions.
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: Scenario ids, space-separated (empty runs all of them)
+        required: false
+        default: ""
+      repeats:
+        description: Runs per scenario
+        required: false
+        default: "1"
+      engine_model:
+        description: Model the assistant runs on
+        required: false
+        default: gpt-5-mini
+  schedule:
+    - cron: "0 6 * * 1" # Mondays, 06:00 UTC
+
+concurrency:
+  group: evals
+  cancel-in-progress: false
+
+jobs:
+  evals:
+    name: Simulated customers
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ENGINE_MODEL: ${{ inputs.engine_model || 'gpt-5-mini' }}
+      SCENARIOS: ${{ inputs.scenarios }}
+      REPEATS: ${{ inputs.repeats || '1' }}
+      PYTHONIOENCODING: utf-8
+    steps:
+      - name: Check for an API key
+        if: env.OPENAI_API_KEY == ''
+        run: |
+          echo "::error::Add an OPENAI_API_KEY repository secret to run the evals."
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Run scenarios
+        run: |
+          args=()
+          for id in $SCENARIOS; do args+=(-s "$id"); done
+          uv run python -m ofd_evals --engine-model "$ENGINE_MODEL" \
+            run -q -n "$REPEATS" "${args[@]}" --out evals/results/ci
+      - name: Summary
+        if: always()
+        run: cat evals/results/ci/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: evals/results/ci
+          if-no-files-found: ignore
