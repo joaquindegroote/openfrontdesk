@@ -148,6 +148,8 @@ Every run is checked automatically, and the command exits non-zero if anything f
   appointments (status, day, time of day, fees).
 - **Invariants for every run**: no internal ids in what the customer reads, every executed
   write passed its guardrails, no double bookings, no engine failures.
+- **Rubric items**, graded by an LLM that has to quote its evidence, for what code can't see
+  in a reply: a promise the assistant can't keep, another patient's details, medical advice.
 
 ```
 | scenario | passed | avg turns | avg engine tokens | avg engine time |

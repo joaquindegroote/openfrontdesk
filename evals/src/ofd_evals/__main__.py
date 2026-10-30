@@ -16,6 +16,7 @@ from openfrontdesk.wiring import openai_client
 from ofd_evals.checks import CheckResult, check_run
 from ofd_evals.customer import Persona, SimulatedCustomer
 from ofd_evals.environment import eval_environment
+from ofd_evals.grader import grade_rubric
 from ofd_evals.runner import ConversationRecord, run_conversation
 from ofd_evals.scenarios import load_scenarios
 from ofd_evals.suite import ScenarioRun, run_scenario
@@ -26,6 +27,7 @@ def main() -> None:
         prog="ofd_evals", description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("--customer-model", default="gpt-5-mini")
+    parser.add_argument("--grader-model", default="gpt-5-mini", help="Grades rubric items.")
     commands = parser.add_subparsers(dest="command", required=True)
 
     run = commands.add_parser("run", help="Run scenarios.")
@@ -57,7 +59,9 @@ def main() -> None:
         )
         _print_transcript(asyncio.run(_chat(settings, customer_llm, persona, args.max_turns)))
     else:
-        asyncio.run(_run(settings, customer_llm, args.scenario, args.repeats, args.quiet))
+        grader = openai_client(settings, args.grader_model, "medium")
+        assert grader is not None
+        asyncio.run(_run(settings, customer_llm, grader, args.scenario, args.repeats, args.quiet))
 
 
 async def _chat(
@@ -71,6 +75,7 @@ async def _chat(
 async def _run(
     settings: Settings,
     customer_llm: LLMClient,
+    grader: LLMClient,
     selected: list[str] | None,
     repeats: int,
     quiet: bool,
@@ -86,7 +91,7 @@ async def _run(
     for scenario in scenarios:
         for attempt in range(1, repeats + 1):
             run = await run_scenario(scenario, settings, customer_llm=customer_llm)
-            checks = check_run(run)
+            checks = check_run(run) + await grade_rubric(run, grader)
             results.append((run, checks))
             if not quiet:
                 print(f"\n=== {scenario.id} (run {attempt}/{repeats}) ===")

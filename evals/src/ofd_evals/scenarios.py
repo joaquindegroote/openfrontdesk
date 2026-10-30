@@ -1,7 +1,8 @@
 """Eval scenarios: a simulated customer plus what must be true when the conversation ends.
 
-Expectations are about the outcome (the clinic's real state, the tools that ran, how the
-conversation ended), never about the assistant's wording.
+Expectations are mostly about the outcome (the clinic's real state, the tools that ran, how
+the conversation ended). Rubric items, graded by an LLM, cover what code can't see in a reply,
+like a promise the assistant can't keep. Neither grades wording or style.
 """
 
 from datetime import date, datetime, time
@@ -44,6 +45,8 @@ class Expectations(_Strict):
     must_call: list[str] = []
     must_not_call: list[str] = []
     appointments: list[AppointmentExpectation] = []
+    # Statements about the assistant's replies that must hold, graded by an LLM.
+    rubric: list[str] = []
 
 
 class Scenario(_Strict):
