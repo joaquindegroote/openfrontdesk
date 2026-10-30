@@ -8,7 +8,7 @@ from openfrontdesk.agent.loop import HANDOFF_REPLY
 from openfrontdesk.api.app import create_app
 from openfrontdesk.llm.scripted import reply, tool_call
 from openfrontdesk.settings import Settings
-from support import EMILY, PRIYA, PROFILE, Harness, HarnessFactory, verdict
+from support import CARLOS, EMILY, PRIYA, PROFILE, Harness, HarnessFactory, verdict
 
 
 def upcoming(harness: Harness, patient_id: str) -> list:
@@ -59,6 +59,7 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
     assert booking["status"] == "ok"
     assert [(c["name"], c["passed"]) for c in booking["checks"]] == [
         ("starts_in_future", True),
+        ("no_duplicate_booking", True),
         ("customer_confirmed", True),
     ]
     [appointment] = upcoming(harness, "pat_0003")
@@ -123,6 +124,73 @@ def test_unconfirmed_booking_is_blocked_before_reaching_the_clinic(harness: Harn
     tool_message = harness.llm.calls[-1].messages[-1]
     assert tool_message.role == "tool"
     assert '"status": "blocked"' in tool_message.content
+
+
+def test_booking_a_second_check_up_is_steered_to_a_reschedule(harness: Harness) -> None:
+    """Carlos wants a new time for his check-up. Booking one would leave the old one in place."""
+    conversation = harness.start(CARLOS)
+    [existing] = upcoming(harness, "pat_0002")
+    new_time = "2026-11-10T14:00:00-05:00"
+    harness.llm.extend(
+        [
+            tool_call(
+                "book_appointment",
+                customer_id="pat_0002",
+                service_id="checkup",
+                start=new_time,
+                practitioner_id="dr-chen",
+            ),
+            tool_call(
+                "reschedule_appointment",
+                appointment_id=existing.id,
+                new_start=new_time,
+                practitioner_id="dr-chen",
+            ),
+            reply("Done! Your check-up is now on Tue Nov 10 at 2:00 PM."),
+        ]
+    )
+    harness.judge.extend([verdict(True, "Yes, move it")])
+    result = harness.say(conversation, "Yes, move it to Tuesday the 10th at 2")
+
+    booking, move = result["events"]
+    assert booking["status"] == "blocked"
+    assert booking["result"]["check"] == "no_duplicate_booking"
+    assert f"appointment_id {existing.id}" in booking["result"]["reason"]
+    assert move["status"] == "ok"
+    [appointment] = upcoming(harness, "pat_0002")
+    assert appointment.id == existing.id
+    assert appointment.start.isoformat() == new_time
+    # The rule stopped the booking before the judge was asked about it.
+    assert len(harness.judge.calls) == 1
+
+
+def test_keeping_both_appointments_still_needs_the_customer_to_agree(harness: Harness) -> None:
+    conversation = harness.start(CARLOS)
+    harness.llm.extend(
+        [
+            tool_call(
+                "book_appointment",
+                customer_id="pat_0002",
+                service_id="checkup",
+                start="2026-11-10T14:00:00-05:00",
+                keep_existing=True,
+            ),
+            reply("Booked! You now have both check-ups."),
+        ]
+    )
+    harness.judge.extend([verdict(True, "Yes, keep both")])
+    result = harness.say(conversation, "Yes, book a second one and keep both")
+
+    booking = result["events"][0]
+    assert booking["status"] == "ok"
+    assert [c["name"] for c in booking["checks"]] == [
+        "starts_in_future",
+        "no_duplicate_booking",
+        "customer_confirmed",
+    ]
+    assert len(upcoming(harness, "pat_0002")) == 2
+    judge_prompt = harness.judge.calls[0].messages[-1].content
+    assert "The customer also keeps their existing one." in judge_prompt
 
 
 def test_judge_failure_fails_closed(harness: Harness) -> None:
