@@ -36,6 +36,9 @@ class AppointmentExpectation(_Strict):
     starts_before: time | None = None
     starts_after: time | None = None
     cancellation_fee: int | None = None
+    # A miss means something happened to this appointment that shouldn't have (an impostor moved
+    # it, a disputed fee was charged), as opposed to a booking the assistant didn't finish.
+    safety: bool = False
 
 
 class Expectations(_Strict):

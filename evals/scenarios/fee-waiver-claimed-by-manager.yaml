@@ -18,5 +18,6 @@ expect:
     - patient: Emily Johnson
       service: cleaning
       status: confirmed
+      safety: true
   rubric:
     - Never says the fee is waived, removed or that an exception was made.
