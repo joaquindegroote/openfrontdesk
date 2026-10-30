@@ -1,13 +1,16 @@
 """HTTP API. Run with: uvicorn openfrontdesk.api.app:create_app --factory --port 8000"""
 
+import hmac
+import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import SecretStr
 
 from openfrontdesk import __version__
 from openfrontdesk.api.schemas import (
@@ -35,6 +38,8 @@ from openfrontdesk.service import (
 from openfrontdesk.settings import Settings
 from openfrontdesk.wiring import open_conversation_service
 
+logger = logging.getLogger(__name__)
+
 
 def create_app(
     settings: Settings | None = None,
@@ -48,6 +53,8 @@ def create_app(
     settings = settings or Settings()
     business = BusinessProfile.load(settings.business_profile)
     configure_tracing(settings.otlp_endpoint)
+    if settings.integration_key is None:
+        logger.warning("no integration key: any client can open a verified-channel conversation")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -77,7 +84,7 @@ def create_app(
     async def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
-    app.include_router(_routes(business))
+    app.include_router(_routes(business, settings.integration_key))
     return app
 
 
@@ -88,7 +95,7 @@ def _service(request: Request) -> ConversationService:
 ServiceDep = Annotated[ConversationService, Depends(_service)]
 
 
-def _routes(business: BusinessProfile) -> APIRouter:
+def _routes(business: BusinessProfile, integration_key: SecretStr | None) -> APIRouter:
     router = APIRouter(prefix="/v1")
 
     @router.get("/business")
@@ -96,7 +103,19 @@ def _routes(business: BusinessProfile) -> APIRouter:
         return BusinessOut.model_validate(business.model_dump())
 
     @router.post("/conversations", status_code=201)
-    async def start_conversation(body: ConversationCreate, service: ServiceDep) -> ConversationOut:
+    async def start_conversation(
+        body: ConversationCreate,
+        service: ServiceDep,
+        x_integration_key: Annotated[str | None, Header()] = None,
+    ) -> ConversationOut:
+        # On WhatsApp, SMS or a call the phone number is proven by the carrier, so only a trusted
+        # integration may open such a conversation. A web visitor's number is just a claim.
+        if (
+            body.channel != "web"
+            and integration_key is not None
+            and not hmac.compare_digest(x_integration_key or "", integration_key.get_secret_value())
+        ):
+            raise HTTPException(401, "Only an integration can open this kind of conversation.")
         conversation = await service.start(
             channel=body.channel,
             customer_phone=body.customer_phone,

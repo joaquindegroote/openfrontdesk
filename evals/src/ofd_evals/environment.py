@@ -18,6 +18,9 @@ from openfrontdesk.service import ConversationService
 from openfrontdesk.settings import Settings
 from openfrontdesk.wiring import open_conversation_service
 
+# Every code the eval clinic "texts". Personas that verify a phone know it as a fact.
+VERIFICATION_CODE = "246810"
+
 
 @dataclass
 class EvalEnvironment:
@@ -41,7 +44,9 @@ async def eval_environment(
 ) -> AsyncIterator[EvalEnvironment]:
     """`now` freezes the clock for both the clinic and the engine, for reproducible runs."""
     clinic_clock = FixedClock(now) if now else SystemClock(TIMEZONE)
-    clinic = create_clinic_app(clinic_clock, chaos=chaos or ChaosConfig())
+    clinic = create_clinic_app(
+        clinic_clock, chaos=chaos or ChaosConfig(), verification_code=VERIFICATION_CODE
+    )
     backend = ClinicHttpBackend(
         httpx.AsyncClient(transport=httpx.ASGITransport(app=clinic), base_url="http://clinic")
     )

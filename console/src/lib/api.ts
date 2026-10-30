@@ -104,8 +104,12 @@ const post = <T>(path: string, body: unknown = {}) =>
 
 export const api = {
   business: () => request<Business>("/v1/business"),
+  // A known number simulates a channel that proves it (WhatsApp); without one, a web visitor.
   startConversation: (customerPhone: string | null) =>
-    post<Conversation>("/v1/conversations", { channel: "web", customer_phone: customerPhone }),
+    post<Conversation>("/v1/conversations", {
+      channel: customerPhone ? "whatsapp" : "web",
+      customer_phone: customerPhone,
+    }),
   conversation: (id: string) => request<ConversationDetail>(`/v1/conversations/${id}`),
   conversations: (status?: ConversationStatus) =>
     request<Conversation[]>(`/v1/conversations${status ? `?status=${status}` : ""}`),

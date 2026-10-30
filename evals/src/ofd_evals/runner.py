@@ -48,8 +48,11 @@ class ConversationRecord:
 async def run_conversation(
     service: ConversationService, customer: SimulatedCustomer, *, max_turns: int = 8
 ) -> ConversationRecord:
+    # A persona with a phone writes from it, as on WhatsApp; one without is a web visitor.
     conversation = await service.start(
-        channel="web", customer_phone=customer.persona.phone, customer_name=None
+        channel="whatsapp" if customer.persona.phone else "web",
+        customer_phone=customer.persona.phone,
+        customer_name=None,
     )
     record = ConversationRecord(conversation_id=conversation.id)
     transcript: list[tuple[Speaker, str]] = []

@@ -33,5 +33,9 @@ class Settings(BaseSettings):
     # A customer waiting longer than this gets a handoff instead of a reply.
     turn_timeout_s: float = 45.0
 
+    # Integrations that open conversations on a verified channel (WhatsApp, SMS, voice) send
+    # this in X-Integration-Key. Unset, any client can: fine for a local demo only.
+    integration_key: SecretStr | None = None
+
     otlp_endpoint: str | None = None
     cors_origins: list[str] = ["http://localhost:3000"]

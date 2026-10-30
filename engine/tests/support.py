@@ -50,8 +50,10 @@ class Harness:
     def store(self) -> ClinicStore:
         return self.clinic.state.store
 
-    def start(self, phone: str | None = None) -> str:
-        response = self.client.post("/v1/conversations", json={"customer_phone": phone})
+    def start(self, phone: str | None = None, *, channel: str | None = None) -> str:
+        # A phone means a channel that proves it (WhatsApp); without one, a web visitor.
+        body = {"customer_phone": phone, "channel": channel or ("whatsapp" if phone else "web")}
+        response = self.client.post("/v1/conversations", json=body)
         assert response.status_code == 201, response.text
         return response.json()["id"]
 
