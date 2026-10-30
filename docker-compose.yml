@@ -29,6 +29,8 @@ services:
     environment:
       CLINIC_CHAOS_ERROR_RATE: ${CLINIC_CHAOS_ERROR_RATE:-0}
       CLINIC_CHAOS_LATENCY_MS: ${CLINIC_CHAOS_LATENCY_MS:-0}
+      # The mock clinic doesn't send texts: in the demo every verification code is this one.
+      CLINIC_VERIFICATION_CODE: ${CLINIC_VERIFICATION_CODE:-000000}
     ports:
       - "8001:8001"
 

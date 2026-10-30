@@ -194,3 +194,27 @@ def test_seeded_calendar_is_busy_but_bookable() -> None:
     ).json()
     # Two dentists with 30 possible check-up starts each: a busy day leaves some but not all free.
     assert 0 < len(slots) < 60
+
+
+def test_phone_verification_codes() -> None:
+    client = TestClient(create_app(FixedClock(NOW), filler=False, verification_code="246810"))
+    phone = "+15550100103"
+    assert client.post("/verifications", json={"phone": phone}).status_code == 202
+
+    def check(code: str) -> object:
+        return client.post("/verifications/check", json={"phone": phone, "code": code}).json()
+
+    assert check("111111") == {"verified": False}
+    assert check("246810") == {"verified": True}
+    # Codes are single use.
+    assert check("246810")["error"]["code"] == "verification_expired"
+
+
+def test_too_many_wrong_codes_void_the_code() -> None:
+    client = TestClient(create_app(FixedClock(NOW), filler=False, verification_code="246810"))
+    phone = "+15550100103"
+    client.post("/verifications", json={"phone": phone})
+    for _ in range(5):
+        client.post("/verifications/check", json={"phone": phone, "code": "000000"})
+    voided = client.post("/verifications/check", json={"phone": phone, "code": "246810"})
+    assert voided.status_code == 410
