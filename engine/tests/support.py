@@ -59,4 +59,6 @@ class Harness:
 
 
 class HarnessFactory(Protocol):
-    def __call__(self, *, chaos: ChaosConfig | None = None, max_steps: int = 8) -> Harness: ...
+    def __call__(
+        self, *, chaos: ChaosConfig | None = None, max_steps: int = 8, turn_timeout_s: float = 45.0
+    ) -> Harness: ...

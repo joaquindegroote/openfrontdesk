@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     judge_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = "low"
     max_agent_steps: int = 8
     tool_timeout_s: float = 20.0
+    # A customer waiting longer than this gets a handoff instead of a reply.
+    turn_timeout_s: float = 45.0
 
     otlp_endpoint: str | None = None
     cors_origins: list[str] = ["http://localhost:3000"]

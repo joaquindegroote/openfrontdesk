@@ -63,6 +63,7 @@ async def open_conversation_service(
             business=business or BusinessProfile.load(settings.business_profile),
             backend=booking,
             clock=clock,
+            turn_timeout_s=settings.turn_timeout_s,
         )
     finally:
         if backend is None:
