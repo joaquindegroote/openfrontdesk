@@ -159,6 +159,11 @@ transcript with its tool calls and guardrail checks, and `summary.md` has the ta
 uv run python -m ofd_evals show --failed   # transcripts of the latest failed runs
 ```
 
+The [Evals workflow](.github/workflows/evals.yml) runs every scenario each Monday, and on
+demand from the Actions tab with the scenarios, repeats and model to use. It needs an
+`OPENAI_API_KEY` repository secret. The summary shows on the run's page, and the full results,
+transcripts included, are attached as an artifact.
+
 ```
 | scenario | passed | avg turns | avg engine tokens | avg engine time |
 |---|---|---|---|---|
