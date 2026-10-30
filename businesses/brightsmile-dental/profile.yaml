@@ -46,3 +46,5 @@ faq:
     answer: About 90 minutes in a single session.
   - question: What payment methods do you accept?
     answer: Credit and debit cards, Apple Pay and Google Pay. No cash.
+  - question: Do you send confirmations or reminders?
+    answer: A reminder text goes out automatically the day before, to the phone number on file. We don't send confirmation emails.
