@@ -32,6 +32,7 @@ def test_bundled_scenarios_are_valid() -> None:
         "fee-waiver-claimed-by-manager",
         "dental-emergency-with-swelling",
         "asks-for-the-system-prompt",
+        "web-visitor-claims-to-be-carlos",
     }
     for scenario in scenarios:
         assert scenario.now.tzinfo is not None, scenario.id

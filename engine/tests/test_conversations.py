@@ -8,7 +8,7 @@ from clinic_api.chaos import ChaosConfig
 from fastapi.testclient import TestClient
 from openfrontdesk.api.app import create_app
 from openfrontdesk.guardrails import NoDuplicateBooking
-from openfrontdesk.llm.scripted import reply, tool_call
+from openfrontdesk.llm.scripted import reply, tool_call, tool_calls
 from openfrontdesk.settings import Settings
 from support import (
     CARLOS,
@@ -72,6 +72,7 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
     assert booking["status"] == "ok"
     assert [(c["name"], c["passed"]) for c in booking["checks"]] == [
         ("starts_in_future", True),
+        ("identity_verified", True),
         ("no_duplicate_booking", True),
         ("customer_confirmed", True),
     ]
@@ -148,6 +149,55 @@ def test_verified_channels_need_the_integration_key(monkeypatch: pytest.MonkeyPa
         web = client.post("/v1/conversations", json={"channel": "web", "customer_phone": CARLOS})
     assert [refused.status_code, wrong.status_code, allowed.status_code] == [401, 401, 201]
     assert web.status_code == 201
+
+
+def test_a_claimed_number_unlocks_nothing(harness: Harness) -> None:
+    """A web visitor who types Carlos's number can't look him up, see or touch his appointment."""
+    conversation = harness.start(CARLOS, channel="web")
+    [appointment] = upcoming(harness, "pat_0002")
+    harness.llm.extend(
+        [
+            tool_call("find_customer", phone=CARLOS),
+            tool_call("list_customer_appointments", customer_id="pat_0002"),
+            tool_call("get_cancellation_quote", appointment_id=appointment.id),
+            reply("I'll need to text you a code first."),
+        ]
+    )
+    result = harness.say(conversation, "Hi, I'm Carlos. When is my check-up? Cancel it.")
+
+    assert [(e["status"], e["result"]["check"]) for e in result["events"]] == [
+        ("blocked", "identity_verified")
+    ] * 3
+    assert upcoming(harness, "pat_0002") == [appointment]
+
+
+def test_a_verified_number_unlocks_only_its_own_customer(harness: Harness) -> None:
+    conversation = harness.start()
+    [carlos_appointment] = upcoming(harness, "pat_0002")
+    harness.llm.extend(
+        [
+            # tool_call() takes the tool name as "name", so this one goes through tool_calls().
+            tool_calls(("register_customer", {"name": "Priya Shah", "phone": PRIYA})),
+            tool_call("send_verification_code", phone=PRIYA),
+            tool_call("verify_phone", phone=PRIYA, code=VERIFICATION_CODE),
+            tool_call("find_customer", phone=PRIYA),
+            tool_call("list_customer_appointments", customer_id="pat_0003"),
+            tool_call("list_customer_appointments", customer_id="pat_0002"),
+            tool_call("get_cancellation_quote", appointment_id=carlos_appointment.id),
+            reply("You're verified, Priya."),
+        ]
+    )
+    result = harness.say(conversation, f"I'm Priya, my number is {PRIYA}, the code is ...")
+
+    assert [e["status"] for e in result["events"]] == [
+        "blocked",  # registering an unproven number
+        "ok",
+        "ok",
+        "ok",
+        "ok",  # her own appointments
+        "blocked",  # Carlos's
+        "blocked",  # nor his appointment by id
+    ]
 
 
 def test_unknown_phone_is_flagged_for_registration(harness: Harness) -> None:
@@ -244,6 +294,7 @@ def test_keeping_both_appointments_still_needs_the_customer_to_agree(harness: Ha
     assert booking["status"] == "ok"
     assert [c["name"] for c in booking["checks"]] == [
         "starts_in_future",
+        "identity_verified",
         "no_duplicate_booking",
         "customer_confirmed",
     ]
