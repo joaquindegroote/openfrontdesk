@@ -25,6 +25,8 @@ from clinic_api.models import (
     RescheduleRequest,
     Service,
     Slot,
+    VerificationCheck,
+    VerificationRequest,
 )
 from clinic_api.store import ClinicStore
 
@@ -44,8 +46,14 @@ def create_app(
     chaos: ChaosConfig | None = None,
     seed: int = 42,
     filler: bool = True,
+    verification_code: str | None = None,
 ) -> FastAPI:
-    store = ClinicStore(clock or SystemClock(catalog.TIMEZONE), seed=seed, filler=filler)
+    store = ClinicStore(
+        clock or SystemClock(catalog.TIMEZONE),
+        seed=seed,
+        filler=filler,
+        verification_code=verification_code or os.environ.get("CLINIC_VERIFICATION_CODE"),
+    )
     app = FastAPI(
         title="BrightSmile Dental API (mock)",
         version="0.1.0",
@@ -90,6 +98,15 @@ def create_app(
     @app.post("/patients", status_code=201)
     def create_patient(body: PatientCreate) -> Patient:
         return store.create_patient(body)
+
+    @app.post("/verifications", status_code=202)
+    def send_verification(body: VerificationRequest) -> dict[str, bool]:
+        store.send_verification(body.phone)
+        return {"sent": True}
+
+    @app.post("/verifications/check")
+    def check_verification(body: VerificationCheck) -> dict[str, bool]:
+        return {"verified": store.check_verification(body.phone, body.code)}
 
     @app.get("/patients/{patient_id}")
     def get_patient(patient_id: str) -> Patient:

@@ -76,6 +76,15 @@ class PatientCreate(BaseModel):
     email: str | None = Field(default=None, max_length=254)
 
 
+class VerificationRequest(BaseModel):
+    phone: str
+
+
+class VerificationCheck(BaseModel):
+    phone: str
+    code: str = Field(min_length=4, max_length=10)
+
+
 class AppointmentCreate(BaseModel):
     patient_id: str
     service_id: str

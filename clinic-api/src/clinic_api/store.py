@@ -1,7 +1,10 @@
 """In-memory booking system with the rules a real practice-management system would enforce."""
 
+import hmac
 import random
+import secrets
 from collections.abc import Callable, Hashable
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from itertools import count
 
@@ -21,6 +24,9 @@ from clinic_api.models import (
     Service,
     Slot,
 )
+
+VERIFICATION_TTL = timedelta(minutes=10)
+MAX_VERIFICATION_ATTEMPTS = 5
 
 DEMO_PATIENTS = [
     ("Emily Johnson", "+15550100101", "emily.j@example.com"),
@@ -50,9 +56,26 @@ def normalize_phone(raw: str) -> str:
     return "+" + digits
 
 
+@dataclass
+class _PendingVerification:
+    code: str
+    expires: datetime
+    attempts: int = 0
+
+
 class ClinicStore:
-    def __init__(self, clock: Clock, *, seed: int = 42, filler: bool = True) -> None:
+    def __init__(
+        self,
+        clock: Clock,
+        *,
+        seed: int = 42,
+        filler: bool = True,
+        verification_code: str | None = None,
+    ) -> None:
         self.clock = clock
+        # Fixed in tests and demos, where nobody receives a text; random otherwise.
+        self.verification_code = verification_code
+        self._verifications: dict[str, _PendingVerification] = {}
         self.services = {s.id: s for s in catalog.SERVICES}
         self.practitioners = {p.id: p for p in catalog.PRACTITIONERS}
         self.patients: dict[str, Patient] = {}
@@ -94,6 +117,30 @@ class ClinicStore:
         if self.find_patients(data.phone):
             raise ClinicError(409, "patient_exists", "A patient with this phone already exists.")
         return self._add_patient(data.name.strip(), normalize_phone(data.phone), data.email)
+
+    # Phone verification: a one-time code texted to the number
+
+    def send_verification(self, phone: str) -> None:
+        normalized = normalize_phone(phone)
+        code = self.verification_code or f"{secrets.randbelow(10**6):06d}"
+        expires = self.clock.now() + VERIFICATION_TTL
+        # A real system texts the code here; the mock only keeps it.
+        self._verifications[normalized] = _PendingVerification(code=code, expires=expires)
+
+    def check_verification(self, phone: str, code: str) -> bool:
+        normalized = normalize_phone(phone)
+        pending = self._verifications.get(normalized)
+        if pending is None or self.clock.now() > pending.expires:
+            raise ClinicError(
+                410, "verification_expired", "No valid code for this phone. Send a new one."
+            )
+        if hmac.compare_digest(pending.code, code.strip()):
+            del self._verifications[normalized]
+            return True
+        pending.attempts += 1
+        if pending.attempts >= MAX_VERIFICATION_ATTEMPTS:
+            del self._verifications[normalized]
+        return False
 
     def patient_appointments(
         self, patient_id: str, *, include_past: bool = False
