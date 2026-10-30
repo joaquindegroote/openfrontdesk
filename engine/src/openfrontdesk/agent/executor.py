@@ -108,15 +108,10 @@ class ToolExecutor:
             return _event(call, tool.side_effect, "error", result, summary, checks), None
 
         if isinstance(output, HandoffRequest):
+            # The agent closes the turn with the business's handoff reply, not a model call.
             result = {
                 "status": "handed_off",
-                "instructions": (
-                    "A member of the front-desk team will reply in this same conversation. Tell "
-                    "the customer that in one sentence, after any safety advice your instructions "
-                    "give for this situation (such as calling emergency services). Don't promise "
-                    "calls, emails, wait times or any outcome, and don't say anything was done. "
-                    "Do not call more tools."
-                ),
+                "note": "A member of the front-desk team will reply in this conversation.",
             }
             return _event(call, tool.side_effect, "ok", result, summary, checks), output
         return _event(call, tool.side_effect, "ok", output, summary, checks), None

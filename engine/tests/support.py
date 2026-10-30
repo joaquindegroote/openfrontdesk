@@ -11,6 +11,7 @@ from clinic_api.chaos import ChaosConfig
 from clinic_api.store import ClinicStore
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from openfrontdesk.business import BusinessProfile
 from openfrontdesk.llm import Completion
 from openfrontdesk.llm.scripted import ScriptedLLM, reply
 
@@ -22,6 +23,8 @@ NOW = datetime(2026, 11, 2, 8, 0, tzinfo=TIMEZONE)
 EMILY = "+15550100101"  # pat_0001, cleaning today at 11:00 (apt_00001): late-cancellation fee
 CARLOS = "+15550100102"  # pat_0002, check-up on Saturday (apt_00002): free to cancel
 PRIYA = "+15550100103"  # pat_0003, no upcoming appointments
+# What the reference business says when a person takes over for a reason it has no text for.
+DEFAULT_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["default"]
 
 
 def verdict(confirmed: bool, evidence: str = "") -> Completion:

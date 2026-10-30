@@ -6,13 +6,13 @@ import asyncio
 import pytest
 from clinic_api.chaos import ChaosConfig
 from fastapi.testclient import TestClient
-from openfrontdesk.agent.loop import HANDOFF_REPLY
 from openfrontdesk.api.app import create_app
 from openfrontdesk.guardrails import NoDuplicateBooking
 from openfrontdesk.llm.scripted import reply, tool_call
 from openfrontdesk.settings import Settings
 from support import (
     CARLOS,
+    DEFAULT_HANDOFF_REPLY,
     EMILY,
     PRIYA,
     PROFILE,
@@ -355,7 +355,6 @@ def test_booking_system_outage_hands_off_to_staff(make_harness: HarnessFactory) 
         [
             tool_call("find_available_slots", service_id="cleaning", date_from="2026-11-03"),
             tool_call("find_available_slots", service_id="cleaning", date_from="2026-11-03"),
-            reply("Sorry, our booking system is down. A team member will follow up here soon."),
         ]
     )
     result = harness.say(conversation, "Any cleaning slots tomorrow?")
@@ -363,8 +362,10 @@ def test_booking_system_outage_hands_off_to_staff(make_harness: HarnessFactory) 
     assert [e["result"]["error"] for e in result["events"]] == ["service_unavailable"] * 2
     assert result["conversation"]["status"] == "handed_off"
     assert result["conversation"]["handoff_reason"] == "system_unavailable"
-    assert harness.llm.calls[-1].tools == []  # the closing message can't call tools
     assert result["turn"]["outcome"] == "handed_off"
+    # The business's words close the handoff; no model call writes them.
+    assert result["messages"][-1]["text"] == DEFAULT_HANDOFF_REPLY
+    assert len(harness.llm.calls) == 2
 
 
 def test_a_failed_turn_leaves_no_tool_call_without_a_result(
@@ -419,7 +420,7 @@ def test_a_slow_turn_hands_off_instead_of_keeping_the_customer_waiting(
     assert result["turn"]["outcome"] == "failed"
     assert result["turn"]["latency_ms"] < 2000
     assert result["conversation"]["handoff_reason"] == "assistant_timeout"
-    assert result["messages"][-1]["text"] == HANDOFF_REPLY
+    assert result["messages"][-1]["text"] == DEFAULT_HANDOFF_REPLY
 
 
 def test_step_budget_ends_in_a_handoff(make_harness: HarnessFactory) -> None:
@@ -429,7 +430,26 @@ def test_step_budget_ends_in_a_handoff(make_harness: HarnessFactory) -> None:
     result = harness.say(conversation, "What do you offer?")
 
     assert result["conversation"]["handoff_reason"] == "step_limit"
-    assert result["messages"][-1]["text"] == HANDOFF_REPLY
+    assert result["messages"][-1]["text"] == DEFAULT_HANDOFF_REPLY
+
+
+def test_a_handoff_closes_with_the_business_reply_for_its_reason(harness: Harness) -> None:
+    """Fixed words: a generated closing message tended to repeat the customer's claims."""
+    conversation = harness.start(PRIYA)
+    harness.llm.extend(
+        [
+            tool_call(
+                "handoff_to_human",
+                reason="medical_urgency",
+                summary="Priya has facial swelling and trouble swallowing.",
+            )
+        ]
+    )
+    result = harness.say(conversation, "My face is swollen and it's getting hard to swallow")
+
+    assert result["conversation"]["handoff_reason"] == "medical_urgency"
+    assert "call 911 or go to the nearest emergency room" in result["messages"][-1]["text"]
+    assert len(harness.llm.calls) == 1
 
 
 def test_staff_take_over_and_hand_back(harness: Harness) -> None:
@@ -441,12 +461,12 @@ def test_staff_take_over_and_hand_back(harness: Harness) -> None:
                 reason="customer_request",
                 summary="Emily Johnson wants to talk to a person about her cleaning today.",
             ),
-            reply("Of course, I'm connecting you with our front desk now."),
         ]
     )
     handed = harness.say(conversation, "Can I talk to a person?")
     assert handed["conversation"]["status"] == "handed_off"
     assert "Emily Johnson" in handed["conversation"]["handoff_summary"]
+    assert handed["messages"][-1]["text"] == DEFAULT_HANDOFF_REPLY
 
     # While staff own the conversation, customer messages are stored but not answered by the AI.
     waiting = harness.say(conversation, "Hello?")
