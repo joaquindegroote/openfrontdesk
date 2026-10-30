@@ -120,6 +120,80 @@ class NoDuplicateBooking:
         )
 
 
+class IdentityVerified:
+    """A customer's data is only for someone who proved they hold the customer's phone: through
+    the chat's own channel (WhatsApp, SMS, a call) or a code texted to it and read back here.
+
+    `field` names the argument that points at the customer: their phone, their customer_id, or
+    one of their appointments.
+    """
+
+    kind: Literal["rule"] = "rule"
+    name = "identity_verified"
+
+    def __init__(self, field: Literal["phone", "customer_id", "appointment_id"]) -> None:
+        self.field = field
+
+    async def check(self, ctx: ToolContext, action: ProposedAction) -> CheckResult:
+        phones = verified_phones(ctx)
+        value = str(action.arguments[self.field])
+        try:
+            if self.field == "phone":
+                allowed = phone_key(value) in phones
+            else:
+                customer_id = value
+                if self.field == "appointment_id":
+                    customer_id = (await ctx.backend.get_appointment(value)).customer_id
+                allowed = customer_id in await _customer_ids(ctx, phones)
+        except BackendError as exc:
+            return CheckResult(
+                name=self.name,
+                passed=False,
+                detail=(
+                    f"Could not check who this customer is ({exc.message}). Try once more; if "
+                    "it keeps failing, hand off."
+                ),
+            )
+        if allowed:
+            return CheckResult(name=self.name, passed=True, detail="Identity verified.")
+        return CheckResult(
+            name=self.name,
+            passed=False,
+            detail=(
+                "Nobody in this chat has proved they hold this customer's phone. Text a code to "
+                "the customer's own number with send_verification_code and check it with "
+                "verify_phone. Never share or change another person's details."
+            ),
+        )
+
+
+def verified_phones(ctx: ToolContext) -> set[str]:
+    """Phones proven in this conversation: the channel's own, and any verified with a code."""
+    phones = {
+        phone_key(e.arguments["phone"])
+        for e in ctx.events
+        if e.tool == "verify_phone"
+        and e.status == "ok"
+        and isinstance(e.result, dict)
+        and e.result.get("verified") is True
+    }
+    if ctx.phone_verified and ctx.customer_phone:
+        phones.add(phone_key(ctx.customer_phone))
+    return phones
+
+
+def phone_key(phone: str) -> str:
+    """Digits with the country code, so "+1 555-010-0102" and "5550100102" compare equal. Ten
+    digits are read as a North American number, like the booking system does."""
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    return "1" + digits if len(digits) == 10 else digits
+
+
+async def _customer_ids(ctx: ToolContext, phones: set[str]) -> set[str]:
+    found = [await ctx.backend.find_customer("+" + phone) for phone in sorted(phones)]
+    return {customer.id for customer in found if customer is not None}
+
+
 def latest_quote(events: list[ToolEvent], appointment_id: str) -> dict[str, Any] | None:
     for event in reversed(events):
         if (

@@ -11,6 +11,7 @@ from openfrontdesk.guardrails import (
     CancellationFeeDisclosed,
     CustomerConfirmed,
     FeeAccepted,
+    IdentityVerified,
     NoDuplicateBooking,
     StartsInFuture,
 )
@@ -228,7 +229,7 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
             "message": "That code doesn't match. Ask the customer to check it and try again.",
         }
 
-    @registry.tool()
+    @registry.tool(guards=[IdentityVerified("phone")])
     async def find_customer(ctx: ToolContext, params: FindCustomerParams) -> dict[str, Any]:
         """Look up a customer by phone number."""
         customer = await ctx.backend.find_customer(params.phone)
@@ -236,13 +237,15 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
             return {"found": False}
         return {"found": True, "customer": customer.model_dump(mode="json")}
 
-    @registry.tool(side_effect="write", describe=_describe_registration)
+    @registry.tool(
+        side_effect="write", guards=[IdentityVerified("phone")], describe=_describe_registration
+    )
     async def register_customer(ctx: ToolContext, params: RegisterCustomerParams) -> dict[str, Any]:
         """Register a new customer. Only after find_customer found no match."""
         customer = await ctx.backend.create_customer(params.name, params.phone, params.email)
         return {"customer": customer.model_dump(mode="json")}
 
-    @registry.tool()
+    @registry.tool(guards=[IdentityVerified("customer_id")])
     async def list_customer_appointments(
         ctx: ToolContext, params: CustomerParams
     ) -> dict[str, Any]:
@@ -252,7 +255,12 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
 
     @registry.tool(
         side_effect="write",
-        guards=[StartsInFuture("start"), NoDuplicateBooking(), confirmed],
+        guards=[
+            StartsInFuture("start"),
+            IdentityVerified("customer_id"),
+            NoDuplicateBooking(),
+            confirmed,
+        ],
         describe=_describe_booking,
     )
     async def book_appointment(ctx: ToolContext, params: BookParams) -> dict[str, Any]:
@@ -275,7 +283,7 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
             )
         return result
 
-    @registry.tool()
+    @registry.tool(guards=[IdentityVerified("appointment_id")])
     async def get_cancellation_quote(ctx: ToolContext, params: AppointmentParams) -> dict[str, Any]:
         """Check whether cancelling an appointment now has a fee. Required before cancelling."""
         quote = await ctx.backend.cancellation_quote(params.appointment_id)
@@ -287,7 +295,12 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
 
     @registry.tool(
         side_effect="write",
-        guards=[CancellationFeeDisclosed(), confirmed, FeeAccepted(judge)],
+        guards=[
+            CancellationFeeDisclosed(),
+            IdentityVerified("appointment_id"),
+            confirmed,
+            FeeAccepted(judge),
+        ],
         describe=_describe_cancellation,
     )
     async def cancel_appointment(ctx: ToolContext, params: CancelParams) -> dict[str, Any]:
@@ -303,7 +316,7 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
 
     @registry.tool(
         side_effect="write",
-        guards=[StartsInFuture("new_start"), confirmed],
+        guards=[StartsInFuture("new_start"), IdentityVerified("appointment_id"), confirmed],
         describe=_describe_reschedule,
     )
     async def reschedule_appointment(ctx: ToolContext, params: RescheduleParams) -> dict[str, Any]:
