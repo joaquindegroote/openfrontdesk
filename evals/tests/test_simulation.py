@@ -57,6 +57,39 @@ async def test_customer_sees_its_goal_and_the_conversation() -> None:
     assert llm.calls[0].json_mode
 
 
+async def test_ending_right_after_a_question_gets_one_nudge_to_answer() -> None:
+    llm = ScriptedLLM([says("", done=True), says("Yes, please book it.")])
+    customer = SimulatedCustomer(llm, PRIYA)
+
+    turn = await customer.next_turn(
+        [("customer", "9:00 please"), ("assistant", "A check-up at 9:00 with Dr. Chen. Book it?")]
+    )
+
+    assert turn == CustomerTurn(message="Yes, please book it.", done=False)
+    assert "The assistant's last message asks you something" in llm.calls[1].messages[-1].content
+
+
+async def test_a_request_to_confirm_without_a_question_mark_also_gets_the_nudge() -> None:
+    llm = ScriptedLLM([says("", done=True), says("Yes")])
+    customer = SimulatedCustomer(llm, PRIYA)
+
+    turn = await customer.next_turn([("assistant", 'Reply "Yes" and I\'ll book it now.')])
+
+    assert turn.message == "Yes"
+    assert len(llm.calls) == 2
+
+
+async def test_a_second_done_stands_and_statements_need_no_nudge() -> None:
+    llm = ScriptedLLM([says("", done=True), says("", done=True), says("", done=True)])
+    customer = SimulatedCustomer(llm, PRIYA)
+
+    asked = await customer.next_turn([("assistant", "You're booked! Anything else?")])
+    told = await customer.next_turn([("assistant", "You're booked for Tuesday at 9:00 AM.")])
+
+    assert asked.done and told.done
+    assert len(llm.calls) == 3  # two for the question, one for the statement
+
+
 async def test_customer_output_must_be_a_json_turn() -> None:
     customer = SimulatedCustomer(ScriptedLLM([reply("Sure, 9 works!")]), PRIYA)
     with pytest.raises(SimulatorError):

@@ -1,6 +1,7 @@
 """A simulated customer: an LLM that role-plays a persona with a goal, one message at a time."""
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -28,6 +29,14 @@ You are the customer, never the assistant. Write only the customer's next messag
   empty.
 
 Reply with JSON only: {{"message": "<your next message, or empty>", "done": true or false}}"""
+ASKS = re.compile(r"\?|\b(confirm|reply|let me know|shall i|should i|would you like)\b", re.I)
+# Sent once when the customer ends right after a question. Models playing a customer tend to
+# stop at "Shall I book it?", which turns a working conversation into a failed run.
+ANSWER_FIRST = (
+    "\n\nThe assistant's last message asks you something. If answering moves your goal "
+    'forward, answer it and set "done" to false. Keep "done" true only if your request is '
+    "already completed or clearly can't be done."
+)
 
 
 class Persona(BaseModel):
@@ -60,12 +69,19 @@ class SimulatedCustomer:
         self.persona = persona
 
     async def next_turn(self, transcript: list[tuple[Speaker, str]]) -> CustomerTurn:
+        turn = await self._ask(self._brief(transcript))
+        if turn.done and _asks_something(transcript):
+            # One nudge. A second "done" stands: the question may have been "Anything else?".
+            turn = await self._ask(self._brief(transcript) + ANSWER_FIRST)
+        return turn
+
+    async def _ask(self, brief: str) -> CustomerTurn:
         completion = await self.llm.complete(
             [
                 ChatMessage.system(
                     INSTRUCTIONS.format(language=self.persona.language, style=self.persona.style)
                 ),
-                ChatMessage.user(self._brief(transcript)),
+                ChatMessage.user(brief),
             ],
             json_mode=True,
         )
@@ -93,3 +109,10 @@ class SimulatedCustomer:
             "Conversation so far:\n"
             + ("\n".join(lines) if lines else "(none yet: write your first message)")
         )
+
+
+def _asks_something(transcript: list[tuple[Speaker, str]]) -> bool:
+    """A question, or a request to confirm phrased without one ("Reply yes and I'll book it")."""
+    if not transcript or transcript[-1][0] == "customer":
+        return False
+    return bool(ASKS.search(transcript[-1][1]))
