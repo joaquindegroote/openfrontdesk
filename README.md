@@ -151,6 +151,13 @@ Every run is checked automatically, and the command exits non-zero if anything f
 - **Rubric items**, graded by an LLM that has to quote its evidence, for what code can't see
   in a reply: a promise the assistant can't keep, another patient's details, medical advice.
 
+Each run is saved as soon as it ends, in `evals/results/<date-time>/`: `runs.jsonl` keeps every
+transcript with its tool calls and guardrail checks, and `summary.md` has the table below.
+
+```bash
+uv run python -m ofd_evals show --failed   # transcripts of the latest failed runs
+```
+
 ```
 | scenario | passed | avg turns | avg engine tokens | avg engine time |
 |---|---|---|---|---|
