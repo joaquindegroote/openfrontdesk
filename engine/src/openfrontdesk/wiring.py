@@ -14,6 +14,7 @@ from openfrontdesk.backends import BookingBackend
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.llm import LLMClient
+from openfrontdesk.llm.anthropic_client import AnthropicChatClient
 from openfrontdesk.llm.openai_client import OpenAIChatClient
 from openfrontdesk.service import ConversationService
 from openfrontdesk.settings import Settings
@@ -39,10 +40,10 @@ async def open_conversation_service(
     booking = backend or ClinicHttpBackend.from_url(
         settings.backend_url, timeout_s=settings.backend_timeout_s
     )
-    agent_llm = llm or openai_client(settings, settings.llm_model, settings.llm_reasoning_effort)
+    agent_llm = llm or llm_client(settings, settings.llm_model, settings.llm_reasoning_effort)
     judge = (
         judge_llm
-        or openai_client(settings, settings.judge_model, settings.judge_reasoning_effort)
+        or llm_client(settings, settings.judge_model, settings.judge_reasoning_effort)
         or agent_llm
     )
     agent = None
@@ -55,7 +56,7 @@ async def open_conversation_service(
             max_steps=settings.max_agent_steps,
         )
     else:
-        logger.warning("no LLM configured; set OPENAI_API_KEY to enable the assistant")
+        logger.warning("no LLM configured; set the API key for the configured models")
     try:
         yield ConversationService(
             repo=ConversationRepository(db),
@@ -71,7 +72,15 @@ async def open_conversation_service(
         await db.dispose()
 
 
-def openai_client(settings: Settings, model: str, effort: str | None) -> OpenAIChatClient | None:
+def llm_client(settings: Settings, model: str, effort: str | None) -> LLMClient | None:
+    """The client for a model name: "claude-..." runs on Anthropic, anything else on OpenAI.
+    None when that provider's API key isn't set."""
+    if model.startswith("claude-"):
+        if settings.anthropic_api_key is None:
+            return None
+        return AnthropicChatClient(
+            model, api_key=settings.anthropic_api_key.get_secret_value(), effort=effort
+        )
     if settings.openai_api_key is None:
         return None
     return OpenAIChatClient(

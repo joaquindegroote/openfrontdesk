@@ -94,7 +94,8 @@ class ConversationService:
                 return TurnOutcome(conversation=await self.get(conversation_id), messages=[stored])
             if self.agent is None:
                 raise AssistantNotConfiguredError(
-                    "No LLM configured. Set OPENAI_API_KEY and restart the engine."
+                    "No LLM configured. Set OPENAI_API_KEY, or ANTHROPIC_API_KEY for Claude "
+                    "models, and restart the engine."
                 )
             return await self._run_assistant(conversation, text)
 
