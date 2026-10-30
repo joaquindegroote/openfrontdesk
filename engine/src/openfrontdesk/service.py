@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from openfrontdesk.agent.context import HandoffRequest, ToolContext, ToolEvent
 from openfrontdesk.agent.loop import HANDOFF_REPLY, Agent, TurnResult
 from openfrontdesk.agent.prompt import BookingSnapshot, render_system_prompt
-from openfrontdesk.backends import BookingBackend, Customer, Service
+from openfrontdesk.backends import Appointment, BookingBackend, Customer, Service
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.ids import new_id
 from openfrontdesk.llm import ChatMessage, Usage
@@ -177,13 +177,14 @@ class ConversationService:
 
     async def _snapshot(self, customer_phone: str | None) -> BookingSnapshot:
         """Prefetch what nearly every turn needs. Optional: failures leave it to the tools."""
-        services, (customer, looked_up) = await asyncio.gather(
+        services, (customer, looked_up, appointments) = await asyncio.gather(
             self._cached_services(), self._lookup_customer(customer_phone)
         )
         return BookingSnapshot(
             services=services,
             customer=customer,
             customer_not_found=looked_up and customer is None,
+            appointments=appointments,
         )
 
     async def _cached_services(self) -> list[Service]:
@@ -198,14 +199,24 @@ class ConversationService:
         self._services = (now, services)
         return services
 
-    async def _lookup_customer(self, phone: str | None) -> tuple[Customer | None, bool]:
+    async def _lookup_customer(
+        self, phone: str | None
+    ) -> tuple[Customer | None, bool, list[Appointment] | None]:
+        """The customer behind the phone, whether the lookup worked, and their appointments."""
         if not phone:
-            return None, False
+            return None, False, None
         try:
-            return await self.backend.find_customer(phone), True
+            customer = await self.backend.find_customer(phone)
         except Exception:
             logger.warning("could not prefetch customer", exc_info=True)
-            return None, False
+            return None, False, None
+        if customer is None:
+            return None, True, None
+        try:
+            return customer, True, await self.backend.list_appointments(customer.id)
+        except Exception:
+            logger.warning("could not prefetch appointments", exc_info=True)
+            return customer, True, None
 
 
 def _failed_turn(ctx: ToolContext, text: str, history_length: int, prior_events: int) -> TurnResult:

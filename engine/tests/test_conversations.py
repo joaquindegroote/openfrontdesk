@@ -88,7 +88,21 @@ def test_known_customer_and_services_are_preloaded_into_the_prompt(harness: Harn
     system_prompt = harness.llm.calls[0].messages[0].content
     assert "This customer is Priya Shah, identified by the phone number" in system_prompt
     assert "Their customer_id for tools is pat_0003." in system_prompt
+    assert "They have no upcoming appointments." in system_prompt
     assert "- In-office whitening (id whitening): 90 min, $350, $100 deposit." in system_prompt
+
+
+def test_upcoming_appointments_are_preloaded_so_changes_reschedule(harness: Harness) -> None:
+    conversation = harness.start(CARLOS)
+    harness.llm.extend([reply("Hi Carlos! How can I help?")])
+    harness.say(conversation, "Hi, I need to change my appointment")
+
+    system_prompt = harness.llm.calls[0].messages[0].content
+    assert (
+        "Their upcoming appointments:\n"
+        "   - Check-up & X-rays on Sat Nov 7, 9:00 AM (appointment_id apt_00002)\n"
+        "   To change the time of one of these, reschedule it; don't book a new one."
+    ) in system_prompt
 
 
 def test_unknown_phone_is_flagged_for_registration(harness: Harness) -> None:

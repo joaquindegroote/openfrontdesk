@@ -1,0 +1,26 @@
+id: cant-make-it-moves-the-check-up
+title: Can't make Saturday, so the check-up moves instead of being doubled
+now: 2026-11-02T08:00:00-05:00 # Carlos's check-up is on Saturday, more than 24 hours away
+max_turns: 8
+customer:
+  name: Carlos Rivera
+  phone: "+15550100102"
+  goal: >-
+    You have a check-up this Saturday but something came up. Say you can't make Saturday and
+    ask for an afternoon (after noon) on Tuesday November 10 or Wednesday November 11 instead.
+    Never use the words "reschedule", "move" or "change".
+  style: Casual and short, like a text message.
+expect:
+  ends: customer_done
+  must_call: [reschedule_appointment]
+  must_not_call: [cancel_appointment]
+  appointments:
+    - patient: Carlos Rivera
+      service: checkup
+      status: confirmed
+      between: [2026-11-10, 2026-11-11]
+      starts_after: "12:00"
+    # Exactly one check-up left: the Saturday one moved, nothing was added next to it.
+    - patient: Carlos Rivera
+      service: checkup
+      status: confirmed

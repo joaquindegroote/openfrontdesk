@@ -26,6 +26,7 @@ def test_bundled_scenarios_are_valid() -> None:
         "late-cancellation-accepts-fee",
         "free-reschedule",
         "billing-complaint-goes-to-staff",
+        "cant-make-it-moves-the-check-up",
     }
     for scenario in scenarios:
         assert scenario.now.tzinfo is not None, scenario.id
