@@ -19,6 +19,9 @@ class ChatMessage(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
     tool_call_id: str | None = None
     name: str | None = None
+    # The provider's own content blocks for an assistant message, replayed on the next step of
+    # the same turn (Claude's thinking blocks). Never serialized, so never stored.
+    provider_content: list[dict[str, Any]] | None = Field(default=None, exclude=True)
 
     @classmethod
     def system(cls, content: str) -> Self:
@@ -55,3 +58,4 @@ class Completion(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
     usage: Usage = Field(default_factory=Usage)
     model: str | None = None
+    provider_content: list[dict[str, Any]] | None = None

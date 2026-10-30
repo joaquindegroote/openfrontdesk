@@ -7,6 +7,11 @@ from openfrontdesk.llm.types import ChatMessage, Completion, ToolSpec
 INVALID_JSON_KEY = "__invalid_json__"
 
 
+class ModelRefusedError(Exception):
+    """The model declined to answer. Raised rather than returning an empty reply, so the turn
+    fails into a handoff instead of a blank message."""
+
+
 class LLMClient(Protocol):
     model: str
 

@@ -87,7 +87,10 @@ class Agent:
                 turn.usage += completion.usage
                 turn.model = completion.model or self.llm.model
                 assistant = ChatMessage(
-                    role="assistant", content=completion.text, tool_calls=completion.tool_calls
+                    role="assistant",
+                    content=completion.text,
+                    tool_calls=completion.tool_calls,
+                    provider_content=completion.provider_content,
                 )
                 if not completion.tool_calls:
                     assistant.content = (
