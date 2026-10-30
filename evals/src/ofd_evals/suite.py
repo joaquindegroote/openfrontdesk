@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from clinic_api.models import Appointment
+from openfrontdesk.agent.executor import GuardMode
 from openfrontdesk.llm import LLMClient
 from openfrontdesk.settings import Settings
 
@@ -20,6 +21,8 @@ class ScenarioRun:
     initial_appointments: list[Appointment]
     appointments: list[Appointment]
     patient_names: dict[str, str]
+    # Which guards ran: "full" normally, "rules" or "off" in an ablation.
+    guards: GuardMode = "full"
 
 
 async def run_scenario(
@@ -29,8 +32,11 @@ async def run_scenario(
     customer_llm: LLMClient,
     llm: LLMClient | None = None,
     judge_llm: LLMClient | None = None,
+    guards: GuardMode = "full",
 ) -> ScenarioRun:
-    async with eval_environment(settings, llm=llm, judge_llm=judge_llm, now=scenario.now) as env:
+    async with eval_environment(
+        settings, llm=llm, judge_llm=judge_llm, now=scenario.now, guards=guards
+    ) as env:
         initial = list(env.store.appointments.values())
         customer = SimulatedCustomer(customer_llm, scenario.customer)
         record = await run_conversation(env.service, customer, max_turns=scenario.max_turns)
@@ -40,4 +46,5 @@ async def run_scenario(
             initial_appointments=initial,
             appointments=list(env.store.appointments.values()),
             patient_names={p.id: p.name for p in env.store.patients.values()},
+            guards=guards,
         )

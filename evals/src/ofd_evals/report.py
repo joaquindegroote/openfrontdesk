@@ -25,6 +25,7 @@ def run_entry(run: ScenarioRun, checks: list[CheckResult], attempt: int) -> Entr
     return {
         "scenario": run.scenario.id,
         "attempt": attempt,
+        "guards": run.guards,
         "passed": all(c.passed for c in checks),
         "checks": [asdict(c) for c in checks],
         **conversation_entry(run.record),

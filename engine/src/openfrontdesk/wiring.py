@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from openfrontdesk.agent.executor import ToolExecutor
+from openfrontdesk.agent.executor import GuardMode, ToolExecutor
 from openfrontdesk.agent.loop import Agent
 from openfrontdesk.backends import BookingBackend
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
@@ -33,8 +33,12 @@ async def open_conversation_service(
     judge_llm: LLMClient | None = None,
     backend: BookingBackend | None = None,
     clock: Callable[[], datetime] | None = None,
+    guards: GuardMode = "full",
 ) -> AsyncIterator[ConversationService]:
-    """Yield a ready service. Whatever isn't injected is built from settings and closed on exit."""
+    """Yield a ready service. Whatever isn't injected is built from settings and closed on exit.
+
+    `guards` is for ablation evals only; the HTTP API never sets it.
+    """
     db = Database(settings.database_url)
     await db.create_all()
     booking = backend or ClinicHttpBackend.from_url(
@@ -52,7 +56,7 @@ async def open_conversation_service(
         agent = Agent(
             agent_llm,
             tools,
-            executor=ToolExecutor(tools, timeout_s=settings.tool_timeout_s),
+            executor=ToolExecutor(tools, timeout_s=settings.tool_timeout_s, guards=guards),
             max_steps=settings.max_agent_steps,
         )
     else:

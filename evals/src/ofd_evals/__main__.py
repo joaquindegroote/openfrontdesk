@@ -12,6 +12,7 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 
+from openfrontdesk.agent.executor import GuardMode
 from openfrontdesk.llm import LLMClient
 from openfrontdesk.settings import Settings
 from openfrontdesk.wiring import llm_client
@@ -55,6 +56,12 @@ def main() -> None:
     run.add_argument("-q", "--quiet", action="store_true", help="Only print the summary.")
     run.add_argument(
         "--out", type=Path, help="Results folder (default: evals/results/<date-time>)."
+    )
+    run.add_argument(
+        "--guardrails",
+        choices=["full", "rules", "off"],
+        default="full",
+        help="Ablation: 'rules' skips the LLM judges, 'off' skips every guard.",
     )
 
     show = commands.add_parser("show", help="Print the runs saved in a results folder.")
@@ -114,10 +121,20 @@ def main() -> None:
             "judge": settings.judge_model,
             "customer": args.customer_model,
             "grader": args.grader_model,
+            "guardrails": args.guardrails,
         }
         out = args.out or RESULTS_DIR / datetime.now().strftime("%Y%m%d-%H%M%S")
         entries = asyncio.run(
-            _run(settings, customer_llm, grader, args.scenario, args.repeats, args.quiet, out)
+            _run(
+                settings,
+                customer_llm,
+                grader,
+                args.scenario,
+                args.repeats,
+                args.quiet,
+                out,
+                args.guardrails,
+            )
         )
         print("\n" + summary_markdown(entries, models))
         print(f"Saved to {write_summary(out, entries, models).parent}")
@@ -141,6 +158,7 @@ async def _run(
     repeats: int,
     quiet: bool,
     out: Path,
+    guards: GuardMode,
 ) -> list[Entry]:
     scenarios = load_scenarios()
     if selected:
@@ -152,7 +170,7 @@ async def _run(
     entries: list[Entry] = []
     for scenario in scenarios:
         for attempt in range(1, repeats + 1):
-            run = await run_scenario(scenario, settings, customer_llm=customer_llm)
+            run = await run_scenario(scenario, settings, customer_llm=customer_llm, guards=guards)
             checks = check_run(run) + await grade_rubric(run, grader)
             entry = run_entry(run, checks, attempt)
             append_run(out, entry)

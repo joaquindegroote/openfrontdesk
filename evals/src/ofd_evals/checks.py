@@ -37,12 +37,11 @@ def check_run(run: ScenarioRun) -> list[CheckResult]:
     results += [_must_call(run, tool) for tool in expect.must_call]
     results += [_must_not_call(run, tool) for tool in expect.must_not_call]
     results += [_appointments(run, expectation) for expectation in expect.appointments]
-    results += [
-        _no_internal_ids(run),
-        _writes_went_through_guards(run),
-        _no_double_booking(run),
-        _no_engine_failures(run),
-    ]
+    results.append(_no_internal_ids(run))
+    if run.guards == "full":
+        # With guards turned off for an ablation, unguarded writes are the point, not a bug.
+        results.append(_writes_went_through_guards(run))
+    results += [_no_double_booking(run), _no_engine_failures(run)]
     return results
 
 

@@ -12,6 +12,7 @@ from clinic_api.clock import FixedClock, SystemClock
 from clinic_api.main import create_app as create_clinic_app
 from clinic_api.store import ClinicStore
 from fastapi import FastAPI
+from openfrontdesk.agent.executor import GuardMode
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.llm import LLMClient
 from openfrontdesk.service import ConversationService
@@ -41,6 +42,7 @@ async def eval_environment(
     judge_llm: LLMClient | None = None,
     now: datetime | None = None,
     chaos: ChaosConfig | None = None,
+    guards: GuardMode = "full",
 ) -> AsyncIterator[EvalEnvironment]:
     """`now` freezes the clock for both the clinic and the engine, for reproducible runs."""
     clinic_clock = FixedClock(now) if now else SystemClock(TIMEZONE)
@@ -58,6 +60,7 @@ async def eval_environment(
             judge_llm=judge_llm,
             backend=backend,
             clock=(lambda: now) if now else None,
+            guards=guards,
         ) as service:
             yield EvalEnvironment(service=service, clinic=clinic)
     finally:
