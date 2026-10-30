@@ -164,6 +164,9 @@ demand from the Actions tab with the scenarios, repeats and model to use. It nee
 `OPENAI_API_KEY` repository secret. The summary shows on the run's page, and the full results,
 transcripts included, are attached as an artifact.
 
+[Results for three models](docs/eval-results.md): pass rate per scenario, tokens and latency,
+and what they say.
+
 ```
 | scenario | passed | avg turns | avg engine tokens | avg engine time |
 |---|---|---|---|---|
@@ -174,7 +177,7 @@ transcripts included, are attached as an artifact.
 
 - [x] Agent loop, typed tools, clinic booking backend, persistence, tracing
 - [x] Guardrails on irreversible actions, idempotent writes, human handoff and staff inbox
-- [ ] Evals: simulated customers (including adversarial ones) run against the agent in CI, with a results table per model
+- [x] Evals: simulated customers (including adversarial ones) run against the agent in CI, with a results table per model
 - [ ] WhatsApp channel and proactive messages (reminders, deposit received)
 - [ ] Voice: phone calls through Twilio Media Streams and a realtime speech model, same tools
 - [ ] Adapters for real booking systems (Cal.com, Google Calendar) and a second business profile in Spanish
