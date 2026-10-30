@@ -198,6 +198,15 @@ async def test_writes_without_a_key_are_never_retried() -> None:
     assert len(transport.requests) == 1
 
 
+def test_handoff_replies_fall_back_to_the_default_then_the_engine() -> None:
+    assert "call 911" in BUSINESS.handoff_reply("medical_urgency", "engine")
+    assert (
+        BUSINESS.handoff_reply("customer_request", "engine") == BUSINESS.handoff_replies["default"]
+    )
+    bare = BUSINESS.model_copy(update={"handoff_replies": {}})
+    assert bare.handoff_reply("billing", "engine") == "engine"
+
+
 def test_system_prompt_includes_time_customer_and_policies() -> None:
     prompt = render_system_prompt(BUSINESS, now=NOW, customer_phone="+15550100101")
     assert "You are Ava, the front-desk assistant of BrightSmile Dental." in prompt

@@ -35,6 +35,19 @@ handoff_when:
   - Clinical advice beyond the information on this page.
   - Anything you can't resolve with your tools after two attempts.
 
+# Sent as is when a person takes over, so they never repeat a claim or promise an outcome.
+handoff_replies:
+  default: I've passed this to our front-desk team, and someone will reply here shortly.
+  medical_urgency: >-
+    If you have trouble breathing or swallowing, call 911 or go to the nearest emergency room
+    now. I've also alerted our front-desk team, and someone will reply here as soon as possible.
+  billing: >-
+    I've passed your billing question to our front-desk team, and someone will reply here
+    shortly.
+  complaint: >-
+    I'm sorry about this. I've passed it to our front-desk team, and someone will reply here
+    shortly.
+
 faq:
   - question: Do you accept insurance?
     answer: Most PPO plans. We don't take HMO plans. The front desk can check a specific plan before the visit.
