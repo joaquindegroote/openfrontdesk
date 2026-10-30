@@ -7,7 +7,12 @@ from pydantic import BaseModel, Field
 
 from openfrontdesk.agent.context import HandoffRequest, ToolContext
 from openfrontdesk.backends import Appointment, Slot
-from openfrontdesk.guardrails import CancellationFeeDisclosed, CustomerConfirmed, StartsInFuture
+from openfrontdesk.guardrails import (
+    CancellationFeeDisclosed,
+    CustomerConfirmed,
+    NoDuplicateBooking,
+    StartsInFuture,
+)
 from openfrontdesk.guardrails.rules import latest_quote
 from openfrontdesk.llm import LLMClient
 from openfrontdesk.timefmt import short_label
@@ -53,6 +58,13 @@ class BookParams(BaseModel):
     start: datetime = Field(description="Exact slot start from find_available_slots (ISO 8601).")
     practitioner_id: str | None = Field(
         default=None, description="Practitioner of the chosen slot."
+    )
+    keep_existing: bool = Field(
+        default=False,
+        description=(
+            "True only if the customer already has this service booked and said they want "
+            "another one as well, not a new time for it."
+        ),
     )
 
 
@@ -113,10 +125,12 @@ async def _describe_registration(ctx: ToolContext, params: RegisterCustomerParam
 
 
 async def _describe_booking(ctx: ToolContext, params: BookParams) -> str:
+    # keep_existing is in the summary so the judge checks the customer asked for both.
+    keep = " The customer also keeps their existing one." if params.keep_existing else ""
     return (
         f"Book {await _service_label(ctx, params.service_id)} on "
         f"{short_label(params.start, ctx.business.tz)} with "
-        f"{_practitioner_label(ctx, params.practitioner_id)}."
+        f"{_practitioner_label(ctx, params.practitioner_id)}.{keep}"
     )
 
 
@@ -197,7 +211,7 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
 
     @registry.tool(
         side_effect="write",
-        guards=[StartsInFuture("start"), confirmed],
+        guards=[StartsInFuture("start"), NoDuplicateBooking(), confirmed],
         describe=_describe_booking,
     )
     async def book_appointment(ctx: ToolContext, params: BookParams) -> dict[str, Any]:

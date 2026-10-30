@@ -13,7 +13,8 @@ booking system:
 
 1. **Rules** (deterministic, free, run first). Examples: the start time is in the future; a
    cancellation needs a quote from this conversation, and if the quote has a fee, the model must
-   pass `fee_acknowledged=true`.
+   pass `fee_acknowledged=true`; booking a service the customer already has coming up is blocked
+   (it's usually a change of time gone wrong) unless they want both, with `keep_existing=true`.
 2. **Judge** (an LLM call, runs only if every rule passed). Given a one-line summary of the
    action and the recent transcript, it decides whether the customer explicitly agreed to *this
    exact* action after its details (date, time, price, fee) were stated.
