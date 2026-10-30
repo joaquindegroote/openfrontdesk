@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 ACTIVE = "active"
 HANDED_OFF = "handed_off"
 SERVICES_TTL_S = 300
+# Channels where the phone number comes from the carrier, not from what the customer typed.
+VERIFIED_CHANNELS = {"whatsapp", "sms", "voice"}
 # Result stored for a tool call a failed turn never finished, so the history stays valid.
 INTERRUPTED = {
     "error": "interrupted",
@@ -125,12 +127,16 @@ class ConversationService:
         assert self.agent is not None
         history = [to_chat_message(m) for m in await self.repo.messages(conversation.id)]
         now = self.clock()
+        phone_verified = (
+            conversation.customer_phone is not None and conversation.channel in VERIFIED_CHANNELS
+        )
         ctx = ToolContext(
             conversation_id=conversation.id,
             business=self.business,
             backend=self.backend,
             now=now,
             customer_phone=conversation.customer_phone,
+            phone_verified=phone_verified,
             events=await self.repo.events(conversation.id),
         )
         prior_events = len(ctx.events)
@@ -144,7 +150,11 @@ class ConversationService:
                         self.business,
                         now=now,
                         customer_phone=conversation.customer_phone,
-                        snapshot=await self._snapshot(conversation.customer_phone),
+                        phone_verified=phone_verified,
+                        # Nothing about a customer is preloaded for an unproven number.
+                        snapshot=await self._snapshot(
+                            conversation.customer_phone if phone_verified else None
+                        ),
                     ),
                     history=history,
                     user_message=ChatMessage.user(text),

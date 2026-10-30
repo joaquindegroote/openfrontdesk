@@ -50,6 +50,8 @@ class ToolContext:
     backend: BookingBackend
     now: datetime
     customer_phone: str | None = None
+    # The chat's own channel proves customer_phone (WhatsApp, SMS, a call), not just the customer.
+    phone_verified: bool = False
     # Conversation so far, including this turn (no system prompt). Guards read it.
     transcript: list[ChatMessage] = field(default_factory=list)
     # Every tool event in the conversation, including earlier turns.

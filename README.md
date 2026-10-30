@@ -16,6 +16,9 @@ hanging when the booking system goes down. openfrontdesk is built around those f
   through deterministic rules first and then an LLM judge that checks the customer explicitly
   agreed to *that exact* action. Unverified actions never reach the booking system, and the
   model is told why so it can ask for confirmation instead of retrying.
+- **Verified identity.** A phone number counts only when the channel proves it (WhatsApp, SMS,
+  a call) or the customer reads back a code texted to it. A web visitor who types someone
+  else's number gets nothing about that person.
 - **Safe retries.** Writes carry idempotency keys derived from the conversation and the action,
   so a retried booking after a lost response returns the original appointment instead of a
   second one.

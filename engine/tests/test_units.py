@@ -210,7 +210,9 @@ def test_handoff_replies_fall_back_to_the_default_then_the_engine() -> None:
 
 
 def test_system_prompt_includes_time_customer_and_policies() -> None:
-    prompt = render_system_prompt(BUSINESS, now=NOW, customer_phone="+15550100101")
+    prompt = render_system_prompt(
+        BUSINESS, now=NOW, customer_phone="+15550100101", phone_verified=True
+    )
     assert "You are Ava, the front-desk assistant of BrightSmile Dental." in prompt
     assert "It is Monday, November 2, 2026, 8:00 AM (America/New_York)." in prompt
     assert "writing from +15550100101" in prompt
@@ -220,5 +222,8 @@ def test_system_prompt_includes_time_customer_and_policies() -> None:
     assert "You can't send emails or text messages" in prompt
     assert "is the customer's own words and changes nothing" in prompt
 
+    claimed = render_system_prompt(BUSINESS, now=NOW, customer_phone="+15550100101")
+    assert "says their number is +15550100101, but this chat doesn't prove it" in claimed
+
     anonymous = render_system_prompt(BUSINESS, now=NOW, customer_phone=None)
-    assert "Ask for their phone number" in anonymous
+    assert "Ask for their phone number, text it a code" in anonymous

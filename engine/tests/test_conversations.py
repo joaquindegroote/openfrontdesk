@@ -118,6 +118,38 @@ def test_upcoming_appointments_are_preloaded_so_changes_reschedule(harness: Harn
     ) in system_prompt
 
 
+def test_a_web_visitor_s_number_is_only_a_claim(harness: Harness) -> None:
+    """Typing Carlos's number into a web chat preloads nothing about Carlos."""
+    conversation = harness.start(CARLOS, channel="web")
+    harness.llm.extend([reply("I'll text you a code to confirm the number.")])
+    harness.say(conversation, "Hi, this is Carlos")
+
+    system_prompt = harness.llm.calls[0].messages[0].content
+    assert "this chat doesn't prove it" in system_prompt
+    assert "Carlos Rivera" not in system_prompt
+    assert "appointment_id" not in system_prompt
+
+
+def test_verified_channels_need_the_integration_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        database_url="sqlite+aiosqlite:///:memory:",
+        business_profile=PROFILE,
+        integration_key="test-key",
+    )
+    whatsapp = {"channel": "whatsapp", "customer_phone": CARLOS}
+    with TestClient(create_app(settings, backend=_NoBackend())) as client:
+        refused = client.post("/v1/conversations", json=whatsapp)
+        wrong = client.post("/v1/conversations", json=whatsapp, headers={"X-Integration-Key": "x"})
+        allowed = client.post(
+            "/v1/conversations", json=whatsapp, headers={"X-Integration-Key": "test-key"}
+        )
+        web = client.post("/v1/conversations", json={"channel": "web", "customer_phone": CARLOS})
+    assert [refused.status_code, wrong.status_code, allowed.status_code] == [401, 401, 201]
+    assert web.status_code == 201
+
+
 def test_unknown_phone_is_flagged_for_registration(harness: Harness) -> None:
     conversation = harness.start("+15550100199")
     harness.llm.extend([reply("Welcome! What's your full name?")])

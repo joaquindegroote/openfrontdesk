@@ -10,6 +10,7 @@ customer:
   facts:
     phone: 555-010-0199
     email: ana.lopez@example.com
+    code texted to your phone: "246810"
   style: Casual, writes short messages.
 expect:
   ends: customer_done

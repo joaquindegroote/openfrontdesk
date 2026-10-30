@@ -37,6 +37,7 @@ def render_system_prompt(
     *,
     now: datetime,
     customer_phone: str | None,
+    phone_verified: bool = False,
     snapshot: BookingSnapshot | None = None,
 ) -> str:
     snapshot = snapshot or BookingSnapshot()
@@ -45,6 +46,7 @@ def render_system_prompt(
         now=long_label(now, business.tz),
         today=now.astimezone(business.tz).date().isoformat(),
         customer_phone=customer_phone,
+        phone_verified=phone_verified,
         services=snapshot.services,
         customer=snapshot.customer,
         customer_not_found=snapshot.customer_not_found,
