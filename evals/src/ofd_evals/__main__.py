@@ -14,7 +14,7 @@ from pathlib import Path
 
 from openfrontdesk.llm import LLMClient
 from openfrontdesk.settings import Settings
-from openfrontdesk.wiring import openai_client
+from openfrontdesk.wiring import llm_client
 
 from ofd_evals.checks import check_run
 from ofd_evals.customer import Persona, SimulatedCustomer
@@ -91,9 +91,9 @@ def main() -> None:
 
     overrides = {"llm_model": args.engine_model, "judge_model": args.judge_model}
     settings = Settings().model_copy(update={k: v for k, v in overrides.items() if v})
-    customer_llm = openai_client(settings, args.customer_model, "low")
+    customer_llm = llm_client(settings, args.customer_model, "low")
     if customer_llm is None:
-        raise SystemExit("Set OPENAI_API_KEY (in .env) to run evals.")
+        raise SystemExit(f"Set the API key for {args.customer_model} (in .env) to run evals.")
 
     if args.command == "chat":
         persona = Persona(
@@ -106,8 +106,9 @@ def main() -> None:
         record = asyncio.run(_chat(settings, customer_llm, persona, args.max_turns))
         print(format_transcript(conversation_entry(record)))
     else:
-        grader = openai_client(settings, args.grader_model, "medium")
-        assert grader is not None
+        grader = llm_client(settings, args.grader_model, "medium")
+        if grader is None:
+            raise SystemExit(f"Set the API key for {args.grader_model} (in .env).")
         models = {
             "engine": f"{settings.llm_model} ({settings.llm_reasoning_effort})",
             "judge": settings.judge_model,

@@ -50,7 +50,7 @@ sequenceDiagram
 | `tools/` | Typed tool registry and the standard booking toolset. Arguments are Pydantic models; their JSON schema is what the model sees. |
 | `guardrails/` | Deterministic rules and the confirmation judge. |
 | `backends/` | The `BookingBackend` interface and the clinic API adapter (retries only what is safe to retry). |
-| `llm/` | Provider-neutral chat types, the OpenAI adapter and a scripted model for tests. |
+| `llm/` | Provider-neutral chat types, the OpenAI and Claude adapters (picked by model name) and a scripted model for tests. |
 | `storage/` | SQLAlchemy models and the repository. SQLite in development, Postgres in Docker. |
 | `observability.py` | OpenTelemetry setup with OpenInference attributes for Phoenix. |
 

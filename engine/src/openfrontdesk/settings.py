@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("OFD_OPENAI_API_KEY", "OPENAI_API_KEY")
     )
+    anthropic_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("OFD_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
+    )
+    # A model named "claude-..." runs on Anthropic; any other on OpenAI.
     llm_model: str = "gpt-5-mini"
     judge_model: str = "gpt-5-mini"
     # For reasoning models (gpt-5 family). Lower is faster; unset it for models without it.
