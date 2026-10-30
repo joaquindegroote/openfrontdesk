@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import replace
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
 
@@ -33,10 +33,18 @@ from openfrontdesk.tools import Tool, ToolRegistry
 logger = logging.getLogger(__name__)
 
 
+# "full" runs every guard. "rules" and "off" exist only to measure what the guards are worth
+# (ablation evals): the API always runs them all.
+GuardMode = Literal["full", "rules", "off"]
+
+
 class ToolExecutor:
-    def __init__(self, registry: ToolRegistry, *, timeout_s: float = 20.0) -> None:
+    def __init__(
+        self, registry: ToolRegistry, *, timeout_s: float = 20.0, guards: GuardMode = "full"
+    ) -> None:
         self.registry = registry
         self.timeout_s = timeout_s
+        self.guards = guards
 
     async def execute(
         self, call: ToolCall, ctx: ToolContext
@@ -76,9 +84,10 @@ class ToolExecutor:
         call = call.model_copy(update={"arguments": params.model_dump(mode="json")})
         summary = await _summarize(tool, ctx, params)
         checks: list[CheckResult] = []
-        if tool.guards:
+        guards = self._active_guards(tool)
+        if guards:
             action = ProposedAction(tool=tool.name, params=params, summary=summary or tool.name)
-            checks = await evaluate(tool.guards, ctx, action)
+            checks = await evaluate(guards, ctx, action)
             failed = next((c for c in checks if not c.passed), None)
             if failed is not None:
                 result = {
@@ -115,6 +124,13 @@ class ToolExecutor:
             }
             return _event(call, tool.side_effect, "ok", result, summary, checks), output
         return _event(call, tool.side_effect, "ok", output, summary, checks), None
+
+    def _active_guards(self, tool: Tool) -> list[Any]:
+        if self.guards == "off":
+            return []
+        if self.guards == "rules":
+            return [g for g in tool.guards if g.kind == "rule"]
+        return list(tool.guards)
 
 
 async def _summarize(tool: Tool, ctx: ToolContext, params: BaseModel) -> str | None:
