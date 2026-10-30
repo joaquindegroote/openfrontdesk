@@ -3,6 +3,7 @@
 uv run python -m ofd_evals run                      # every scenario in evals/scenarios
 uv run python -m ofd_evals run -s free-reschedule -n 3
 uv run python -m ofd_evals show --failed            # the latest results
+uv run python -m ofd_evals compare nano=evals/results/a mini=evals/results/b
 uv run python -m ofd_evals chat --goal "Book a cleaning next week" --phone +15550100103
 """
 
@@ -23,6 +24,7 @@ from ofd_evals.report import (
     RESULTS_DIR,
     Entry,
     append_run,
+    compare_markdown,
     conversation_entry,
     format_checks,
     format_transcript,
@@ -62,6 +64,11 @@ def main() -> None:
     show.add_argument("--failed", action="store_true", help="Only runs that failed a check.")
     show.add_argument("-s", "--scenario", action="append", help="Scenario id (repeatable).")
 
+    compare = commands.add_parser("compare", help="Saved results side by side, as Markdown.")
+    compare.add_argument(
+        "results", nargs="+", help="Results folders, optionally labeled: label=path."
+    )
+
     chat = commands.add_parser("chat", help="Run one ad-hoc simulated conversation.")
     chat.add_argument("--goal", required=True, help="What the simulated customer wants.")
     chat.add_argument("--name", default="Alex Morgan", help="The customer's name.")
@@ -76,6 +83,10 @@ def main() -> None:
         if path is None:
             raise SystemExit(f"No results in {RESULTS_DIR} yet.")
         _show(load_runs(path), failed_only=args.failed, scenarios=args.scenario)
+        return
+    if args.command == "compare":
+        labeled = [r.split("=", 1) if "=" in r else [Path(r).name, r] for r in args.results]
+        print(compare_markdown({label: load_runs(Path(path)) for label, path in labeled}), end="")
         return
 
     overrides = {"llm_model": args.engine_model, "judge_model": args.judge_model}

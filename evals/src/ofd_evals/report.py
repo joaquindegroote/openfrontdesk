@@ -5,7 +5,7 @@ transcript, with tool events and guardrail checks. `python -m ofd_evals show` pr
 """
 
 import json
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -115,6 +115,40 @@ def summary_markdown(entries: list[Entry], models: dict[str, str]) -> str:
     if failures:
         lines += ["", "Failed checks:", *failures]
     return "\n".join(lines) + "\n"
+
+
+def compare_markdown(results: dict[str, list[Entry]]) -> str:
+    """Several result sets side by side, such as the same suite on different models."""
+    labels = list(results)
+    scenarios = sorted({e["scenario"] for entries in results.values() for e in entries})
+    lines = [
+        "| scenario | " + " | ".join(labels) + " |",
+        "|---|" + "---|" * len(labels),
+    ]
+    for scenario_id in scenarios:
+        cells = []
+        for entries in results.values():
+            runs = [e for e in entries if e["scenario"] == scenario_id]
+            cells.append(f"{sum(r['passed'] for r in runs)}/{len(runs)}" if runs else "-")
+        lines.append(f"| {scenario_id} | " + " | ".join(cells) + " |")
+
+    def totals(label: str, cell: Callable[[list[Entry]], str]) -> str:
+        return f"| **{label}** | " + " | ".join(cell(e) for e in results.values()) + " |"
+
+    lines += [
+        totals("runs passed", lambda e: f"{sum(r['passed'] for r in e)}/{len(e)}"),
+        totals("avg engine tokens", lambda e: f"{_mean(r['tokens'] for r in e):,.0f}"),
+        totals(
+            "avg engine time per turn",
+            lambda e: f"{_per_turn(e) / 1000:.1f} s",
+        ),
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def _per_turn(entries: list[Entry]) -> float:
+    turns = sum(len(e["transcript"]) for e in entries)
+    return sum(e["latency_ms"] for e in entries) / turns if turns else 0.0
 
 
 def format_transcript(entry: Entry) -> str:

@@ -5,6 +5,7 @@ from pathlib import Path
 from ofd_evals.checks import CheckResult
 from ofd_evals.report import (
     append_run,
+    compare_markdown,
     format_checks,
     format_transcript,
     latest_results,
@@ -70,3 +71,16 @@ def test_summary_counts_passes_and_lists_failed_checks() -> None:
     assert "| test | 1/2 | 1.0 | 0 | 0.0 s |" in summary
     assert "1/2 runs passed every check." in summary
     assert "- test (run 2): calls book_appointment: never called" in summary
+
+
+def test_results_compare_side_by_side() -> None:
+    passed = run_entry(run(scenario()), PASSED, attempt=1)
+    failed = run_entry(run(scenario()), FAILED, attempt=2)
+    table = compare_markdown({"nano": [passed, failed], "mini": [passed, passed]})
+
+    assert table.splitlines()[:3] == [
+        "| scenario | nano | mini |",
+        "|---|---|---|",
+        "| test | 1/2 | 2/2 |",
+    ]
+    assert "| **runs passed** | 1/2 | 2/2 |" in table
