@@ -41,6 +41,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="ofd_evals", description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
+    parser.add_argument("--engine-model", help="Model the assistant runs on (default: settings).")
+    parser.add_argument("--judge-model", help="Confirmation judge model (default: settings).")
     parser.add_argument("--customer-model", default="gpt-5-mini")
     parser.add_argument("--grader-model", default="gpt-5-mini", help="Grades rubric items.")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -76,7 +78,8 @@ def main() -> None:
         _show(load_runs(path), failed_only=args.failed, scenarios=args.scenario)
         return
 
-    settings = Settings()
+    overrides = {"llm_model": args.engine_model, "judge_model": args.judge_model}
+    settings = Settings().model_copy(update={k: v for k, v in overrides.items() if v})
     customer_llm = openai_client(settings, args.customer_model, "low")
     if customer_llm is None:
         raise SystemExit("Set OPENAI_API_KEY (in .env) to run evals.")
