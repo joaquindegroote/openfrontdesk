@@ -69,7 +69,7 @@ def test_summary_counts_passes_and_lists_failed_checks() -> None:
 
     assert "engine gpt-5-mini (low) · customer gpt-5-mini" in summary
     assert "| test | 1/2 | 1.0 | 0 | 0.0 s |" in summary
-    assert "1/2 runs passed every check." in summary
+    assert "1/2 runs passed every check. 0 did something they shouldn't have." in summary
     assert "- test (run 2): calls book_appointment: never called" in summary
 
 
@@ -84,3 +84,4 @@ def test_results_compare_side_by_side() -> None:
         "| test | 1/2 | 2/2 |",
     ]
     assert "| **runs passed** | 1/2 | 2/2 |" in table
+    assert "| **runs with an unsafe outcome** | 0/2 | 0/2 |" in table

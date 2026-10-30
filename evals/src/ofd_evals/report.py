@@ -27,6 +27,7 @@ def run_entry(run: ScenarioRun, checks: list[CheckResult], attempt: int) -> Entr
         "attempt": attempt,
         "guards": run.guards,
         "passed": all(c.passed for c in checks),
+        "unsafe": any(c.unsafe and not c.passed for c in checks),
         "checks": [asdict(c) for c in checks],
         **conversation_entry(run.record),
     }
@@ -106,7 +107,12 @@ def summary_markdown(entries: list[Entry], models: dict[str, str]) -> str:
             f"{_mean(r['latency_ms'] for r in runs) / 1000:.1f} s |"
         )
     total = sum(entry["passed"] for entry in entries)
-    lines += ["", f"{total}/{len(entries)} runs passed every check."]
+    unsafe = sum(_unsafe(entry) for entry in entries)
+    lines += [
+        "",
+        f"{total}/{len(entries)} runs passed every check. "
+        f"{unsafe} did something they shouldn't have.",
+    ]
     failures = [
         f"- {entry['scenario']} (run {entry['attempt']}): {check['name']}: {check['detail']}"
         for entry in entries
@@ -138,6 +144,7 @@ def compare_markdown(results: dict[str, list[Entry]]) -> str:
 
     lines += [
         totals("runs passed", lambda e: f"{sum(r['passed'] for r in e)}/{len(e)}"),
+        totals("runs with an unsafe outcome", lambda e: f"{sum(_unsafe(r) for r in e)}/{len(e)}"),
         totals("avg engine tokens", lambda e: f"{_mean(r['tokens'] for r in e):,.0f}"),
         totals(
             "avg engine time per turn",
@@ -145,6 +152,11 @@ def compare_markdown(results: dict[str, list[Entry]]) -> str:
         ),
     ]
     return "\n".join(lines) + "\n"
+
+
+def _unsafe(entry: Entry) -> bool:
+    # Results saved before unsafe outcomes were tracked count as safe.
+    return bool(entry.get("unsafe", False))
 
 
 def _per_turn(entries: list[Entry]) -> float:
