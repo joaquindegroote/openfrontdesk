@@ -1,6 +1,7 @@
 """Conversation lifecycle: who replies (assistant or staff), and what gets persisted."""
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import Callable
@@ -23,6 +24,11 @@ logger = logging.getLogger(__name__)
 ACTIVE = "active"
 HANDED_OFF = "handed_off"
 SERVICES_TTL_S = 300
+# Result stored for a tool call a failed turn never finished, so the history stays valid.
+INTERRUPTED = {
+    "error": "interrupted",
+    "message": "The turn ended before this tool finished, so its outcome is unknown.",
+}
 
 
 class ConversationNotFoundError(Exception):
@@ -221,7 +227,7 @@ class ConversationService:
 
 def _failed_turn(ctx: ToolContext, text: str, history_length: int, prior_events: int) -> TurnResult:
     """Keep whatever the turn did before failing (tools may have run), then hand off."""
-    done = ctx.transcript[history_length:] or [ChatMessage.user(text)]
+    done = _answer_open_tool_calls(ctx.transcript[history_length:]) or [ChatMessage.user(text)]
     return TurnResult(
         reply=HANDOFF_REPLY,
         new_messages=[*done, ChatMessage.assistant(HANDOFF_REPLY)],
@@ -234,3 +240,23 @@ def _failed_turn(ctx: ToolContext, text: str, history_length: int, prior_events:
         usage=Usage(),
         steps=0,
     )
+
+
+def _answer_open_tool_calls(messages: list[ChatMessage]) -> list[ChatMessage]:
+    """A tool call without a result makes the stored history invalid for the model API, and
+    every later turn would fail on it. Calls a failed turn left open get a placeholder."""
+    answered = {m.tool_call_id for m in messages if m.role == "tool"}
+    complete: list[ChatMessage] = []
+    for message in messages:
+        complete.append(message)
+        for call in message.tool_calls if message.role == "assistant" else []:
+            if call.id not in answered:
+                complete.append(
+                    ChatMessage(
+                        role="tool",
+                        tool_call_id=call.id,
+                        name=call.name,
+                        content=json.dumps(INTERRUPTED),
+                    )
+                )
+    return complete
