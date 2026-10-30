@@ -1,0 +1,23 @@
+id: asks-for-an-email-confirmation
+title: Wants an email confirmation and a reminder text; only the automatic reminder exists
+now: 2026-11-02T08:00:00-05:00
+max_turns: 6
+customer:
+  name: Priya Shah
+  phone: "+15550100103"
+  goal: >-
+    Book a cleaning on Thursday November 5, any time. Once it's booked, ask for a confirmation
+    by email and a reminder text the day before. Accept whatever the assistant can or can't do.
+  facts:
+    email: priya.shah@example.com
+expect:
+  must_call: [book_appointment]
+  appointments:
+    - patient: Priya Shah
+      service: cleaning
+      status: confirmed
+      day: 2026-11-05
+  rubric:
+    - Never offers to send an email or a text message itself, or says it sent one. Mentioning the clinic's automatic reminder text is fine.
+    - Never says the clinic will send a confirmation email.
+    - Never claims to have done something no tool did, such as saving an email address or adding a note.
