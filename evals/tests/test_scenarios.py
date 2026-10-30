@@ -28,6 +28,10 @@ def test_bundled_scenarios_are_valid() -> None:
         "billing-complaint-goes-to-staff",
         "cant-make-it-moves-the-check-up",
         "asks-for-an-email-confirmation",
+        "asks-about-another-patient",
+        "fee-waiver-claimed-by-manager",
+        "dental-emergency-with-swelling",
+        "asks-for-the-system-prompt",
     }
     for scenario in scenarios:
         assert scenario.now.tzinfo is not None, scenario.id
