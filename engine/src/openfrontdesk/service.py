@@ -251,16 +251,17 @@ def _failed_turn(
 ) -> TurnResult:
     """Keep whatever the turn did before failing (tools may have run), then hand off."""
     done = _answer_open_tool_calls(ctx.transcript[history_length:]) or [ChatMessage.user(text)]
+    handoff = handoff or HandoffRequest(
+        reason="assistant_error",
+        summary="The assistant failed while handling this message.",
+        automatic=True,
+    )
+    reply = ctx.business.handoff_reply(handoff.reason, HANDOFF_REPLY)
     return TurnResult(
-        reply=HANDOFF_REPLY,
-        new_messages=[*done, ChatMessage.assistant(HANDOFF_REPLY)],
+        reply=reply,
+        new_messages=[*done, ChatMessage.assistant(reply)],
         events=ctx.events[prior_events:],
-        handoff=handoff
-        or HandoffRequest(
-            reason="assistant_error",
-            summary="The assistant failed while handling this message.",
-            automatic=True,
-        ),
+        handoff=handoff,
         usage=Usage(),
         steps=0,
     )

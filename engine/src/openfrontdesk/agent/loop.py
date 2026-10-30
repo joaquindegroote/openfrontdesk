@@ -1,11 +1,14 @@
 """The agent loop for one customer turn: think, call tools, repeat, reply.
 
 Bounded on purpose: a step budget, automatic handoff when the booking system keeps failing,
-and a final reply even when the model or the tools misbehave.
+and a final reply even when the model or the tools misbehave. A handoff always ends with the
+business's own words for it, never a generated reply.
 """
 
 import json
 from dataclasses import dataclass, field
+
+from opentelemetry.trace import Span
 
 from openfrontdesk.agent.context import HandoffRequest, ToolContext, ToolEvent
 from openfrontdesk.agent.executor import ToolExecutor
@@ -22,13 +25,10 @@ from openfrontdesk.observability import (
 )
 from openfrontdesk.tools import ToolRegistry
 
+# Used when the business profile has no handoff reply of its own.
 HANDOFF_REPLY = (
     "I've passed this to our front-desk team and someone will reply here shortly. "
     "Thanks for your patience."
-)
-OUTAGE_NOTE = (
-    "The booking system is not responding. A staff member will take over this conversation. "
-    "Apologize briefly and tell the customer someone will follow up here soon. No tools."
 )
 # Consecutive steps in which every tool call failed with a temporary error.
 MAX_FAILING_STEPS = 2
@@ -83,20 +83,16 @@ class Agent:
 
             for step in range(1, self.max_steps + 1):
                 turn.steps = step
-                # After a handoff the model only writes the closing message, no more tools.
-                completion = await self._complete(
-                    messages, [] if turn.handoff else specs, ctx.conversation_id
-                )
+                completion = await self._complete(messages, specs, ctx.conversation_id)
                 turn.usage += completion.usage
                 turn.model = completion.model or self.llm.model
                 assistant = ChatMessage(
                     role="assistant", content=completion.text, tool_calls=completion.tool_calls
                 )
-                if turn.handoff or not completion.tool_calls:
-                    assistant.tool_calls = []
-                    assistant.content = (completion.text or "").strip() or (
-                        HANDOFF_REPLY if turn.handoff else "Sorry, could you say that again?"
-                    )
+                if not completion.tool_calls:
+                    assistant.content = (
+                        completion.text or ""
+                    ).strip() or "Sorry, could you say that again?"
                     self._append(assistant, messages, turn, ctx)
                     turn.reply = assistant.content
                     span.set_attribute(OUTPUT, turn.reply)
@@ -131,20 +127,28 @@ class Agent:
                         summary="The booking system kept failing while helping this customer.",
                         automatic=True,
                     )
-                    # Steers the closing message; not persisted.
-                    messages.append(ChatMessage.system(OUTAGE_NOTE))
+                if turn.handoff:
+                    return self._close_with_handoff(turn, messages, ctx, span)
 
             # Out of steps: stop here rather than loop, and let a person take it from here.
-            turn.handoff = turn.handoff or HandoffRequest(
+            turn.handoff = HandoffRequest(
                 reason="step_limit",
                 summary="The assistant could not finish this request within its step budget.",
                 automatic=True,
             )
-            closing = ChatMessage.assistant(HANDOFF_REPLY)
-            self._append(closing, messages, turn, ctx)
-            turn.reply = HANDOFF_REPLY
-            span.set_attribute(OUTPUT, turn.reply)
-            return turn
+            return self._close_with_handoff(turn, messages, ctx, span)
+
+    def _close_with_handoff(
+        self, turn: TurnResult, messages: list[ChatMessage], ctx: ToolContext, span: Span
+    ) -> TurnResult:
+        """The business's fixed reply for this handoff reason. A generated one tended to repeat
+        the customer's claims ("the manager's waiver"), and this saves a model call."""
+        assert turn.handoff is not None
+        reply = ctx.business.handoff_reply(turn.handoff.reason, HANDOFF_REPLY)
+        self._append(ChatMessage.assistant(reply), messages, turn, ctx)
+        turn.reply = reply
+        span.set_attribute(OUTPUT, reply)
+        return turn
 
     async def _complete(
         self, messages: list[ChatMessage], tools: list[ToolSpec], conversation_id: str

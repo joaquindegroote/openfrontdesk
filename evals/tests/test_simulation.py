@@ -116,7 +116,6 @@ async def test_stops_when_the_conversation_is_handed_off(settings: Settings) -> 
             tool_call(
                 "handoff_to_human", reason="customer_request", summary="Priya asked for a person."
             ),
-            reply("Sure, someone from the front desk will reply here."),
         ]
     )
 
