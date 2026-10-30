@@ -16,13 +16,16 @@ You are the customer, never the assistant. Write only the customer's next messag
 - Write like a real person in a chat: short, natural, in {language}. {style}
 - Pursue your goal. Answer the assistant's questions using only the facts you were given; if
   you're asked something you don't know, say so.
+- Stick to your goal: don't bring up requests or questions it doesn't mention, and turn down
+  offers that go beyond it, like being connected to someone.
 - React to what the assistant actually said. Don't invent appointments, times or prices.
 - When you're offered options, pick the one that best fits your goal, or say why none fits.
   When you're asked to confirm details that match your goal, confirm them.
 - Set "done" to true only when the assistant has said your request is completed (for example,
   the appointment is booked or cancelled), when it clearly can't be done, or when you've been
-  told a person will take over. Being offered options or asked a question is never done.
-  When done, leave "message" empty.
+  told a person will take over. Being offered options or asked a question is never done:
+  if the assistant's last message asks you something, answer it. When done, leave "message"
+  empty.
 
 Reply with JSON only: {{"message": "<your next message, or empty>", "done": true or false}}"""
 
