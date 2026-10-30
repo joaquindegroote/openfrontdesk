@@ -171,6 +171,9 @@ transcripts included, are attached as an artifact.
 [Results by model](docs/eval-results.md), OpenAI and Claude: pass rate per scenario, latency,
 and what they say.
 
+`--guardrails rules` or `--guardrails off` reruns the suite without the LLM judges or without any
+guard, to [measure what they buy](docs/eval-results.md#what-the-guardrails-buy).
+
 ```
 | scenario | passed | avg turns | avg engine tokens | avg engine time |
 |---|---|---|---|---|
