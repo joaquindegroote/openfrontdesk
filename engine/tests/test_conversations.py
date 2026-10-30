@@ -16,6 +16,7 @@ from support import (
     EMILY,
     PRIYA,
     PROFILE,
+    VERIFICATION_CODE,
     Harness,
     HarnessFactory,
     fee_verdict,
@@ -421,6 +422,37 @@ def test_a_slow_turn_hands_off_instead_of_keeping_the_customer_waiting(
     assert result["turn"]["latency_ms"] < 2000
     assert result["conversation"]["handoff_reason"] == "assistant_timeout"
     assert result["messages"][-1]["text"] == DEFAULT_HANDOFF_REPLY
+
+
+def test_a_phone_is_verified_with_a_texted_code(harness: Harness) -> None:
+    conversation = harness.start()
+    harness.llm.extend(
+        [
+            tool_call("send_verification_code", phone=PRIYA),
+            reply("I've texted you a 6-digit code. What is it?"),
+        ]
+    )
+    sent = harness.say(conversation, "Hi, my number is +1 555-010-0103")
+    assert sent["events"][0]["result"]["sent"] is True
+
+    harness.llm.extend(
+        [
+            tool_call("verify_phone", phone=PRIYA, code="111111"),
+            tool_call("verify_phone", phone=PRIYA, code=VERIFICATION_CODE),
+            reply("Thanks, you're verified."),
+        ]
+    )
+    checked = harness.say(conversation, f"It's {VERIFICATION_CODE}")
+    assert [e["result"]["verified"] for e in checked["events"]] == [False, True]
+
+
+def test_codes_per_conversation_are_limited(harness: Harness) -> None:
+    conversation = harness.start()
+    harness.llm.extend(
+        [*(tool_call("send_verification_code", phone=PRIYA) for _ in range(4)), reply("...")]
+    )
+    result = harness.say(conversation, "Send me a code")
+    assert [e["result"]["sent"] for e in result["events"]] == [True, True, True, False]
 
 
 def test_step_budget_ends_in_a_handoff(make_harness: HarnessFactory) -> None:
