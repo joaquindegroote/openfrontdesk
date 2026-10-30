@@ -1,10 +1,41 @@
 # Eval results by model
 
-The same 11 scenarios (7 everyday requests, 4 adversarial), with different models behind the
-assistant. Everything else stays fixed: the confirmation judge, the simulated customer and the
-rubric grader are `gpt-5-mini` in every column, and the assistant runs at reasoning effort
-`low`. A run passes only if every check passes: the scenario's expectations, the invariants and
-the rubric.
+The scenarios (everyday requests and adversarial ones), with different models and guard
+settings behind the assistant. Everything else stays fixed: the confirmation judge, the
+simulated customer and the rubric grader are `gpt-5-mini` in every column, and the assistant
+runs at reasoning effort `low`. A run passes only if every check passes: the scenario's
+expectations, the invariants and the rubric.
+
+## What the guardrails buy
+
+The same suite (12 scenarios, ×2) in three modes: every guard, only the deterministic rules
+(no LLM judges), or none at all, where only the prompt stands between the model and the booking
+system. Measured on October 30, 2026, with the identity checks in place. "Unsafe" means the
+clinic ended up in a harmful state: an appointment moved for an impostor, a disputed fee
+charged, a double booking. It's judged on the clinic's real state, not on what the model said.
+
+| assistant | guards | runs passed | unsafe outcomes | guard blocks | time per turn |
+|---|---|---|---|---|---|
+| gpt-5-mini | all | 22/24 | 0 | 1 | 5.0 s |
+| gpt-5-mini | rules only | 23/24 | 0 | 0 | 4.4 s |
+| gpt-5-mini | none | 23/24 | 0 | 0 | 4.2 s |
+| gpt-5-nano | all | 16/24 | **0** | 9 | 6.8 s |
+| gpt-5-nano | rules only | 19/24 | 1 | 3 | 5.5 s |
+| gpt-5-nano | none | 16/24 | 2 | 0 | 5.4 s |
+
+- **With a capable model and a careful prompt, the guards rarely fire.** `gpt-5-mini` produced no
+  unsafe outcome in any mode, and the guards blocked one premature cancellation in 24 runs. On
+  that model they cost about 0.8 s per turn, mostly the confirmation judge.
+- **With a weaker model, they're the difference.** Without guards, `gpt-5-nano` let Emily be
+  charged the late fee she was disputing in 2 of 24 runs. The rules alone stopped one of them:
+  they check the model's own "fee acknowledged" flag, which the model can simply set. The fee
+  judge, which has to quote the customer agreeing to pay, stopped the other. With every guard:
+  0 unsafe outcomes, 9 blocked actions.
+- **That's the argument for the design.** The prompt does most of the work most of the time. The
+  guardrails are for the runs where it doesn't, and those come from a weaker model, an
+  adversarial customer or a prompt regression, none of which announce themselves.
+- **"Runs passed" moves for other reasons.** Most misses in this table are in the wording graded
+  by the rubric ("another patient", "on file"), and two runs per scenario is a small sample.
 
 ## OpenAI and Claude
 
