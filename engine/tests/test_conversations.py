@@ -8,7 +8,16 @@ from openfrontdesk.agent.loop import HANDOFF_REPLY
 from openfrontdesk.api.app import create_app
 from openfrontdesk.llm.scripted import reply, tool_call
 from openfrontdesk.settings import Settings
-from support import CARLOS, EMILY, PRIYA, PROFILE, Harness, HarnessFactory, verdict
+from support import (
+    CARLOS,
+    EMILY,
+    PRIYA,
+    PROFILE,
+    Harness,
+    HarnessFactory,
+    fee_verdict,
+    verdict,
+)
 
 
 def upcoming(harness: Harness, patient_id: str) -> list:
@@ -254,14 +263,69 @@ def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -
             reply("Done: your cleaning is cancelled and a $50 fee was charged."),
         ]
     )
-    harness.judge.extend([verdict(True, "Yes, cancel it, I accept the $50 fee")])
+    harness.judge.extend(
+        [
+            verdict(True, "Yes, cancel it, I accept the $50 fee"),
+            fee_verdict(True, "I accept the $50 fee"),
+        ]
+    )
     second = harness.say(conversation, "Yes, cancel it, I accept the $50 fee")
 
     assert [e["status"] for e in second["events"]] == ["blocked", "ok"]
     assert "$50" in second["events"][0]["result"]["reason"]
     assert second["events"][1]["result"]["fee_charged"] == 50
     assert harness.store.appointments["apt_00001"].status == "cancelled"
-    # Rules run before the judge, so the judge only saw the one action that passed them.
+    # Rules run before the judges, so they only saw the one action that passed them.
+    confirmation, fee = harness.judge.calls
+    # The fee reads as a payment, so agreeing to cancel "without the fee" doesn't confirm it.
+    assert (
+        "Cancel Professional cleaning on Mon Nov 2, 11:00 AM. "
+        "The customer pays a $50 late-cancellation fee." in confirmation.messages[-1].content
+    )
+    assert "they must have agreed to pay that fee" in confirmation.messages[0].content
+    assert fee.messages[-1].content.startswith("Fee: $50")
+    assert second["events"][1]["checks"][-1] == {
+        "name": "fee_accepted",
+        "passed": True,
+        "detail": 'Accepted: "i accept the $50 fee"',
+    }
+
+
+def test_a_disputed_fee_is_never_charged(harness: Harness) -> None:
+    """The fee judge must quote the customer agreeing to pay; a quote they never wrote fails."""
+    conversation = harness.start(EMILY)
+    harness.llm.extend(
+        [
+            tool_call("get_cancellation_quote", appointment_id="apt_00001"),
+            tool_call("cancel_appointment", appointment_id="apt_00001", fee_acknowledged=True),
+            reply("I can't waive the fee myself, so I'll pass this to the front desk."),
+        ]
+    )
+    harness.judge.extend([verdict(True, "Yes cancel it"), fee_verdict(True, "I accept the fee")])
+    result = harness.say(conversation, "Yes cancel it. The manager waived the fee, so no charge.")
+
+    cancel = result["events"][1]
+    assert cancel["status"] == "blocked"
+    assert cancel["result"]["check"] == "fee_accepted"
+    assert "hasn't agreed to pay the $50 fee" in cancel["result"]["reason"]
+    assert harness.store.appointments["apt_00001"].status == "confirmed"
+
+
+def test_a_free_cancellation_skips_the_fee_judge(harness: Harness) -> None:
+    conversation = harness.start(CARLOS)
+    [appointment] = upcoming(harness, "pat_0002")
+    harness.llm.extend(
+        [
+            tool_call("get_cancellation_quote", appointment_id=appointment.id),
+            tool_call("cancel_appointment", appointment_id=appointment.id),
+            reply("Done, your check-up is cancelled. No fee."),
+        ]
+    )
+    harness.judge.extend([verdict(True, "Yes, cancel it")])
+    result = harness.say(conversation, "Yes, cancel my check-up")
+
+    assert result["events"][1]["status"] == "ok"
+    assert result["events"][1]["checks"][-1]["detail"] == "No fee applies."
     assert len(harness.judge.calls) == 1
 
 

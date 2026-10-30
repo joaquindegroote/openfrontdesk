@@ -1,5 +1,5 @@
 from openfrontdesk.guardrails.base import Guard, ProposedAction, evaluate
-from openfrontdesk.guardrails.judge import CustomerConfirmed
+from openfrontdesk.guardrails.judge import CustomerConfirmed, FeeAccepted
 from openfrontdesk.guardrails.rules import (
     CancellationFeeDisclosed,
     NoDuplicateBooking,
@@ -9,6 +9,7 @@ from openfrontdesk.guardrails.rules import (
 __all__ = [
     "CancellationFeeDisclosed",
     "CustomerConfirmed",
+    "FeeAccepted",
     "Guard",
     "NoDuplicateBooking",
     "ProposedAction",

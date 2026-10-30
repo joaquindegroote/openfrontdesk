@@ -29,6 +29,11 @@ def verdict(confirmed: bool, evidence: str = "") -> Completion:
     return reply(json.dumps({"confirmed": confirmed, "evidence": evidence}))
 
 
+def fee_verdict(agreed: bool, quote: str = "") -> Completion:
+    """A fee judge response."""
+    return reply(json.dumps({"agreed": agreed, "quote": quote}))
+
+
 @dataclass
 class Harness:
     client: TestClient
