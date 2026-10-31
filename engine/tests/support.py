@@ -34,9 +34,9 @@ def verdict(confirmed: bool, evidence: str = "") -> Completion:
     return reply(json.dumps({"confirmed": confirmed, "evidence": evidence}))
 
 
-def fee_verdict(agreed: bool, quote: str = "") -> Completion:
+def fee_verdict(agreed: bool, quote: str = "", *, objects: bool = False) -> Completion:
     """A fee judge response."""
-    return reply(json.dumps({"agreed": agreed, "quote": quote}))
+    return reply(json.dumps({"agreed": agreed, "objects": objects, "quote": quote}))
 
 
 @dataclass

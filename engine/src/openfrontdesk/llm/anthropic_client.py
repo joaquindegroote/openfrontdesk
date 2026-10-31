@@ -7,7 +7,7 @@ in-memory messages of the turn that produced them (`ChatMessage.provider_content
 never stored, so every later turn starts from a history the API accepts.
 """
 
-import re
+import json
 from collections.abc import Sequence
 from typing import Any
 
@@ -23,7 +23,7 @@ FALLBACK_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5")
 EFFORT = {"minimal": "low", "low": "low", "medium": "medium", "high": "high"}
 # Response blocks sent back on the next step of the same turn.
 REPLAYED_BLOCKS = {"thinking", "redacted_thinking", "text", "tool_use"}
-_CODE_FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
+_JSON = json.JSONDecoder()
 
 
 class AnthropicChatClient:
@@ -78,9 +78,7 @@ class AnthropicChatClient:
 
         text = "".join(b.text for b in response.content if b.type == "text") or None
         if json_mode and text:
-            # json_mode callers ask for JSON in the prompt; Claude may still fence it.
-            fenced = _CODE_FENCE.match(text.strip())
-            text = fenced.group(1) if fenced else text
+            text = _json_object(text)
         calls = [
             ToolCall(
                 id=b.id,
@@ -154,3 +152,23 @@ def _assistant_blocks(message: ChatMessage) -> list[dict[str, Any]]:
 
 def _is_tool_results(content: Any) -> bool:
     return isinstance(content, list) and bool(content) and content[0]["type"] == "tool_result"
+
+
+def _json_object(text: str) -> str:
+    """The last JSON object in a reply, or the reply as it came if there is none.
+
+    json_mode callers ask for JSON only, but Claude may still fence it, or reason in prose
+    before or after it. A reply without an object reaches the caller unchanged, so its parse
+    fails there and the caller's own failure handling applies.
+    """
+    found = None
+    start = text.find("{")
+    while start != -1:
+        try:
+            _, end = _JSON.raw_decode(text, start)
+        except ValueError:
+            start = text.find("{", start + 1)
+            continue
+        found = text[start:end]
+        start = text.find("{", end)
+    return found if found is not None else text

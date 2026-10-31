@@ -45,7 +45,7 @@ def confirmed(*values: bool, evidence: str = "") -> ScriptedLLM:
 
 
 def agreed(value: bool, quote: str = "") -> ScriptedLLM:
-    return ScriptedLLM([reply(json.dumps({"agreed": value, "quote": quote}))])
+    return ScriptedLLM([reply(json.dumps({"agreed": value, "objects": False, "quote": quote}))])
 
 
 def test_the_cases_load_and_each_judge_has_both_labels() -> None:

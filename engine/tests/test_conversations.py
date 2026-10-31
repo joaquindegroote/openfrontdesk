@@ -398,6 +398,52 @@ def test_a_disputed_fee_is_never_charged(harness: Harness) -> None:
     assert harness.store.appointments["apt_00001"].status == "confirmed"
 
 
+def test_an_agreement_with_an_objection_is_not_an_agreement(harness: Harness) -> None:
+    """The judge answers "agreed" and "objects" apart; any objection blocks the charge."""
+    conversation = harness.start(EMILY)
+    harness.llm.extend(
+        [
+            tool_call("get_cancellation_quote", appointment_id="apt_00001"),
+            tool_call("cancel_appointment", appointment_id="apt_00001", fee_acknowledged=True),
+            reply("Only the front desk can waive fees. Shall I pass this to them?"),
+        ]
+    )
+    harness.judge.extend(
+        [
+            verdict(True, "I'll pay it if I have to"),
+            fee_verdict(True, "I'll pay it if I have to", objects=True),
+        ]
+    )
+    result = harness.say(conversation, "I'll pay it if I have to, but could you waive it?")
+
+    cancel = result["events"][1]
+    assert cancel["status"] == "blocked"
+    assert cancel["result"]["check"] == "fee_accepted"
+    assert harness.store.appointments["apt_00001"].status == "confirmed"
+    assert '"objects": true or false' in harness.judge.calls[-1].messages[0].content
+
+
+def test_agreeing_to_another_amount_is_not_agreeing_to_the_fee(harness: Harness) -> None:
+    """The quote is real, but it names $25: not an agreement to the $50 fee."""
+    conversation = harness.start(EMILY)
+    harness.llm.extend(
+        [
+            tool_call("get_cancellation_quote", appointment_id="apt_00001"),
+            tool_call("cancel_appointment", appointment_id="apt_00001", fee_acknowledged=True),
+            reply("The fee is $50, not $25. Do you still want to cancel?"),
+        ]
+    )
+    harness.judge.extend(
+        [verdict(True, "I'll pay the $25"), fee_verdict(True, "OK, I'll pay the $25")]
+    )
+    result = harness.say(conversation, "OK, I'll pay the $25. Cancel it.")
+
+    cancel = result["events"][1]
+    assert cancel["status"] == "blocked"
+    assert cancel["result"]["check"] == "fee_accepted"
+    assert harness.store.appointments["apt_00001"].status == "confirmed"
+
+
 def test_a_free_cancellation_skips_the_fee_judge(harness: Harness) -> None:
     conversation = harness.start(CARLOS)
     [appointment] = upcoming(harness, "pat_0002")

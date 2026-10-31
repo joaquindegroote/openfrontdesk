@@ -279,8 +279,10 @@ def _context(case: JudgeCase) -> ToolContext:
 
 
 def _model_verdict(case: JudgeCase, reply: str | None) -> bool | None:
-    key = "confirmed" if case.judge == "confirmation" else "agreed"
     try:
-        return json.loads(reply or "").get(key) is True
+        verdict = json.loads(reply or "")
+        if case.judge == "confirmation":
+            return verdict.get("confirmed") is True
+        return verdict.get("agreed") is True and verdict.get("objects") is False
     except (ValueError, AttributeError):
         return None

@@ -151,13 +151,32 @@ async def test_replies_are_read_by_block_type_with_cached_tokens_counted() -> No
     assert completion.model == "claude-haiku-5-5"
 
 
-async def test_json_mode_unwraps_a_fenced_reply() -> None:
-    fenced = '```json\n{"confirmed": true, "evidence": "yes"}\n```'
-    client, _ = fake(message({"type": "text", "text": fenced}))
+VERDICT = '{"confirmed": true, "evidence": "yes"}'
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"```json\n{VERDICT}\n```",
+        # Reasoning in prose before or after the object, which Claude sometimes writes.
+        f"They agreed to the stated time and price.\n\n```json\n{VERDICT}\n```",
+        f"{VERDICT}\n\nThe customer said yes after the details were given.",
+    ],
+)
+async def test_json_mode_returns_the_object_in_the_reply(text: str) -> None:
+    client, _ = fake(message({"type": "text", "text": text}))
     completion = await AnthropicChatClient("claude-opus-5-5", client=client).complete(
         [ChatMessage.system("Reply with JSON only."), ChatMessage.user("...")], json_mode=True
     )
-    assert completion.text == '{"confirmed": true, "evidence": "yes"}'
+    assert completion.text == VERDICT
+
+
+async def test_json_mode_leaves_a_reply_without_an_object_as_it_is() -> None:
+    client, _ = fake(message({"type": "text", "text": "I can't tell {from this."}))
+    completion = await AnthropicChatClient("claude-opus-5-5", client=client).complete(
+        [ChatMessage.user("...")], json_mode=True
+    )
+    assert completion.text == "I can't tell {from this."
 
 
 async def test_a_refusal_raises_instead_of_returning_an_empty_reply() -> None:
