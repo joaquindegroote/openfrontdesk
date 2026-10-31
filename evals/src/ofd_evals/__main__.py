@@ -5,6 +5,7 @@ uv run python -m ofd_evals run -s free-reschedule -n 3
 uv run python -m ofd_evals show --failed            # the latest results
 uv run python -m ofd_evals compare nano=evals/results/a mini=evals/results/b
 uv run python -m ofd_evals chat --goal "Book a cleaning next week" --phone +15550100103
+uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-opus-5-5:medium
 """
 
 import argparse
@@ -21,6 +22,14 @@ from ofd_evals.checks import check_run
 from ofd_evals.customer import Persona, SimulatedCustomer
 from ofd_evals.environment import eval_environment
 from ofd_evals.grader import grade_rubric
+from ofd_evals.judges import (
+    append_entry,
+    is_correct,
+    judges_markdown,
+    load_judge_cases,
+    run_judges,
+)
+from ofd_evals.judges import write_summary as write_judges_summary
 from ofd_evals.report import (
     RESULTS_DIR,
     Entry,
@@ -84,6 +93,19 @@ def main() -> None:
     chat.add_argument("--style", default="Polite and brief.")
     chat.add_argument("--max-turns", type=int, default=8)
 
+    judges = commands.add_parser("judges", help="Score the guardrail judges on labeled cases.")
+    judges.add_argument(
+        "-m",
+        "--model",
+        action="append",
+        help="Judge model, optionally model:effort (repeatable; default: the judge in settings).",
+    )
+    judges.add_argument("-c", "--case", action="append", help="Case id (repeatable).")
+    judges.add_argument("-n", "--repeats", type=int, default=1, help="Runs per case and model.")
+    judges.add_argument(
+        "--out", type=Path, help="Results folder (default: evals/results/judges-<date-time>)."
+    )
+
     args = parser.parse_args()
     if args.command == "show":
         path = args.path or latest_results()
@@ -98,6 +120,9 @@ def main() -> None:
 
     overrides = {"llm_model": args.engine_model, "judge_model": args.judge_model}
     settings = Settings().model_copy(update={k: v for k, v in overrides.items() if v})
+    if args.command == "judges":
+        _judges(settings, args.model, args.case, args.repeats, args.out)
+        return
     customer_llm = llm_client(settings, args.customer_model, "low")
     if customer_llm is None:
         raise SystemExit(f"Set the API key for {args.customer_model} (in .env) to run evals.")
@@ -180,6 +205,41 @@ async def _run(
                 print(format_transcript(entry))
                 print(format_checks(entry))
     return entries
+
+
+def _judges(
+    settings: Settings,
+    specs: list[str] | None,
+    selected: list[str] | None,
+    repeats: int,
+    out: Path | None,
+) -> None:
+    clients: dict[str, LLMClient] = {}
+    for spec in specs or [settings.judge_model]:
+        model, _, effort = spec.partition(":")
+        effort = effort or settings.judge_reasoning_effort or ""
+        llm = llm_client(settings, model, effort or None)
+        if llm is None:
+            raise SystemExit(f"Set the API key for {model} (in .env).")
+        clients[f"{model} ({effort})" if effort else model] = llm
+
+    cases = load_judge_cases()
+    if selected:
+        unknown = set(selected) - {c.id for c in cases}
+        if unknown:
+            raise SystemExit(f"Unknown case(s): {', '.join(sorted(unknown))}")
+        cases = [c for c in cases if c.id in selected]
+
+    out = out or RESULTS_DIR / datetime.now().strftime("judges-%Y%m%d-%H%M%S")
+    entries = asyncio.run(
+        run_judges(
+            cases, clients, repeats=repeats, on_result=lambda entry: append_entry(out, entry)
+        )
+    )
+    print(judges_markdown(entries))
+    print(f"Saved to {write_judges_summary(out, entries).parent}")
+    if not all(is_correct(entry) for entry in entries):
+        raise SystemExit(1)
 
 
 def _show(entries: list[Entry], *, failed_only: bool, scenarios: list[str] | None) -> None:
