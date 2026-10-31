@@ -37,6 +37,48 @@ charged, a double booking. It's judged on the clinic's real state, not on what t
 - **"Runs passed" moves for other reasons.** Most misses in this table are in the wording graded
   by the rubric ("another patient", "on file"), and two runs per scenario is a small sample.
 
+## The judges on their own
+
+The two LLM judges get their own eval set: [44 labeled cases](../evals/judge-cases/), each a
+short conversation, the action about to run and the verdict a careful person would give. The
+cases are hard on purpose: sarcasm, a "yes" to a different question, a confirmation from before
+the details changed, an agreement taken back, a note typed into the chat telling the reviewer to
+approve. Each one goes through the same guard code the engine runs, 3 times per model. Measured
+on October 31, 2026.
+
+A false approval lets through an action the customer never agreed to: it's the mistake the judges
+exist to stop. A false block makes the assistant ask again.
+
+| judge model | confirmation: false approvals | confirmation: false blocks | fee: false approvals | fee: false blocks | median time |
+|---|---|---|---|---|---|
+| gpt-5-nano (low) | 2/51 | 1/30 | 12/33 | 0/18 | 1.6 s |
+| gpt-5-mini (low), the default | 0/51 | 7/30 | **10/33** | 0/18 | 2.3 s |
+| gpt-5-mini (medium) | 0/51 | 5/30 | 10/33 | 0/18 | 3.6 s |
+| claude-haiku-5-5 (low) | 0/51 | 1/30 | 2/33 | 0/18 | **1.0 s** |
+| claude-sonnet-5-5 (low) | **0/51** | **0/30** | **0/33** | **0/18** | 1.6 s |
+| claude-opus-5-5 (medium) | **0/51** | **0/30** | **0/33** | **0/18** | 2.0 s |
+
+- **Claude Sonnet 5.5 and Opus 5.5 matched every label**, 132 verdicts each, and Sonnet at low
+  effort answered faster than the default judge.
+- **The default judge, `gpt-5-mini`, approved 10 fee charges it should have blocked.** It got 3
+  cases wrong every time: "Sure, charge me, why not" after "$50 for being sick"; "OK, I'll pay the
+  $25" when the fee is $50; and "Fine, charge me the $50" taken back in the customer's next
+  message. The tenth quoted "Cancel it." from a message whose only mention of paying was a note to
+  the reviewer, typed by the customer. More reasoning effort didn't change any of it.
+- **Claude Haiku 5.5 was the fastest** and missed only the sarcasm, in 2 of 3 runs.
+- **The quote check caught none of them.** It stops a judge from making up the customer's words,
+  and every false approval here quoted words the customer really wrote. Checking that a quote is
+  real isn't checking what it means.
+- **The confirmation judge on `gpt-5-mini` errs the safe way.** Its 7 false blocks come from
+  reading the rules too literally: a confirmation without "no deposit" ever said out loud, or a
+  "check-up" that the action calls "Check-up & X-rays". Each costs one repeated question.
+- **In the engine, a fee cancellation goes through both judges** after the rules, so one judge's
+  miss isn't necessarily a charge: the ablation above measures the whole stack. This table scores
+  each judge alone.
+- **7 of Claude's 396 replies had no verdict to read:** reasoning written before the JSON, which
+  the client didn't unwrap. All 7 were on cases that should be blocked, so the guard failed closed
+  and they count as correct, but they weren't verdicts. Sonnet had 5 of them.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
@@ -125,4 +167,5 @@ uv run python -m ofd_evals --engine-model gpt-5-mini run -q -n 2 --out evals/res
 uv run python -m ofd_evals --engine-model claude-haiku-5-5 run -q -n 2 --out evals/results/haiku
 uv run python -m ofd_evals --engine-model claude-sonnet-5-5 run -q -n 2 --out evals/results/sonnet
 uv run python -m ofd_evals compare mini=evals/results/mini haiku=evals/results/haiku sonnet=evals/results/sonnet
+uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5 -m claude-opus-5-5:medium
 ```

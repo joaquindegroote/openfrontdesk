@@ -159,6 +159,12 @@ Every run is checked automatically, and the command exits non-zero if anything f
 Each run is saved as soon as it ends, in `evals/results/<date-time>/`: `runs.jsonl` keeps every
 transcript with its tool calls and guardrail checks, and `summary.md` has the table below.
 
+```
+| scenario | passed | avg turns | avg engine tokens | avg engine time |
+|---|---|---|---|---|
+| late-cancellation-accepts-fee | 2/2 | 2.0 | 11,492 | 15.6 s |
+```
+
 ```bash
 uv run python -m ofd_evals show --failed   # transcripts of the latest failed runs
 ```
@@ -174,10 +180,12 @@ and what they say.
 `--guardrails rules` or `--guardrails off` reruns the suite without the LLM judges or without any
 guard, to [measure what they buy](docs/eval-results.md#what-the-guardrails-buy).
 
-```
-| scenario | passed | avg turns | avg engine tokens | avg engine time |
-|---|---|---|---|---|
-| late-cancellation-accepts-fee | 2/2 | 2.0 | 11,492 | 15.6 s |
+The judges also have their own eval set: [44 labeled cases](evals/judge-cases/) (sarcasm, a
+confirmation from before the details changed, an injected note), run through the same guard code
+on any model, to count [false approvals and false blocks](docs/eval-results.md#the-judges-on-their-own).
+
+```bash
+uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
 ```
 
 ## Roadmap
