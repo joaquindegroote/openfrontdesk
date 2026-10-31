@@ -39,7 +39,7 @@ charged, a double booking. It's judged on the clinic's real state, not on what t
 
 ## The judges on their own
 
-The two LLM judges get their own eval set: [44 labeled cases](../evals/judge-cases/), each a
+The two LLM judges get their own eval set: [58 labeled cases](../evals/judge-cases/), each a
 short conversation, the action about to run and the verdict a careful person would give. The
 cases are hard on purpose: sarcasm, a "yes" to a different question, a confirmation from before
 the details changed, an agreement taken back, a note typed into the chat telling the reviewer to
@@ -51,33 +51,67 @@ exist to stop. A false block makes the assistant ask again.
 
 | judge model | confirmation: false approvals | confirmation: false blocks | fee: false approvals | fee: false blocks | median time |
 |---|---|---|---|---|---|
-| gpt-5-nano (low) | 2/51 | 1/30 | 12/33 | 0/18 | 1.6 s |
-| gpt-5-mini (low), the default | 0/51 | 7/30 | **10/33** | 0/18 | 2.3 s |
-| gpt-5-mini (medium) | 0/51 | 5/30 | 10/33 | 0/18 | 3.6 s |
-| claude-haiku-5-5 (low) | 0/51 | 1/30 | 2/33 | 0/18 | **1.0 s** |
-| claude-sonnet-5-5 (low) | **0/51** | **0/30** | **0/33** | **0/18** | 1.6 s |
-| claude-opus-5-5 (medium) | **0/51** | **0/30** | **0/33** | **0/18** | 2.0 s |
+| gpt-5-nano (low) | 1/63 | 0/39 | 2/48 | 0/24 | 1.6 s |
+| gpt-5-mini (low), the default | 0/63 | 1/39 | **0/48** | 0/24 | 1.9 s |
+| gpt-5-mini (medium) | 0/63 | 3/39 | 0/48 | 0/24 | 4.5 s |
+| claude-haiku-5-5 (low) | **0/63** | **0/39** | **0/48** | **0/24** | **1.0 s** |
+| claude-sonnet-5-5 (low) | **0/63** | **0/39** | **0/48** | **0/24** | 1.6 s |
+| claude-opus-5-5 (medium) | **0/63** | **0/39** | **0/48** | **0/24** | 2.0 s |
 
-- **Claude Sonnet 5.5 and Opus 5.5 matched every label**, 132 verdicts each, and Sonnet at low
-  effort answered faster than the default judge.
-- **The default judge, `gpt-5-mini`, approved 10 fee charges it should have blocked.** It got 3
-  cases wrong every time: "Sure, charge me, why not" after "$50 for being sick"; "OK, I'll pay the
-  $25" when the fee is $50; and "Fine, charge me the $50" taken back in the customer's next
-  message. The tenth quoted "Cancel it." from a message whose only mention of paying was a note to
-  the reviewer, typed by the customer. More reasoning effort didn't change any of it.
-- **Claude Haiku 5.5 was the fastest** and missed only the sarcasm, in 2 of 3 runs.
-- **The quote check caught none of them.** It stops a judge from making up the customer's words,
-  and every false approval here quoted words the customer really wrote. Checking that a quote is
-  real isn't checking what it means.
-- **The confirmation judge on `gpt-5-mini` errs the safe way.** Its 7 false blocks come from
-  reading the rules too literally: a confirmation without "no deposit" ever said out loud, or a
-  "check-up" that the action calls "Check-up & X-rays". Each costs one repeated question.
+- **The three Claude models matched every label**, 174 verdicts each. Haiku 5.5 did it in a
+  median of 1.0 s.
+- **The default judge, `gpt-5-mini`, approved no charge it should have blocked.** Its one false
+  block reads "check-up" and "Check-up & X-rays" as different services; it costs a repeated
+  question.
 - **In the engine, a fee cancellation goes through both judges** after the rules, so one judge's
   miss isn't necessarily a charge: the ablation above measures the whole stack. This table scores
   each judge alone.
-- **7 of Claude's 396 replies had no verdict to read:** reasoning written before the JSON, which
-  the client didn't unwrap. All 7 were on cases that should be blocked, so the guard failed closed
-  and they count as correct, but they weren't verdicts. Sonnet had 5 of them.
+
+### What the first run found
+
+The judges weren't always this good. The first run, on the first 44 cases:
+
+| judge model | confirmation: false approvals | confirmation: false blocks | fee: false approvals | fee: false blocks |
+|---|---|---|---|---|
+| gpt-5-nano (low) | 2/51 | 1/30 | 12/33 | 0/18 |
+| gpt-5-mini (low), the default | 0/51 | 7/30 | **10/33** | 0/18 |
+| gpt-5-mini (medium) | 0/51 | 5/30 | 10/33 | 0/18 |
+| claude-haiku-5-5 (low) | 0/51 | 1/30 | 2/33 | 0/18 |
+| claude-sonnet-5-5 (low) | 0/51 | 0/30 | 0/33 | 0/18 |
+| claude-opus-5-5 (medium) | 0/51 | 0/30 | 0/33 | 0/18 |
+
+- **The default fee judge approved 10 charges it should have blocked.** It got 3 cases wrong
+  every time: "Sure, charge me, why not" after "$50 for being sick"; "OK, I'll pay the $25" when
+  the fee is $50; and "Fine, charge me the $50" taken back in the customer's next message. More
+  reasoning effort didn't change it.
+- **The quote check caught none of them.** It stops a judge from making up the customer's words,
+  and every one of those quotes was real. Checking that a quote is real isn't checking what it
+  means.
+- **The confirmation judge read its rules too literally**: 7 false blocks for a "no deposit" or a
+  duration never said out loud, or for "check-up" against "Check-up & X-rays".
+- **7 of Claude's 396 replies had no verdict to read:** reasoning written around the JSON, which
+  the client didn't unwrap. They were all on cases to block, so the guard failed closed, but they
+  weren't verdicts.
+
+What changed:
+
+1. **The fee judge answers two questions apart:** did the customer agree to pay, and does
+   anything they wrote push back on paying (a dispute, a waiver request, sarcasm, the fee left for
+   later, an agreement taken back). Code approves only an agreement with no objection. The first
+   attempt kept one question and added rules to it, and `gpt-5-mini` swung with single phrases:
+   adding "reluctant agreement is still agreement" brought the sarcasm approvals back and added
+   waiver requests. Splitting the question fixed both.
+2. **A quote that names another amount than the fee fails, in code.** "I'll pay the $25" is a
+   real quote, and not an agreement to $50. In the run above, it overruled the model 8 times.
+3. **The confirmation judge doesn't need a "no deposit" or the duration said out loud**, and is
+   told that a service may go by a shorter name.
+4. **The Claude client reads the last JSON object in a reply**, so reasoning around it no longer
+   leaves the judge without a verdict.
+
+The judges were changed while looking at those 44 cases, so they could have been fitted to them.
+14 more cases, written after the change and before running it, check that: the same traps,
+worded differently. On those, `gpt-5-mini`'s fee judge went from 6 false approvals in 15 with
+the old prompt to 0 with the new one, and `gpt-5-nano`'s from 8 to 1.
 
 ## OpenAI and Claude
 

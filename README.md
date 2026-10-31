@@ -180,7 +180,7 @@ and what they say.
 `--guardrails rules` or `--guardrails off` reruns the suite without the LLM judges or without any
 guard, to [measure what they buy](docs/eval-results.md#what-the-guardrails-buy).
 
-The judges also have their own eval set: [44 labeled cases](evals/judge-cases/) (sarcasm, a
+The judges also have their own eval set: [58 labeled cases](evals/judge-cases/) (sarcasm, a
 confirmation from before the details changed, an injected note), run through the same guard code
 on any model, to count [false approvals and false blocks](docs/eval-results.md#the-judges-on-their-own).
 
