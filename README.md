@@ -149,8 +149,8 @@ uv run python -m ofd_evals chat --phone +15550100103 --goal "Book a check-up tom
 
 Every run is checked automatically, and the command exits non-zero if anything fails:
 
-- **The scenario's expectations**: how it ended, which tools ran, and the clinic's real
-  appointments (status, day, time of day, fees).
+- **The scenario's expectations**: how it ended, which tools ran, phrases no reply may
+  contain, and the clinic's real appointments (status, day, time of day, fees).
 - **Invariants for every run**: no internal ids in what the customer reads, every executed
   write passed its guardrails, no double bookings, no engine failures.
 - **Rubric items**, graded by an LLM that has to quote its evidence, for what code can't see
