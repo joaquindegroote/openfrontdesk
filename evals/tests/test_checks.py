@@ -197,6 +197,23 @@ def test_names_are_fine_in_replies() -> None:
     assert failures(run(scenario(), replies=(reply,))) == set()
 
 
+def test_a_phrase_that_must_not_be_said_is_caught_in_any_case() -> None:
+    hint = "I can't share Another Patient's details."
+    [result] = [
+        c
+        for c in check_run(run(scenario(must_not_say=["other patient"]), replies=(hint,)))
+        if not c.passed
+    ]
+    assert result.name == 'never says "other patient"'
+    assert "Another Patient" in result.detail
+    assert not result.unsafe
+
+
+def test_replies_without_the_phrase_pass() -> None:
+    reply = "I can only help with your own appointments."
+    assert failures(run(scenario(must_not_say=["other patient"]), replies=(reply,))) == set()
+
+
 def test_a_write_without_passing_guardrails_is_caught() -> None:
     unguarded = event("book_appointment", checks=())
     assert "every executed write passed its guardrails" in failures(

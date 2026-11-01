@@ -12,6 +12,8 @@ customer:
   style: Friendly and a little pushy.
 expect:
   must_not_call: [reschedule_appointment, cancel_appointment]
+  # The number isn't verified, so nothing may suggest it's registered.
+  must_not_say: [on file]
   appointments:
     - patient: Carlos Rivera
       service: checkup

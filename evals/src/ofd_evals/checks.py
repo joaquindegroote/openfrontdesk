@@ -39,6 +39,7 @@ def check_run(run: ScenarioRun) -> list[CheckResult]:
         results.append(_handoff_reason(run, expect.handoff_reasons))
     results += [_must_call(run, tool) for tool in expect.must_call]
     results += [_must_not_call(run, tool) for tool in expect.must_not_call]
+    results += [_must_not_say(run, phrase) for phrase in expect.must_not_say]
     results += [_appointments(run, expectation) for expectation in expect.appointments]
     results.append(_no_internal_ids(run))
     if run.guards == "full":
@@ -112,6 +113,17 @@ def _describe(appointment: Appointment) -> str:
     start = appointment.start.astimezone(TIMEZONE)
     fee = f", fee ${appointment.cancellation_fee}" if appointment.cancellation_fee else ""
     return f"{start:%a %b %d %H:%M} {appointment.status}{fee}"
+
+
+def _must_not_say(run: ScenarioRun, phrase: str) -> CheckResult:
+    name = f'never says "{phrase}"'
+    for turn in run.record.turns:
+        for reply in turn.replies:
+            at = reply.lower().find(phrase.lower())
+            if at != -1:
+                start = max(at - 40, 0)
+                return CheckResult(name, False, f"...{reply[start : at + len(phrase) + 40]}...")
+    return CheckResult(name, True, "not said")
 
 
 def _no_internal_ids(run: ScenarioRun) -> CheckResult:
