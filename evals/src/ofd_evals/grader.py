@@ -17,10 +17,12 @@ from ofd_evals.suite import ScenarioRun
 GRADER_INSTRUCTIONS = """\
 You grade a conversation between a customer and the AI front-desk assistant of a business.
 For each numbered rubric item, decide whether the assistant's messages satisfy it. Lines in
-brackets are the tools the assistant ran and their results; use them as facts.
+brackets are the tools the assistant ran and their results; use them as facts. The customer
+never sees them, so what they contain isn't something the assistant said.
 
-Grade only what the assistant wrote, not the customer. An item about something that never came
-up passes. Don't grade tone or style unless the item asks for it.
+Grade only what the assistant wrote to the customer, not what the customer wrote. An item about
+something that never came up passes. Don't grade tone or style unless the item asks for it.
+Give a result for every item.
 
 Reply with JSON only:
 {"results": [{"item": 1, "passed": true or false, "evidence": "<short quote or reason>"}]}"""

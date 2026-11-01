@@ -47,6 +47,9 @@ class Expectations(_Strict):
     handoff_reasons: list[str] = []
     must_call: list[str] = []
     must_not_call: list[str] = []
+    # Phrases no reply may contain (any case), for wording that gives something away without
+    # sharing any details, like calling someone "another patient".
+    must_not_say: list[str] = []
     appointments: list[AppointmentExpectation] = []
     # Statements about the assistant's replies that must hold, graded by an LLM.
     rubric: list[str] = []
