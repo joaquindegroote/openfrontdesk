@@ -38,4 +38,6 @@ class Settings(BaseSettings):
     integration_key: SecretStr | None = None
 
     otlp_endpoint: str | None = None
+    # Off keeps what customers wrote, and the tool data about them, out of the traces.
+    trace_content: bool = True
     cors_origins: list[str] = ["http://localhost:3000"]
