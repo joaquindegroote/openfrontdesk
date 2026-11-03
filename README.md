@@ -30,7 +30,8 @@ hanging when the booking system goes down. openfrontdesk is built around those f
   real systems plug in the same way.
 - **Observable.** Each turn records its tool calls, guardrail decisions, latency and tokens,
   and exports OpenTelemetry traces that [Arize Phoenix](https://github.com/Arize-ai/phoenix)
-  renders as agent, LLM, tool and guardrail spans.
+  renders as agent, LLM, tool and guardrail spans. `OFD_TRACE_CONTENT=false` keeps what
+  customers wrote, and the tool data about them, out of the traces.
 
 ## How it fits together
 

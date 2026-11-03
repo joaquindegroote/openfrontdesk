@@ -27,7 +27,15 @@ from openfrontdesk.guardrails import ProposedAction, evaluate
 from openfrontdesk.ids import new_id
 from openfrontdesk.llm import ToolCall
 from openfrontdesk.llm.base import INVALID_JSON_KEY
-from openfrontdesk.observability import INPUT, OUTPUT, SESSION_ID, SPAN_KIND, TOOL_NAME, tracer
+from openfrontdesk.observability import (
+    INPUT,
+    OUTPUT,
+    SESSION_ID,
+    SPAN_KIND,
+    TOOL_NAME,
+    set_content,
+    tracer,
+)
 from openfrontdesk.tools import Tool, ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -54,11 +62,11 @@ class ToolExecutor:
             span.set_attribute(SPAN_KIND, "TOOL")
             span.set_attribute(TOOL_NAME, call.name)
             span.set_attribute(SESSION_ID, ctx.conversation_id)
-            span.set_attribute(INPUT, json.dumps(call.arguments, default=str))
+            set_content(span, INPUT, json.dumps(call.arguments, default=str))
             event, handoff = await self._execute(call, ctx)
             event.duration_ms = round((time.perf_counter() - started) * 1000)
             span.set_attribute("tool.status", event.status)
-            span.set_attribute(OUTPUT, json.dumps(event.result, default=str))
+            set_content(span, OUTPUT, json.dumps(event.result, default=str))
         return event, handoff
 
     async def _execute(

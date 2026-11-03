@@ -52,7 +52,7 @@ def create_app(
     """Build the app. Tests inject fakes for the LLMs, the booking backend and the clock."""
     settings = settings or Settings()
     business = BusinessProfile.load(settings.business_profile)
-    configure_tracing(settings.otlp_endpoint)
+    configure_tracing(settings.otlp_endpoint, content=settings.trace_content)
     if settings.integration_key is None:
         logger.warning("no integration key: any client can open a verified-channel conversation")
 

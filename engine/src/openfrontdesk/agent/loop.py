@@ -21,6 +21,7 @@ from openfrontdesk.observability import (
     PROMPT_TOKENS,
     SESSION_ID,
     SPAN_KIND,
+    set_content,
     tracer,
 )
 from openfrontdesk.tools import ToolRegistry
@@ -79,7 +80,7 @@ class Agent:
         with tracer.start_as_current_span("agent turn") as span:
             span.set_attribute(SPAN_KIND, "AGENT")
             span.set_attribute(SESSION_ID, ctx.conversation_id)
-            span.set_attribute(INPUT, user_message.content or "")
+            set_content(span, INPUT, user_message.content or "")
 
             for step in range(1, self.max_steps + 1):
                 turn.steps = step
@@ -98,7 +99,7 @@ class Agent:
                     ).strip() or "Sorry, could you say that again?"
                     self._append(assistant, messages, turn, ctx)
                     turn.reply = assistant.content
-                    span.set_attribute(OUTPUT, turn.reply)
+                    set_content(span, OUTPUT, turn.reply)
                     return turn
 
                 self._append(assistant, messages, turn, ctx)
@@ -150,7 +151,7 @@ class Agent:
         reply = ctx.business.handoff_reply(turn.handoff.reason, HANDOFF_REPLY)
         self._append(ChatMessage.assistant(reply), messages, turn, ctx)
         turn.reply = reply
-        span.set_attribute(OUTPUT, reply)
+        set_content(span, OUTPUT, reply)
         return turn
 
     async def _complete(
@@ -160,12 +161,12 @@ class Agent:
             span.set_attribute(SPAN_KIND, "LLM")
             span.set_attribute(SESSION_ID, conversation_id)
             span.set_attribute(MODEL, self.llm.model)
-            span.set_attribute(INPUT, messages[-1].content or "")
+            set_content(span, INPUT, messages[-1].content or "")
             completion = await self.llm.complete(messages, tools=tools)
             span.set_attribute(PROMPT_TOKENS, completion.usage.input_tokens)
             span.set_attribute(COMPLETION_TOKENS, completion.usage.output_tokens)
-            span.set_attribute(
-                OUTPUT, completion.text or ", ".join(c.name for c in completion.tool_calls)
+            set_content(
+                span, OUTPUT, completion.text or ", ".join(c.name for c in completion.tool_calls)
             )
             return completion
 
