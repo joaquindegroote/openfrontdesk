@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import time
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -66,8 +67,9 @@ class ConversationService:
         self.backend = backend
         self.clock = clock or (lambda: datetime.now(business.tz))
         self.turn_timeout_s = turn_timeout_s
-        # Serializes turns per conversation within this process.
-        self._locks: dict[str, asyncio.Lock] = {}
+        # Serializes turns per conversation within this process. A lock lives only while a
+        # turn holds or awaits it, so conversations that went quiet don't pile up in memory.
+        self._locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
         self._services: tuple[float, list[Service]] | None = None
 
     async def start(

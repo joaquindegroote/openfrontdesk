@@ -2,6 +2,7 @@
 different conversations run side by side."""
 
 import asyncio
+import gc
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
@@ -96,3 +97,11 @@ async def test_different_conversations_run_side_by_side() -> None:
         )
 
     assert llm.most_at_once == 2
+
+
+async def test_finished_conversations_leave_no_lock_behind() -> None:
+    async with service_on(SlowLLM()) as service:
+        conversations = [await start(service) for _ in range(3)]
+        await asyncio.gather(*(service.handle_customer_message(c, "Hi") for c in conversations))
+        gc.collect()
+        assert len(service._locks) == 0
