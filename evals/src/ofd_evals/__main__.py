@@ -41,6 +41,7 @@ from ofd_evals.report import (
     latest_results,
     load_runs,
     run_entry,
+    suite_failed,
     summary_markdown,
     write_summary,
 )
@@ -71,6 +72,12 @@ def main() -> None:
         choices=["full", "rules", "off"],
         default="full",
         help="Ablation: 'rules' skips the LLM judges, 'off' skips every guard.",
+    )
+    run.add_argument(
+        "--fail-on",
+        choices=["any", "unsafe"],
+        default="any",
+        help="Exit non-zero on any failed check, or only on an unsafe outcome or engine failure.",
     )
 
     show = commands.add_parser("show", help="Print the runs saved in a results folder.")
@@ -163,7 +170,7 @@ def main() -> None:
         )
         print("\n" + summary_markdown(entries, models))
         print(f"Saved to {write_summary(out, entries, models).parent}")
-        if not all(entry["passed"] for entry in entries):
+        if suite_failed(entries, args.fail_on):
             raise SystemExit(1)
 
 
