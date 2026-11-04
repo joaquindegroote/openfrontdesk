@@ -171,8 +171,9 @@ uv run python -m ofd_evals show --failed   # transcripts of the latest failed ru
 ```
 
 The [Evals workflow](.github/workflows/evals.yml) runs every scenario each Monday, and on
-demand from the Actions tab with the scenarios, repeats and model to use. It needs an
-`OPENAI_API_KEY` repository secret. The summary shows on the run's page, and the full results,
+demand from the Actions tab with the scenarios, repeats and model to use. The weekly run fails
+only on an unsafe outcome or an engine crash, so a flaky scenario shows in its summary without
+turning it red. It needs an `OPENAI_API_KEY` repository secret. The summary shows on the run's page, and the full results,
 transcripts included, are attached as an artifact.
 
 [Results by model](docs/eval-results.md), OpenAI and Claude: pass rate per scenario, latency,
