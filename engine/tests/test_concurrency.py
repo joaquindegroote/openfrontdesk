@@ -5,6 +5,7 @@ import asyncio
 import gc
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
 from clinic_api.chaos import ChaosConfig
@@ -45,7 +46,7 @@ class SlowLLM:
 
 
 @asynccontextmanager
-async def service_on(llm: SlowLLM) -> AsyncIterator[ConversationService]:
+async def service_on(llm: SlowLLM, folder: Path) -> AsyncIterator[ConversationService]:
     clinic = create_clinic_app(
         FixedClock(NOW), chaos=ChaosConfig(), filler=False, verification_code=VERIFICATION_CODE
     )
@@ -53,7 +54,9 @@ async def service_on(llm: SlowLLM) -> AsyncIterator[ConversationService]:
     async with httpx.AsyncClient(transport=transport, base_url="http://clinic") as http:
         settings = Settings(
             _env_file=None,  # type: ignore[call-arg]
-            database_url="sqlite+aiosqlite:///:memory:",
+            # A file, as a real deployment has: an in-memory database is one shared
+            # connection, which can't run two conversations' transactions at once.
+            database_url=f"sqlite+aiosqlite:///{(folder / 'engine.db').as_posix()}",
             business_profile=PROFILE,
         )
         async with open_conversation_service(
@@ -71,9 +74,9 @@ async def start(service: ConversationService) -> str:
     return conversation.id
 
 
-async def test_two_messages_at_once_take_turns() -> None:
+async def test_two_messages_at_once_take_turns(tmp_path: Path) -> None:
     llm = SlowLLM()
-    async with service_on(llm) as service:
+    async with service_on(llm, tmp_path) as service:
         conversation = await start(service)
         await asyncio.gather(
             service.handle_customer_message(conversation, "Hi, I'd like a cleaning."),
@@ -87,9 +90,9 @@ async def test_two_messages_at_once_take_turns() -> None:
     assert second == ["Hi, I'd like a cleaning.", "Next week if possible."]
 
 
-async def test_different_conversations_run_side_by_side() -> None:
+async def test_different_conversations_run_side_by_side(tmp_path: Path) -> None:
     llm = SlowLLM()
-    async with service_on(llm) as service:
+    async with service_on(llm, tmp_path) as service:
         one, two = await start(service), await start(service)
         await asyncio.gather(
             service.handle_customer_message(one, "Hi, I'd like a cleaning."),
@@ -99,8 +102,8 @@ async def test_different_conversations_run_side_by_side() -> None:
     assert llm.most_at_once == 2
 
 
-async def test_finished_conversations_leave_no_lock_behind() -> None:
-    async with service_on(SlowLLM()) as service:
+async def test_finished_conversations_leave_no_lock_behind(tmp_path: Path) -> None:
+    async with service_on(SlowLLM(), tmp_path) as service:
         conversations = [await start(service) for _ in range(3)]
         await asyncio.gather(*(service.handle_customer_message(c, "Hi") for c in conversations))
         gc.collect()

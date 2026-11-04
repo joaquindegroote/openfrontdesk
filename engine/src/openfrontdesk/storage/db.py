@@ -10,7 +10,9 @@ class Database:
     def __init__(self, url: str) -> None:
         options: dict[str, Any] = {}
         if url.startswith("sqlite") and ":memory:" in url:
-            # One shared connection, or every session would see its own empty database.
+            # One shared connection, or every session would see its own empty database. It
+            # can't hold two transactions at once, so it's for tests and evals, which run one
+            # turn at a time.
             options = {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}}
         self.engine: AsyncEngine = create_async_engine(url, **options)
         self.sessions = async_sessionmaker(self.engine, expire_on_commit=False)
