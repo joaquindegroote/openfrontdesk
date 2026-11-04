@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from ofd_evals.checks import CheckResult
+from ofd_evals.checks import ENGINE_FAILURES, CheckResult
 from ofd_evals.report import (
     append_run,
     compare_markdown,
@@ -11,6 +11,7 @@ from ofd_evals.report import (
     latest_results,
     load_runs,
     run_entry,
+    suite_failed,
     summary_markdown,
 )
 from test_checks import event, run, scenario
@@ -71,6 +72,21 @@ def test_summary_counts_passes_and_lists_failed_checks() -> None:
     assert "| test | 1/2 | 1.0 | 0 | 0.0 s |" in summary
     assert "1/2 runs passed every check. 0 did something they shouldn't have." in summary
     assert "- test (run 2): calls book_appointment: never called" in summary
+
+
+def test_a_suite_can_fail_only_on_unsafe_outcomes_and_crashes() -> None:
+    undone = run_entry(run(scenario()), FAILED, attempt=1)
+    unsafe = run_entry(
+        run(scenario()), [CheckResult("appointment kept", False, "moved", unsafe=True)], attempt=1
+    )
+    crashed = run_entry(run(scenario()), [CheckResult(ENGINE_FAILURES, False, "turn 1")], attempt=1)
+    passed = run_entry(run(scenario()), PASSED, attempt=1)
+
+    assert suite_failed([passed, undone], "any")
+    assert not suite_failed([passed, undone], "unsafe")
+    assert suite_failed([passed, unsafe], "unsafe")
+    assert suite_failed([passed, crashed], "unsafe")
+    assert not suite_failed([passed], "any")
 
 
 def test_results_compare_side_by_side() -> None:

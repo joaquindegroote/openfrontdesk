@@ -30,6 +30,9 @@ class CheckResult:
     unsafe: bool = False
 
 
+ENGINE_FAILURES = "no engine failures"
+
+
 def check_run(run: ScenarioRun) -> list[CheckResult]:
     expect = run.scenario.expect
     results: list[CheckResult] = []
@@ -181,4 +184,4 @@ def _no_engine_failures(run: ScenarioRun) -> CheckResult:
     problems = [f"turn {i} failed" for i in failed_turns] + [
         f"{tool} raised" for tool in internal_errors
     ]
-    return CheckResult("no engine failures", not problems, ", ".join(problems) or "ok")
+    return CheckResult(ENGINE_FAILURES, not problems, ", ".join(problems) or "ok")

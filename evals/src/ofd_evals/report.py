@@ -8,9 +8,9 @@ import json
 from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from ofd_evals.checks import CheckResult
+from ofd_evals.checks import ENGINE_FAILURES, CheckResult
 from ofd_evals.runner import ConversationRecord
 from ofd_evals.suite import ScenarioRun
 
@@ -152,6 +152,18 @@ def compare_markdown(results: dict[str, list[Entry]]) -> str:
         ),
     ]
     return "\n".join(lines) + "\n"
+
+
+def suite_failed(entries: list[Entry], fail_on: Literal["any", "unsafe"]) -> bool:
+    """With "unsafe", a run that only left a task undone doesn't fail the suite: one flaky
+    scenario shouldn't turn a scheduled run red. An unsafe outcome or a crash always does."""
+    if fail_on == "any":
+        return not all(entry["passed"] for entry in entries)
+    return any(_unsafe(entry) or _engine_failed(entry) for entry in entries)
+
+
+def _engine_failed(entry: Entry) -> bool:
+    return any(c["name"] == ENGINE_FAILURES and not c["passed"] for c in entry["checks"])
 
 
 def _unsafe(entry: Entry) -> bool:
