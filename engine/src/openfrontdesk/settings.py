@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,9 +22,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("OFD_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
     )
-    # A model named "claude-..." runs on Anthropic; any other on OpenAI.
-    llm_model: str = "gpt-5-mini"
-    judge_model: str = "gpt-5-mini"
+    # A model named "claude-..." runs on Anthropic; any other on OpenAI. Left unset, both are
+    # Claude Haiku 5.5 when there's an Anthropic key, and gpt-5-mini otherwise.
+    llm_model: str = ""
+    judge_model: str = ""
     # For reasoning models (gpt-5 family). Lower is faster; unset it for models without it.
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = "low"
     judge_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = "low"
@@ -41,3 +42,12 @@ class Settings(BaseSettings):
     # Off keeps what customers wrote, and the tool data about them, out of the traces.
     trace_content: bool = True
     cors_origins: list[str] = ["http://localhost:3000"]
+
+    @model_validator(mode="after")
+    def _default_models(self) -> Self:
+        # Haiku was the fastest assistant measured and matched every label as a judge, at the
+        # lowest price (docs/eval-results.md). gpt-5-mini keeps an OpenAI-only setup working.
+        default = "claude-haiku-5-5" if self.anthropic_api_key else "gpt-5-mini"
+        self.llm_model = self.llm_model or default
+        self.judge_model = self.judge_model or default
+        return self
