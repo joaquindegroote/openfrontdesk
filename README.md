@@ -65,10 +65,11 @@ More detail in [docs/architecture.md](docs/architecture.md).
 
 ## Quickstart
 
-You need Docker and an OpenAI API key, or an Anthropic one to run the assistant on Claude.
+You need Docker and an API key. With an Anthropic key, the assistant and its judges run on
+Claude Haiku 5.5, the fastest model measured; with only an OpenAI key, on gpt-5-mini.
 
 ```bash
-cp .env.example .env   # then set OPENAI_API_KEY
+cp .env.example .env   # then set ANTHROPIC_API_KEY or OPENAI_API_KEY
 docker compose up --build
 ```
 
@@ -173,7 +174,9 @@ uv run python -m ofd_evals show --failed   # transcripts of the latest failed ru
 The [Evals workflow](.github/workflows/evals.yml) runs every scenario each Monday, and on
 demand from the Actions tab with the scenarios, repeats and model to use. The weekly run fails
 only on an unsafe outcome or an engine crash, so a flaky scenario shows in its summary without
-turning it red. It needs an `OPENAI_API_KEY` repository secret. The summary shows on the run's page, and the full results,
+turning it red. It needs an `OPENAI_API_KEY` repository secret for the simulated customer and
+the grader; with `ANTHROPIC_API_KEY` too, the assistant runs on Claude Haiku, as it does by
+default. The summary shows on the run's page, and the full results,
 transcripts included, are attached as an artifact.
 
 [Results by model](docs/eval-results.md), OpenAI and Claude: pass rate per scenario, latency,
