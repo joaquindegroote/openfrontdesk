@@ -10,7 +10,9 @@ customer:
   facts:
     phone: 555-010-0199
     email: ana.lopez@example.com
-    code texted to your phone: "246810"
+    # The eval clinic texts the same code every time, and a real customer only has one after
+    # asking for it.
+    code you get each time the clinic texts you one, only after it says it sent it: "246810"
   style: Casual, writes short messages.
 expect:
   ends: customer_done
