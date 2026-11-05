@@ -14,9 +14,9 @@ on:
         required: false
         default: "1"
       engine_model:
-        description: Model the assistant runs on
+        description: Model the assistant runs on (empty for the engine's default)
         required: false
-        default: gpt-5-mini
+        default: ""
       fail_on:
         description: Fail the run on any failed check, or only on an unsafe outcome or a crash
         required: false
@@ -39,7 +39,8 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       # Needed when engine_model is a Claude model.
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      ENGINE_MODEL: ${{ inputs.engine_model || 'gpt-5-mini' }}
+      # Empty runs what a fresh install runs: Claude Haiku 5.5, since the Anthropic key is set.
+      ENGINE_MODEL: ${{ inputs.engine_model }}
       SCENARIOS: ${{ inputs.scenarios }}
       REPEATS: ${{ inputs.repeats || '1' }}
       # The weekly run has no inputs: one flaky scenario shouldn't turn it red.
@@ -60,7 +61,9 @@ jobs:
         run: |
           args=()
           for id in $SCENARIOS; do args+=(-s "$id"); done
-          uv run python -m ofd_evals --engine-model "$ENGINE_MODEL" \
+          model=()
+          if [ -n "$ENGINE_MODEL" ]; then model=(--engine-model "$ENGINE_MODEL"); fi
+          uv run python -m ofd_evals "${model[@]}" \
             run -q -n "$REPEATS" --fail-on "$FAIL_ON" "${args[@]}" --out evals/results/ci
       - name: Summary
         if: always()
