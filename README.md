@@ -33,6 +33,23 @@ hanging when the booking system goes down. openfrontdesk is built around those f
   renders as agent, LLM, tool and guardrail spans. `OFD_TRACE_CONTENT=false` keeps what
   customers wrote, and the tool data about them, out of the traces.
 
+## What the evals measured
+
+Every number here comes from simulated customers talking to the real engine, on real models.
+The details are in [docs/eval-results.md](docs/eval-results.md).
+
+- **An impostor gets nothing.** A web visitor typing another patient's number saw and moved his
+  appointment in 3 of 3 runs before identity checks were tied to the channel, and in none of 13
+  after.
+- **The guardrails catch what a weaker model lets through.** With every guard removed,
+  gpt-5-nano charged a late fee the customer was disputing in 2 of 24 runs. With all of them on,
+  in none. On gpt-5-mini they fired once in 24 runs.
+- **The judges have their own test set.** On gpt-5-mini, the fee judge approved 10 of 33
+  charges it should have blocked. Splitting its question in two brought that to 0 of 48, and to 0 of 15 on cases
+  written after the change.
+- **Claude Haiku 5.5 runs by default.** It passes as many scenarios as gpt-5-mini (22 of 24) at
+  2.5 s per turn instead of 6.1 s.
+
 ## How it fits together
 
 ```mermaid
