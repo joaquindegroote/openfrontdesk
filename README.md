@@ -12,10 +12,10 @@ AI receptionists are easy to demo and hard to trust. In production they double-b
 timeout, cancel without mentioning the late fee, invent availability, and leave customers
 hanging when the booking system goes down. openfrontdesk is built around those failure modes:
 
-- **Propose, verify, execute.** Every write the model proposes (book, cancel, reschedule) goes
-  through deterministic rules first and then an LLM judge that checks the customer explicitly
-  agreed to *that exact* action. Unverified actions never reach the booking system, and the
-  model is told why so it can ask for confirmation instead of retrying.
+- **Propose, verify, execute.** Every booking change the model proposes (book, cancel,
+  reschedule) goes through deterministic rules first and then an LLM judge that checks the
+  customer explicitly agreed to *that exact* action. Unverified actions never reach the booking
+  system, and the model is told why so it can ask for confirmation instead of retrying.
 - **Verified identity.** A phone number counts only when the channel proves it (WhatsApp, SMS,
   a call) or the customer reads back a code texted to it. A web visitor who types someone
   else's number gets nothing about that person.
@@ -45,8 +45,8 @@ The details are in [docs/eval-results.md](docs/eval-results.md).
   gpt-5-nano charged a late fee the customer was disputing in 2 of 24 runs. With all of them on,
   in none. On gpt-5-mini they fired once in 24 runs.
 - **The judges have their own test set.** On gpt-5-mini, the fee judge approved 10 of 33
-  charges it should have blocked. Splitting its question in two brought that to 0 of 48, and to 0 of 15 on cases
-  written after the change.
+  charges it should have blocked. Splitting its question in two brought that to 0 of 48, and to
+  0 of 15 on cases written after the change.
 - **Claude Haiku 5.5 runs by default.** It passes as many scenarios as gpt-5-mini (22 of 24) at
   2.5 s per turn instead of 6.1 s.
 
@@ -209,6 +209,25 @@ on any model, to count [false approvals and false blocks](docs/eval-results.md#t
 ```bash
 uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
 ```
+
+## Limitations
+
+- **The booking system is a mock.** Adapters for real ones are on the roadmap. One without
+  idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
+- **Codes aren't really texted.** The mock clinic accepts a fixed code; a deployment needs an SMS
+  provider behind the same endpoint.
+- **The staff endpoints have no authentication.** Listing conversations, taking one over,
+  replying and handing it back are open to anyone who can reach the engine. Put them behind your
+  own auth before exposing it.
+- **Registering a customer isn't judged.** It needs a verified phone, but not the customer's
+  explicit yes, since it only creates a record.
+- **One engine process.** Turns are serialized per conversation within a process; see
+  [what holds when things happen at once](docs/architecture.md#concurrency).
+- **English and one business.** The Spanish profile is on the roadmap.
+- **Small samples.** Two or three runs per scenario, and part of the grading is an LLM's. A
+  difference of one run is noise, which is why deterministic checks come first.
+- **Softer hints remain.** "Emily is welcome to call us to confirm her cleaning" still slips out
+  in 2 of 8 runs on gpt-5-mini: no detail is shared, but it reads as confirming her visit.
 
 ## Roadmap
 
