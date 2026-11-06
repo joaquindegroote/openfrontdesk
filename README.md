@@ -207,6 +207,7 @@ uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
 - [ADR 0001: The agent talks to a BookingBackend, not to a specific system](docs/adr/0001-booking-backend-interface.md)
 - [ADR 0002: Propose, verify, execute](docs/adr/0002-propose-verify-execute.md)
 - [ADR 0003: Idempotency keys derived from the conversation](docs/adr/0003-idempotency-keys.md)
+- [ADR 0004: Our own agent loop, not a framework (yet)](docs/adr/0004-own-agent-loop.md)
 
 ## License
 
