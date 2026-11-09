@@ -33,7 +33,7 @@ async def test_each_item_becomes_a_check() -> None:
     assert f"1. {NO_PROMISES}\n2. {NO_ADVICE}" in prompt
     assert "Customer: Book me in" in prompt
     assert "[book_appointment {} -> ok]" in prompt
-    assert "Assistant: You're booked for Tue Nov 3 at 9:00 AM." in prompt
+    assert "Assistant: Sure, which day works for you?" in prompt
 
 
 async def test_no_rubric_means_no_grader_call() -> None:
