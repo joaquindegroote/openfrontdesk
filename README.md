@@ -53,6 +53,18 @@ The details are in [docs/eval-results.md](docs/eval-results.md).
 - **Claude Haiku 5.5 runs by default.** It passes as many scenarios as gpt-5-mini (22 of 24) at
   2.5 s per turn instead of 6.1 s.
 
+## Why I built this
+
+I work on conversational agents in production. The model rarely failed at what to say. It
+failed at what it said had happened: "you're all set" with no tool call behind it, "I've noted
+that" when nothing was saved, a yes read into a message that wasn't one. Each time, the first
+fix was a stronger prompt, and each time the problem came back with the next prompt or model
+change. What worked was taking the decision out of the text and putting it in code.
+
+That work isn't public. This repo applies the same lessons to a different domain, a fictional
+dental clinic, where they're built in from the start instead of added after an incident, and
+where anyone can rerun the measurements.
+
 ## How it fits together
 
 ```mermaid
