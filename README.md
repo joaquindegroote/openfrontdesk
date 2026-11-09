@@ -47,6 +47,9 @@ The details are in [docs/eval-results.md](docs/eval-results.md).
 - **The judges have their own test set.** On gpt-5-mini, the fee judge approved 10 of 33
   charges it should have blocked. Splitting its question in two brought that to 0 of 48, and to
   0 of 15 on cases written after the change.
+- **"You're booked" always had a booking behind it.** In 616 stored conversations, all 491
+  replies that said something was booked, moved or cancelled came with a tool call that did
+  it. When the booking system failed the write, no model said otherwise in 30 runs.
 - **Claude Haiku 5.5 runs by default.** It passes as many scenarios as gpt-5-mini (22 of 24) at
   2.5 s per turn instead of 6.1 s.
 
@@ -170,8 +173,9 @@ Every run is checked automatically, and the command exits non-zero if anything f
 
 - **The scenario's expectations**: how it ended, which tools ran, phrases no reply may
   contain, and the clinic's real appointments (status, day, time of day, fees).
-- **Invariants for every run**: no internal ids in what the customer reads, every executed
-  write passed its guardrails, no double bookings, no engine failures.
+- **Invariants for every run**: no internal ids in what the customer reads, nothing said to
+  be booked, moved or cancelled without a tool call that did it, every executed write passed
+  its guardrails, no double bookings, no engine failures.
 - **Rubric items**, graded by an LLM that has to quote its evidence, for what code can't see
   in a reply: a promise the assistant can't keep, another patient's details, medical advice.
 
