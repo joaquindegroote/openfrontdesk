@@ -181,6 +181,21 @@ def test_chaos_can_be_forced_per_request() -> None:
     assert client.get("/healthz", headers={"X-Chaos-Fail": "1"}).status_code == 200
 
 
+def test_chaos_can_take_down_the_writes_and_leave_the_reads() -> None:
+    chaos = ChaosConfig(down=("POST /appointments",))
+    client = TestClient(create_app(FixedClock(NOW), chaos=chaos, filler=False))
+    booking = {
+        "patient_id": "pat_0003",
+        "service_id": "checkup",
+        "start": "2026-11-03T09:00:00-05:00",
+    }
+
+    assert client.get("/services").status_code == 200
+    assert client.post("/appointments", json=booking).status_code == 503
+    assert client.post("/appointments/apt_0001/cancel", json={}).status_code == 503
+    assert client.get("/patients/pat_0003/appointments").json() == []
+
+
 def test_seeded_calendar_is_busy_but_bookable() -> None:
     client = TestClient(create_app(FixedClock(NOW)))
     slots = client.get(

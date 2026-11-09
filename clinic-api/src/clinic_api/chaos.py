@@ -17,10 +17,13 @@ class ChaosConfig:
     error_rate: float = 0.0
     latency_ms: int = 0
     seed: int | None = None
+    # Requests that always fail, as "METHOD /path" prefixes. ("POST /appointments",) takes down
+    # every booking write and leaves the reads working.
+    down: tuple[str, ...] = ()
 
 
 class ChaosMiddleware(BaseHTTPMiddleware):
-    """Adds latency and random 503s. Send `X-Chaos-Fail: 1` to force a failure."""
+    """Adds latency, random 503s and outages. Send `X-Chaos-Fail: 1` to force a failure."""
 
     def __init__(self, app: ASGIApp, config: ChaosConfig) -> None:
         super().__init__(app)
@@ -32,7 +35,9 @@ class ChaosMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if self.config.latency_ms:
             await asyncio.sleep(self.config.latency_ms / 1000)
-        forced = request.headers.get("x-chaos-fail") == "1"
+        forced = request.headers.get("x-chaos-fail") == "1" or (
+            f"{request.method} {request.url.path}".startswith(self.config.down)
+        )
         if forced or self._rng.random() < self.config.error_rate:
             return JSONResponse(
                 status_code=503,

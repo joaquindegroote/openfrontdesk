@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from clinic_api.chaos import ChaosConfig
 from clinic_api.models import Appointment
 from openfrontdesk.agent.executor import GuardMode
 from openfrontdesk.llm import LLMClient
@@ -35,7 +36,12 @@ async def run_scenario(
     guards: GuardMode = "full",
 ) -> ScenarioRun:
     async with eval_environment(
-        settings, llm=llm, judge_llm=judge_llm, now=scenario.now, guards=guards
+        settings,
+        llm=llm,
+        judge_llm=judge_llm,
+        now=scenario.now,
+        chaos=ChaosConfig(down=tuple(scenario.clinic_down)),
+        guards=guards,
     ) as env:
         initial = list(env.store.appointments.values())
         customer = SimulatedCustomer(customer_llm, scenario.customer)
