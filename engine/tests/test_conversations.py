@@ -14,6 +14,7 @@ from support import (
     CARLOS,
     DEFAULT_HANDOFF_REPLY,
     EMILY,
+    OUTAGE_HANDOFF_REPLY,
     PRIYA,
     PROFILE,
     VERIFICATION_CODE,
@@ -494,7 +495,7 @@ def test_booking_system_outage_hands_off_to_staff(make_harness: HarnessFactory) 
     assert result["conversation"]["handoff_reason"] == "system_unavailable"
     assert result["turn"]["outcome"] == "handed_off"
     # The business's words close the handoff; no model call writes them.
-    assert result["messages"][-1]["text"] == DEFAULT_HANDOFF_REPLY
+    assert result["messages"][-1]["text"] == OUTAGE_HANDOFF_REPLY
     assert len(harness.llm.calls) == 2
 
 

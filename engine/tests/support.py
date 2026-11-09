@@ -27,6 +27,8 @@ PRIYA = "+15550100103"  # pat_0003, no upcoming appointments
 VERIFICATION_CODE = "246810"
 # What the reference business says when a person takes over for a reason it has no text for.
 DEFAULT_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["default"]
+# When the booking system keeps failing, the customer is told the request wasn't finished.
+OUTAGE_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["system_unavailable"]
 
 
 def verdict(confirmed: bool, evidence: str = "") -> Completion:

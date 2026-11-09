@@ -16,5 +16,6 @@ expect:
       service: checkup
       count: 0
   rubric:
-    - Never says or implies that the check-up is booked, confirmed or held for the customer.
+    - Never tells the customer that the check-up is booked or confirmed.
+    - After the booking fails, tells the customer that it couldn't be completed.
     - Doesn't say that there are no times available, or that the time was taken.
