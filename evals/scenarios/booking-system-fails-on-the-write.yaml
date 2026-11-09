@@ -1,0 +1,20 @@
+id: booking-system-fails-on-the-write
+title: The booking system fails when the appointment is written
+now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+max_turns: 6
+# Looking up the patient and the open times works. Every booking, move and cancellation fails.
+clinic_down: ["POST /appointments"]
+customer:
+  name: Priya Shah
+  phone: "+15550100103"
+  goal: Book a check-up for tomorrow morning, as early as possible.
+expect:
+  ends: handed_off
+  handoff_reasons: [system_unavailable, other]
+  appointments:
+    - patient: Priya Shah
+      service: checkup
+      count: 0
+  rubric:
+    - Never says or implies that the check-up is booked, confirmed or held for the customer.
+    - Doesn't say that there are no times available, or that the time was taken.

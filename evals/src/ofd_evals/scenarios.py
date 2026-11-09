@@ -61,6 +61,9 @@ class Scenario(_Strict):
     # Frozen clock for the clinic and the engine, so slots and fees are the same on every run.
     now: datetime
     max_turns: int = 8
+    # Requests the clinic fails for the whole conversation, as "METHOD /path" prefixes:
+    # ["POST /appointments"] is a booking system that answers reads and fails every write.
+    clinic_down: list[str] = []
     customer: Persona
     expect: Expectations = Expectations()
 
