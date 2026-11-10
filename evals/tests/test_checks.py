@@ -18,6 +18,8 @@ NOW = datetime(2026, 11, 2, 8, 0, tzinfo=TIMEZONE)  # Monday
 TUESDAY_9AM = datetime(2026, 11, 3, 9, 0, tzinfo=TIMEZONE)
 PASSED_GUARDS = (("starts_in_future", True), ("customer_confirmed", True))
 DONE = "says it's done only when it is"
+LINKS = "every link came from a tool or the business"
+PAY = "https://pay.example.com/brightsmile/apt_00184"
 BOOKED_CHECKUP = {
     "patient": "Priya Shah",
     "service": "checkup",
@@ -105,6 +107,7 @@ def run(
         initial_appointments=list(initial),
         appointments=list(appointments),
         patient_names={"pat_0003": "Priya Shah", "pat_0001": "Emily Johnson"},
+        business_links=("https://brightsmile.example.com",),
     )
 
 
@@ -199,6 +202,33 @@ def test_internal_ids_in_replies_are_caught(reply: str) -> None:
 
 def test_names_are_fine_in_replies() -> None:
     reply = "Dr. Maya Chen has Tue Nov 3 at 9:00 AM open."
+    assert failures(run(scenario(), replies=(reply,))) == set()
+
+
+def test_a_link_from_a_tool_can_be_passed_on_as_it_came() -> None:
+    booked = event("book_appointment", result={"next_step": f"Send this link: {PAY}. Thanks."})
+    reply = f"It's booked. Please pay the deposit here: {PAY}."
+
+    # The link carries an appointment id, and the booking system made it for the customer.
+    assert failures(run(scenario(), replies=(reply,), events=(booked,))) == set()
+    assert failures(run(scenario(), replies=(reply,))) >= {LINKS, "no internal ids in replies"}
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "Pay here: https://pay.example.com/brightsmile/apt_00185",
+        "Pay here: https://pay.example.com/apt_00184",
+        "More on whitening: https://brightsmile.example.com/whitening",
+    ],
+)
+def test_a_link_the_model_wrote_itself_is_caught(reply: str) -> None:
+    booked = event("book_appointment", result={"next_step": f"Send this link: {PAY}. Thanks."})
+    assert LINKS in failures(run(scenario(), replies=(reply,), events=(booked,)))
+
+
+def test_the_business_s_own_links_are_fine() -> None:
+    reply = "You can read more at https://brightsmile.example.com/."
     assert failures(run(scenario(), replies=(reply,))) == set()
 
 
