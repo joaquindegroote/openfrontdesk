@@ -205,6 +205,13 @@ each on Claude Haiku 5.5, `gpt-5-mini` and `gpt-5-nano`, before and after the fi
   front-desk team", with no word on whether the check-up was booked. That handoff now starts
   with "Our booking system isn't responding right now, so I couldn't finish this."
 
+The same outage one step earlier, on November 10: the booking system can't list its open times
+(`open-times-cant-be-listed`). An assistant that reads that error as an empty list tells the
+customer the day is full, and the customer books somewhere else. Here a failed search comes back
+as an error, never as zero times, and after two failed steps the engine hands off. In 15 runs,
+five per model, none said there were no times, none named a time, and all told the customer the
+request wasn't finished.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
