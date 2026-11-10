@@ -68,7 +68,7 @@ Policies:
 
 Services, live from the booking system (use the ids with your tools):
 {% for service in services %}
-- {{ service.name }} (id {{ service.id }}): {{ service.duration_minutes }} min, ${{ service.price }}{% if service.deposit %}, ${{ service.deposit }} deposit{% else %}, no deposit{% endif %}. {{ service.description }}
+- {{ service.name }} (service_id "{{ service.id }}"): {{ service.duration_minutes }} min, ${{ service.price }}{% if service.deposit %}, ${{ service.deposit }} deposit{% else %}, no deposit{% endif %}. {{ service.description }}
 {% endfor %}
 {% endif %}
 {% if business.faq %}
