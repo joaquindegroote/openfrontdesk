@@ -212,6 +212,31 @@ as an error, never as zero times, and after two failed steps the engine hands of
 five per model, none said there were no times, none named a time, and all told the customer the
 request wasn't finished.
 
+## The first booking with a deposit
+
+Whitening is the one service with a deposit: the booking comes back as held, with a link to
+pay $100. No scenario had booked it until November 10, 2026. The first 12 runs, four each on
+Claude Haiku 5.5, `gpt-5-mini` and `gpt-5-nano`, all failed, and for three different reasons:
+
+| what went wrong | before | after |
+|---|---|---|
+| the check for internal ids failed on the payment link | 12/12 | 0/30 |
+| the search used a service id that doesn't exist, "id whitening" | 5/12 | 0/30 |
+| `gpt-5-mini` said it can't send payment links, and sent the customer to the front desk | 3/4 | 0/6 |
+
+- **The first one was the check's mistake.** The link ends in the appointment id, and the
+  booking system made it for the customer to open. A link from a tool result may now be passed
+  on as it came, and a new check on every run fails any link that came from neither a tool
+  nor the business profile. The payment link was sent in 39 runs, always character for
+  character as the tool returned it.
+- **The prompt listed the service as "In-office whitening (id whitening)"**, and `gpt-5-mini`
+  searched for "id whitening" in 4 of 4 runs. It recovered each time by listing the services,
+  at the cost of a step or two. The list now says `service_id "whitening"`.
+- **"You can't send text messages" was read as covering the payment link.** The prompt now says
+  what happens: booking a service with a deposit returns a link, and it goes in the reply.
+
+With the three changes, 18 of 18 runs pass, six per model.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
