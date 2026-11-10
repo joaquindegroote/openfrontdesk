@@ -70,7 +70,8 @@ sequenceDiagram
 
 | Situation | What holds | Test |
 |---|---|---|
-| Two messages in one conversation at once (a double send, a retried webhook) | The turns run one after the other, and the second sees the first. | `engine/tests/test_concurrency.py` |
+| Two messages in one conversation at once (a double send) | The turns run one after the other, and the second sees the first. | `engine/tests/test_concurrency.py` |
+| One message delivered twice by the channel (a retried webhook) | With the channel's `message_id`, the copy gets the first outcome back marked `duplicate`, and no second turn runs. That holds when the copy arrives while the first is still being answered. | `engine/tests/test_redelivery.py` |
 | Messages in different conversations | They don't wait for each other. | `engine/tests/test_concurrency.py` |
 | A write retried after a timeout or a lost response | Same idempotency key, so the booking system returns the original result instead of booking twice. | `test_retried_booking_is_deduplicated_by_the_clinic` |
 | The same key sent with different arguments | Rejected by the booking system (`idempotency_key_reused`). | `test_reusing_an_idempotency_key_for_another_request_is_rejected` |
@@ -81,7 +82,8 @@ The turn lock is per process, and a lock only exists while a turn holds or waits
 Docker image runs a single engine process, which is what that covers. With several workers, two
 of them could run turns of the same conversation at once: the booking system would still
 prevent double bookings and repeated writes, because idempotency keys come from the conversation
-and not the process, but the transcript could interleave. Before scaling out, route each
+and not the process, but the transcript could interleave, and two copies of one message
+arriving at the same moment could both be answered. Before scaling out, route each
 conversation to one worker, or take a Postgres advisory lock per conversation for the length of
 the turn, on its own connection pool so locks can't starve the queries.
 
