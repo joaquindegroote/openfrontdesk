@@ -48,6 +48,9 @@ class TurnOutcome:
     messages: list[MessageRow]
     events: list[ToolEvent] = field(default_factory=list)
     turn: TurnRow | None = None
+    # The channel had delivered this message before. This is what happened the first time,
+    # and nothing ran again.
+    duplicate: bool = False
 
 
 class ConversationService:
@@ -88,20 +91,57 @@ class ConversationService:
             raise ConversationNotFoundError(conversation_id)
         return conversation
 
-    async def handle_customer_message(self, conversation_id: str, text: str) -> TurnOutcome:
+    async def handle_customer_message(
+        self, conversation_id: str, text: str, *, message_id: str | None = None
+    ) -> TurnOutcome:
+        """`message_id` is the channel's own id for the message. Channels deliver twice (a
+        webhook retried after a slow answer), and a message that was already handled gets its
+        first outcome back instead of a second turn."""
         lock = self._locks.setdefault(conversation_id, asyncio.Lock())
         async with lock:
             conversation = await self.get(conversation_id)
+            if message_id is not None:
+                # Under the lock: a copy that arrives while the first is still being answered
+                # waits here, and then finds it.
+                earlier = await self._earlier_outcome(conversation, message_id)
+                if earlier is not None:
+                    return earlier
             if conversation.status != ACTIVE:
                 # Staff own the conversation: store the message for them, the assistant stays out.
-                stored = await self.repo.add_message(conversation_id, role="user", content=text)
+                stored = await self.repo.add_message(
+                    conversation_id,
+                    role="user",
+                    content=text,
+                    data={"message_id": message_id} if message_id else None,
+                )
                 return TurnOutcome(conversation=await self.get(conversation_id), messages=[stored])
             if self.agent is None:
                 raise AssistantNotConfiguredError(
                     "No LLM configured. Set OPENAI_API_KEY, or ANTHROPIC_API_KEY for Claude "
                     "models, and restart the engine."
                 )
-            return await self._run_assistant(conversation, text)
+            return await self._run_assistant(conversation, text, message_id)
+
+    async def _earlier_outcome(
+        self, conversation: ConversationRow, message_id: str
+    ) -> TurnOutcome | None:
+        rows = await self.repo.messages(conversation.id)
+        first = next(
+            (m for m in rows if m.role == "user" and m.data.get("message_id") == message_id), None
+        )
+        if first is None:
+            return None
+        if first.turn_id is None:
+            # It was stored for staff while they had the conversation: no turn ran.
+            return TurnOutcome(conversation=conversation, messages=[first], duplicate=True)
+        turn_id = first.turn_id
+        return TurnOutcome(
+            conversation=conversation,
+            messages=[m for m in rows if m.turn_id == turn_id],
+            events=[e for e in await self.repo.events(conversation.id) if e.turn_id == turn_id],
+            turn=next((t for t in await self.repo.turns(conversation.id) if t.id == turn_id), None),
+            duplicate=True,
+        )
 
     async def staff_reply(self, conversation_id: str, text: str, author: str) -> MessageRow:
         conversation = await self.get(conversation_id)
@@ -125,7 +165,9 @@ class ConversationService:
             conversation_id, status=ACTIVE, handoff_reason=None, handoff_summary=None
         )
 
-    async def _run_assistant(self, conversation: ConversationRow, text: str) -> TurnOutcome:
+    async def _run_assistant(
+        self, conversation: ConversationRow, text: str, message_id: str | None = None
+    ) -> TurnOutcome:
         assert self.agent is not None
         history = [to_chat_message(m) for m in await self.repo.messages(conversation.id)]
         now = self.clock()
@@ -203,7 +245,9 @@ class ConversationService:
             if result.handoff
             else {}
         )
-        messages = await self.repo.save_turn(turn, result.new_messages, result.events, updates)
+        messages = await self.repo.save_turn(
+            turn, result.new_messages, result.events, updates, message_id=message_id
+        )
         return TurnOutcome(
             conversation=await self.get(conversation.id),
             messages=messages,

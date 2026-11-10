@@ -17,6 +17,10 @@ class ConversationCreate(BaseModel):
 
 class CustomerMessageIn(BaseModel):
     text: str = Field(min_length=1, max_length=4000)
+    # The channel's own id for this message (WhatsApp's wamid, an SMS sid). Channels deliver
+    # twice: a message that comes again with the same id gets its first outcome back, marked
+    # `duplicate`, and no second turn runs.
+    message_id: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class StaffMessageIn(BaseModel):
@@ -86,6 +90,9 @@ class CustomerMessageOut(BaseModel):
     messages: list[MessageOut]
     events: list[ToolEvent]
     turn: TurnOut | None
+    # This message_id was handled before. The messages are the ones from the first time, so a
+    # channel must not send them to the customer again.
+    duplicate: bool = False
 
 
 _VISIBLE_ROLES = {"user": "customer", "assistant": "assistant", "staff": "staff"}

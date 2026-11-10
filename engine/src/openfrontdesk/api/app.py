@@ -144,12 +144,15 @@ def _routes(business: BusinessProfile, integration_key: SecretStr | None) -> API
     async def send_customer_message(
         conversation_id: str, body: CustomerMessageIn, service: ServiceDep
     ) -> CustomerMessageOut:
-        outcome = await service.handle_customer_message(conversation_id, body.text)
+        outcome = await service.handle_customer_message(
+            conversation_id, body.text, message_id=body.message_id
+        )
         return CustomerMessageOut(
             conversation=ConversationOut.model_validate(outcome.conversation),
             messages=visible_messages(outcome.messages),
             events=outcome.events,
             turn=TurnOut.model_validate(outcome.turn) if outcome.turn else None,
+            duplicate=outcome.duplicate,
         )
 
     @router.post("/conversations/{conversation_id}/staff-messages", status_code=201)
