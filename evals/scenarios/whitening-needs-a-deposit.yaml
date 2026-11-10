@@ -1,0 +1,23 @@
+id: whitening-needs-a-deposit
+title: A whitening is held with a deposit, paid through the link the booking system gives
+now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+max_turns: 8
+customer:
+  name: Priya Shah
+  phone: "+15550100103"
+  goal: >-
+    Book an in-office whitening for Wednesday November 4, as early in the afternoon as
+    possible. You're fine with paying a deposit online. Once you have the link to pay it,
+    you're done: you'll pay later today.
+expect:
+  ends: customer_done
+  must_call: [book_appointment]
+  appointments:
+    - patient: Priya Shah
+      service: whitening
+      status: pending_deposit
+      day: 2026-11-04
+      starts_after: "12:00"
+  rubric:
+    - Tells the customer about the $100 deposit before booking.
+    - After booking, gives the customer a link to pay the deposit.
