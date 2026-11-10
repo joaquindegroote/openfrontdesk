@@ -235,7 +235,9 @@ Claude Haiku 5.5, `gpt-5-mini` and `gpt-5-nano`, all failed, and for three diffe
 - **"You can't send text messages" was read as covering the payment link.** The prompt now says
   what happens: booking a service with a deposit returns a link, and it goes in the reply.
 
-With the three changes, 18 of 18 runs pass, six per model.
+With the three changes, 18 of 18 runs pass, six per model. Two of the changes are in the
+prompt, so the whole suite ran once more on Claude Haiku 5.5 and on `gpt-5-mini`: 15 of 15
+scenarios passed on each.
 
 ## OpenAI and Claude
 
