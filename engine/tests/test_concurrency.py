@@ -108,3 +108,18 @@ async def test_finished_conversations_leave_no_lock_behind(tmp_path: Path) -> No
         await asyncio.gather(*(service.handle_customer_message(c, "Hi") for c in conversations))
         gc.collect()
         assert len(service._locks) == 0
+
+
+async def test_two_deliveries_of_one_message_at_once_run_one_turn(tmp_path: Path) -> None:
+    llm = SlowLLM()
+    async with service_on(llm, tmp_path) as service:
+        conversation = await start(service)
+        outcomes = await asyncio.gather(
+            service.handle_customer_message(conversation, "Hi", message_id="wamid.1"),
+            service.handle_customer_message(conversation, "Hi", message_id="wamid.1"),
+        )
+
+    # The copy waited for the first to finish, found it, and got its reply.
+    assert len(llm.seen) == 1
+    assert sorted(o.duplicate for o in outcomes) == [False, True]
+    assert [[m.content for m in o.messages] for o in outcomes] == [["Hi", "Got it."]] * 2

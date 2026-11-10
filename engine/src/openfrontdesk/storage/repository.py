@@ -116,10 +116,16 @@ class ConversationRepository:
         messages: list[ChatMessage],
         events: list[ToolEvent],
         conversation_updates: dict[str, Any],
+        *,
+        message_id: str | None = None,
     ) -> list[MessageRow]:
-        """Persist everything a turn produced in one transaction."""
+        """Persist everything a turn produced in one transaction. `message_id` is the channel's
+        id for the customer message that started the turn, kept to recognise a second delivery."""
         now = datetime.now(UTC)
         message_rows = [_message_to_row(turn.conversation_id, turn.id, m, now) for m in messages]
+        customer_message = next((row for row in message_rows if row.role == "user"), None)
+        if message_id is not None and customer_message is not None:
+            customer_message.data = {**customer_message.data, "message_id": message_id}
         async with self.db.sessions.begin() as session:
             session.add(turn)
             session.add_all(message_rows)

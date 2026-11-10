@@ -59,10 +59,11 @@ class Harness:
         assert response.status_code == 201, response.text
         return response.json()["id"]
 
-    def say(self, conversation_id: str, text: str) -> dict[str, Any]:
-        response = self.client.post(
-            f"/v1/conversations/{conversation_id}/messages", json={"text": text}
-        )
+    def say(
+        self, conversation_id: str, text: str, *, message_id: str | None = None
+    ) -> dict[str, Any]:
+        body = {"text": text} | ({"message_id": message_id} if message_id else {})
+        response = self.client.post(f"/v1/conversations/{conversation_id}/messages", json=body)
         assert response.status_code == 200, response.text
         return response.json()
 
