@@ -24,6 +24,8 @@ class ScenarioRun:
     patient_names: dict[str, str]
     # Which guards ran: "full" normally, "rules" or "off" in an ablation.
     guards: GuardMode = "full"
+    # Links the business itself publishes, like its website, which a reply may contain.
+    business_links: tuple[str, ...] = ()
 
 
 async def run_scenario(
@@ -53,4 +55,5 @@ async def run_scenario(
             appointments=list(env.store.appointments.values()),
             patient_names={p.id: p.name for p in env.store.patients.values()},
             guards=guards,
+            business_links=tuple(filter(None, [env.service.business.website])),
         )

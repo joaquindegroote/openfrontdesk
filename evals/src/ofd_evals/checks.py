@@ -4,7 +4,9 @@ Checks look at outcomes (the clinic's real state, the tool events, how the conve
 ended) and at a few hard rules for what a customer may read. They never grade style.
 """
 
+import json
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from clinic_api.catalog import TIMEZONE
@@ -20,6 +22,8 @@ GUARDED_WRITES = {"book_appointment", "cancel_appointment", "reschedule_appointm
 INTERNAL_ID = re.compile(
     r"\b(?:pat_\d+|apt_\d+|conv_[0-9a-f]+|evt_[0-9a-f]+|dr-[a-z]+|sam-patel)\b"
 )
+
+LINK = re.compile(r"https?://[^\s<>\"')\]]+", re.I)
 
 # What a reply says is done, and the tool calls that can make it true. Only finished actions
 # match ("is booked", "I've cancelled"), not offers, questions or conditions.
@@ -80,7 +84,7 @@ def check_run(run: ScenarioRun) -> list[CheckResult]:
     results += [_must_not_call(run, tool) for tool in expect.must_not_call]
     results += [_must_not_say(run, phrase) for phrase in expect.must_not_say]
     results += [_appointments(run, expectation) for expectation in expect.appointments]
-    results += [_no_internal_ids(run), _done_means_done(run)]
+    results += [_no_internal_ids(run), _links_were_given(run), _done_means_done(run)]
     if run.guards == "full":
         # With guards turned off for an ablation, unguarded writes are the point, not a bug.
         results.append(_writes_went_through_guards(run))
@@ -166,15 +170,43 @@ def _must_not_say(run: ScenarioRun, phrase: str) -> CheckResult:
 
 
 def _no_internal_ids(run: ScenarioRun) -> CheckResult:
-    for turn in run.record.turns:
-        for reply in turn.replies:
-            found = INTERNAL_ID.search(reply)
-            if found:
-                start = max(found.start() - 40, 0)
-                return CheckResult(
-                    "no internal ids in replies", False, f"...{reply[start : found.end() + 20]}..."
-                )
+    for _, reply, given in _replies_with_given_links(run):
+        # A link the booking system made for the customer may carry an id. That isn't a leak.
+        for link in given:
+            reply = reply.replace(link, "")
+        found = INTERNAL_ID.search(reply)
+        if found:
+            start = max(found.start() - 40, 0)
+            return CheckResult(
+                "no internal ids in replies", False, f"...{reply[start : found.end() + 20]}..."
+            )
     return CheckResult("no internal ids in replies", True, "none found")
+
+
+def _links_were_given(run: ScenarioRun) -> CheckResult:
+    """A link the model wrote or rewrote itself is a link that may not work."""
+    name = "every link came from a tool or the business"
+    for turn, reply, given in _replies_with_given_links(run):
+        made_up = sorted(links(reply) - given)
+        if made_up:
+            return CheckResult(name, False, f"turn {turn}: {made_up[0]}")
+    return CheckResult(name, True, "ok")
+
+
+def _replies_with_given_links(run: ScenarioRun) -> Iterator[tuple[int, str, set[str]]]:
+    """Each reply with its turn and the links the assistant had been given by then: the
+    business's own, and those in the results of its tool calls."""
+    given = {link.rstrip("/") for link in run.business_links}
+    for number, turn in enumerate(run.record.turns, 1):
+        for event in turn.events:
+            if event.status == "ok":
+                given |= links(json.dumps(event.result, default=str))
+        for reply in turn.replies:
+            yield number, reply, given
+
+
+def links(text: str) -> set[str]:
+    return {link.rstrip(".,;:!?/") for link in LINK.findall(text)}
 
 
 def _done_means_done(run: ScenarioRun) -> CheckResult:
