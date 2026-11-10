@@ -21,7 +21,7 @@ hanging when the booking system goes down. openfrontdesk is built around those f
   else's number gets nothing about that person.
 - **Safe retries.** Writes carry idempotency keys derived from the conversation and the action,
   so a retried booking after a lost response returns the original appointment instead of a
-  second one.
+  second one. A message the channel delivers twice, like a retried webhook, is answered once.
 - **Human handoff as a first-class path.** The assistant hands off on request, on policy
   triggers (urgent symptoms, complaints, billing), when the booking system keeps failing, or when
   it runs out of steps. Staff reply from an inbox and hand the conversation back.
