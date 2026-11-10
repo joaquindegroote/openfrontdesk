@@ -104,7 +104,8 @@ def test_known_customer_and_services_are_preloaded_into_the_prompt(harness: Harn
     assert "This customer is Priya Shah, identified by the phone number" in system_prompt
     assert "Their customer_id for tools is pat_0003." in system_prompt
     assert "They have no upcoming appointments." in system_prompt
-    assert "- In-office whitening (id whitening): 90 min, $350, $100 deposit." in system_prompt
+    whitening = '- In-office whitening (service_id "whitening"): 90 min, $350, $100 deposit.'
+    assert whitening in system_prompt
 
 
 def test_upcoming_appointments_are_preloaded_so_changes_reschedule(harness: Harness) -> None:
