@@ -33,13 +33,25 @@ _DONE = rf"(?:{_IS}|\b(?:i|we)(?:'ve| have)?(?: now| just| already)?)"
 _HAS_APPOINTMENT = frozenset(
     {"book_appointment", "reschedule_appointment", "list_customer_appointments"}
 )
+# What a tool result can show, beyond the call having worked.
+CONFIRMED = "an appointment that is confirmed"
+DEPOSIT_PAID = "an appointment whose deposit is paid"
+_PAID = re.compile(
+    r"\b(?:deposit|payment)\b[^.!?]*?(?:\b(?:is|was|has been)|'s)(?: now| already)? "
+    r"(?:received|recorded|confirmed|processed|noted|registered)\b"
+    r"|\b(?:deposit|payment)\b[^.!?]*?\b(?:has been|was|is now|is already) paid\b"
+    r"|\b(?:received|recorded|noted|registered)\b[^.!?]{0,25}\b(?:deposit|payment)\b",
+    re.I,
+)
 _CLAIMS: tuple[tuple[re.Pattern[str], frozenset[str]], ...] = (
     (
-        re.compile(
-            rf"{_DONE} booked\b|{_IS} confirmed\b|\b(?:(?:is|are) now|has been) scheduled\b", re.I
-        ),
+        re.compile(rf"{_DONE} booked\b|\b(?:(?:is|are) now|has been) scheduled\b", re.I),
         _HAS_APPOINTMENT,
     ),
+    # "Confirmed" is a status. An appointment still waiting for its deposit doesn't have it.
+    (re.compile(rf"{_IS} confirmed\b", re.I), frozenset({CONFIRMED})),
+    # Only the booking system knows a deposit was paid. The customer saying so isn't that.
+    (_PAID, frozenset({DEPOSIT_PAID})),
     (
         re.compile(rf"{_DONE} cancel+ed\b", re.I),
         frozenset({"cancel_appointment", "reschedule_appointment"}),
@@ -52,8 +64,8 @@ _CLAIMS: tuple[tuple[re.Pattern[str], frozenset[str]], ...] = (
 )
 # Before the claim in its sentence, these make it a condition, an offer or a denial.
 _NOT_A_CLAIM = re.compile(
-    r"\b(?:not|never|no|nothing|once|if|when|until|unless|before|after|whether|would|will|can"
-    r"|could|should|may|might|want|like)\b|n't",
+    r"\b(?:not|never|no|nothing|once|as soon as|if|when|until|unless|before|after|whether"
+    r"|would|will|can(?! (?:confirm|see|tell)\b)|could|should|may|might|want|like)\b|n't",
     re.I,
 )
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+|\n+")
@@ -219,11 +231,13 @@ def _done_means_done(run: ScenarioRun) -> CheckResult:
 
 
 def unbacked_claim(turns: list[TurnRecord]) -> tuple[int, str] | None:
-    """The first reply that says something was booked, moved or cancelled with no tool call
-    that did it, in that turn or an earlier one. The model's word alone doesn't count."""
+    """The first reply that says something was booked, moved, cancelled or paid with no
+    tool call behind it, in that turn or an earlier one. The model's word alone doesn't count,
+    and neither does the customer's."""
     done: set[str] = set()
     for number, turn in enumerate(turns, 1):
-        done |= {e.tool for e in turn.events if _did_something(e)}
+        for event in turn.events:
+            done |= _backs(event)
         for reply in turn.replies:
             for sentence, tools in claims(reply):
                 if not tools & done:
@@ -244,12 +258,20 @@ def claims(reply: str) -> list[tuple[str, frozenset[str]]]:
     return found
 
 
-def _did_something(event: ToolEvent) -> bool:
+def _backs(event: ToolEvent) -> set[str]:
+    """What a tool call lets the assistant say: that it ran, and what its result shows."""
     if event.status != "ok":
-        return False
-    if event.tool == "list_customer_appointments":
-        return isinstance(event.result, dict) and bool(event.result.get("appointments"))
-    return True
+        return set()
+    result = event.result if isinstance(event.result, dict) else {}
+    found = [*result.get("appointments", []), result.get("appointment")]
+    appointments = [a for a in found if isinstance(a, dict)]
+    confirmed = [a for a in appointments if a.get("status") == "confirmed"]
+    backed = {CONFIRMED} if confirmed else set()
+    if event.tool != "list_customer_appointments" or appointments:
+        backed.add(event.tool)
+    if any(a.get("deposit_due") for a in confirmed):
+        backed.add(DEPOSIT_PAID)
+    return backed
 
 
 def _writes_went_through_guards(run: ScenarioRun) -> CheckResult:
