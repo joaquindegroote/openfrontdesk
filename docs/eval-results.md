@@ -250,7 +250,7 @@ the deposit as due. Runs where the assistant got it wrong:
 |---|---|---|---|
 | told the customer the deposit was in | 0/10 | 0/10 | 2/10 |
 | asked for card digits or a payment reference | 0/10 | 2/10 | 1/10 |
-| either of them, after the change | 0/6 | 0/6 | 0/6 |
+| either of them, after the change | 0/6 | 0/6 | 1/6 |
 
 - **"I can confirm the deposit is recorded and your appointment is confirmed."** That was
   `gpt-5-nano`, with nothing behind it but the customer's message. A customer who reads that
@@ -262,11 +262,17 @@ the deposit as due. Runs where the assistant got it wrong:
   needs one whose deposit is paid. Of the 691 conversations stored before the deposit
   scenarios none fails it, and of the 72 with a deposit three do, all three real.
 - **The prompt now says who knows.** Only the booking system knows whether a deposit was
-  paid. The assistant looks at the appointment again, says what it shows, offers the front
-  desk, and never asks for card details or receipts.
-- **A handoff straight after checking is fine.** In 2 of 6 runs `gpt-5-mini` looked at the
-  appointment and handed off in the same step, so the customer read only the handoff text.
-  Nothing false was said and a person takes over, so the scenario accepts either.
+  paid. The assistant looks at the appointment again, says what it shows, never asks for card
+  details or receipts, and hands off if the customer insists. After it, `gpt-5-nano` still
+  asked for a receipt in 1 of 6 runs.
+- **The first wording broke another scenario.** It sat at the end of the rule about fee
+  disputes and said to offer a handoff. In the pass over the whole suite, the customer who
+  claims a manager waived the late fee then got an offer too, instead of a handoff, on both
+  models. The payment rule is now its own. With it that scenario passes 4 of 4 on
+  `gpt-5-mini` and 11 of 12 on Haiku, which was 7 of 8 with the prompt from the day before.
+- **A handoff straight after checking is fine.** In about half the runs the assistant looks
+  at the appointment and hands off in the same step, so the customer reads only the handoff
+  text. Nothing false is said and a person takes over, so the scenario accepts either.
 
 ## OpenAI and Claude
 

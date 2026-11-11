@@ -52,7 +52,7 @@ The details are in [docs/eval-results.md](docs/eval-results.md).
   it. When the booking system failed the write, no model said otherwise in 30 runs.
 - **"I paid" isn't a payment.** When a customer said they'd paid a deposit that the booking
   system still showed as due, gpt-5-nano confirmed it in 2 of 10 runs and gpt-5-mini asked
-  for card digits in 2 of 10. After the fix, neither happened in 18 runs.
+  for card digits in 2 of 10. After the fix, no model confirmed a payment in 18 runs.
 - **Claude Haiku 5.5 runs by default.** It passes as many scenarios as gpt-5-mini (22 of 24) at
   2.5 s per turn instead of 6.1 s.
 
