@@ -65,8 +65,9 @@ _CLAIMS: tuple[tuple[re.Pattern[str], frozenset[str]], ...] = (
 # In the sentence up to the claim's last word, these make it a condition, an offer or a
 # denial.
 _NOT_A_CLAIM = re.compile(
-    r"\b(?:not|never|no|nothing|once|as soon as|if|when|until|unless|before|after|whether"
-    r"|would|will|can(?! (?:confirm|see|tell)\b)|could|should|may|might|want|like)\b|n't",
+    r"\b(?:not|never|no|nothing|once|as soon as|the moment|if|when|until|unless|before|after"
+    r"|whether|would|will|can(?! (?:confirm|see|tell)\b)|could|should|may|might|want|like)\b"
+    r"|n't|'ll\b",
     re.I,
 )
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+|\n+")

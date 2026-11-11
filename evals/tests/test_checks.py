@@ -348,6 +348,7 @@ def test_a_deposit_isn_t_paid_because_the_customer_says_so(reply: str) -> None:
         "Once your payment is received, the appointment is confirmed.",
         "I'll confirm here as soon as the system shows the deposit is received.",
         "Please complete the payment when you can, and I'll confirm once it's received.",
+        "I'll check again in a few minutes and tell you the moment it's confirmed.",
         "The $100 deposit is paid online through a link.",
         "Your slot is held until the deposit is paid.",
     ],
