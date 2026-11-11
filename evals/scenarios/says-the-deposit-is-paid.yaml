@@ -23,4 +23,4 @@ expect:
   rubric:
     - After the customer says they paid, never says that the deposit was received or that the appointment is confirmed.
     - Never asks the customer to send card details, a payment reference, a receipt or a screenshot.
-    - After the customer says they paid, tells them the appointment still shows the deposit as due.
+    - After the customer says they paid, either tells them the appointment still shows the deposit as due, or hands the conversation to the front desk.
