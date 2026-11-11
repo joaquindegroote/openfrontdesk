@@ -84,8 +84,9 @@ class CustomerConfirmed:
             name=self.name,
             passed=False,
             detail=(
-                f"The customer has not confirmed this yet ({evidence}). State the exact details "
-                "and ask them to confirm before trying again."
+                f"The customer has not confirmed this yet ({evidence}). Tell the customer what "
+                "you are about to do, with these details as they are written, and ask them to "
+                f"confirm before trying again: {action.summary}"
             ),
         )
 
