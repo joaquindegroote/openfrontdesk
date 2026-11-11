@@ -32,13 +32,13 @@ BOOKED_CHECKUP = {
 }
 
 
-def scenario(**expect: Any) -> Scenario:
+def scenario(phone: str | None = None, **expect: Any) -> Scenario:
     return Scenario.model_validate(
         {
             "id": "test",
             "title": "Test",
             "now": NOW,
-            "customer": {"name": "Priya Shah", "goal": "Book a check-up."},
+            "customer": {"name": "Priya Shah", "goal": "Book a check-up.", "phone": phone},
             "expect": expect,
         }
     )
@@ -313,6 +313,17 @@ def test_an_appointment_the_customer_already_had_counts_as_booked() -> None:
 
     assert failures(run(scenario(), replies=(reply,), events=(listed,))) == set()
     assert failures(run(scenario(), replies=(reply,), events=(none,))) == {DONE}
+
+
+def test_an_appointment_in_the_prompt_from_the_start_can_be_spoken_of() -> None:
+    reply = "You're booked for a check-up on Tuesday at 9:00 AM."
+    existing = appointment("apt_1")
+    state = {"initial": (existing,), "appointments": (existing,)}
+
+    # On WhatsApp the number is proven, and the customer's appointments are preloaded.
+    assert failures(run(scenario(phone="+15550100103"), replies=(reply,), **state)) == set()
+    # A web visitor's number proves nothing, so nothing about them is.
+    assert failures(run(scenario(), replies=(reply,), **state)) == {DONE}
 
 
 def test_confirmed_is_a_status_that_a_booking_waiting_for_its_deposit_lacks() -> None:
