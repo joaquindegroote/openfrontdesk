@@ -336,6 +336,10 @@ scenarios that book a check-up:
   had "no X-rays included". That made the next block a correct one. A block now ends with
   the action in the system's own words, for the assistant to state as they are.
 
+Every booking, move and cancellation goes through this judge, so the whole suite ran once
+more: 17 of 17 scenarios on `gpt-5-mini` and 16 of 17 on Claude Haiku 5.5, whose miss was the
+soft hint about another patient, where the judge isn't involved.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
