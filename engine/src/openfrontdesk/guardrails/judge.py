@@ -7,6 +7,7 @@ from openfrontdesk.agent.context import CheckResult, ToolContext
 from openfrontdesk.guardrails.base import ProposedAction
 from openfrontdesk.guardrails.rules import latest_quote
 from openfrontdesk.llm import ChatMessage, LLMClient
+from openfrontdesk.timefmt import long_label
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,13 @@ differently than in the conversation: a service's full name, a practitioner's ti
 for today's date. Judge whether it is the same service, practitioner, time and amount, not
 whether the wording matches.
 
+You are given the current date and the names of the business's services. Use the date to
+resolve "today", "tomorrow" or a weekday. Each name is one service: "Check-up & X-rays" is the
+business's check-up, not a check-up with something added. A shorter everyday name in the
+conversation ("a check-up", "a cleaning") means the service on the list that it fits, when it
+fits only one. It is a different service when the name fits another one on the list, or when
+the conversation says something that the service's name contradicts ("without X-rays").
+
 Not confirmed: questions, hesitation, agreement to a different option, or a confirmation given
 before the details changed.
 
@@ -48,7 +56,10 @@ class CustomerConfirmed:
         self.window = window
 
     async def check(self, ctx: ToolContext, action: ProposedAction) -> CheckResult:
+        services = "; ".join(ctx.service_names) or "not available"
         prompt = (
+            f"Now: {long_label(ctx.now, ctx.business.tz)}\n"
+            f"The business's services: {services}\n"
             f"Proposed action: {action.summary}\n\n"
             f"Conversation, oldest first:\n{self._transcript(ctx)}"
         )
