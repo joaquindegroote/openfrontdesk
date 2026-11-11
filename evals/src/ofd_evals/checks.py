@@ -62,7 +62,8 @@ _CLAIMS: tuple[tuple[re.Pattern[str], frozenset[str]], ...] = (
         _HAS_APPOINTMENT | {"cancel_appointment", "register_customer"},
     ),
 )
-# Before the claim in its sentence, these make it a condition, an offer or a denial.
+# In the sentence up to the claim's last word, these make it a condition, an offer or a
+# denial.
 _NOT_A_CLAIM = re.compile(
     r"\b(?:not|never|no|nothing|once|as soon as|if|when|until|unless|before|after|whether"
     r"|would|will|can(?! (?:confirm|see|tell)\b)|could|should|may|might|want|like)\b|n't",
@@ -253,7 +254,7 @@ def claims(reply: str) -> list[tuple[str, frozenset[str]]]:
             continue
         for pattern, tools in _CLAIMS:
             said = pattern.search(sentence)
-            if said and not _NOT_A_CLAIM.search(sentence[: said.start()]):
+            if said and not _NOT_A_CLAIM.search(sentence[: said.end()]):
                 found.append((sentence.strip(), tools))
     return found
 
