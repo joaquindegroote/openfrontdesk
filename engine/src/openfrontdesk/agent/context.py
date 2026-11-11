@@ -52,6 +52,9 @@ class ToolContext:
     customer_phone: str | None = None
     # The chat's own channel proves customer_phone (WhatsApp, SMS, a call), not just the customer.
     phone_verified: bool = False
+    # The business's services by name, as the booking system lists them. The confirmation judge
+    # needs them to tell a short name ("a check-up") from a different service.
+    service_names: tuple[str, ...] = ()
     # Conversation so far, including this turn (no system prompt). Guards read it.
     transcript: list[ChatMessage] = field(default_factory=list)
     # Every tool event in the conversation, including earlier turns.

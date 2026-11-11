@@ -88,6 +88,9 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
         "with Dr. Maya Chen." in judge_prompt
     )
     assert "Customer: Yes, book it" in judge_prompt
+    # And what it can't read off the conversation: the date, and what the services are called.
+    assert "Now: Monday, November 2, 2026, 8:00 AM\n" in judge_prompt
+    assert "The business's services: Check-up & X-rays; Professional cleaning; " in judge_prompt
     assert third["messages"][-1] == {
         **third["messages"][-1],
         "role": "assistant",

@@ -181,6 +181,7 @@ class ConversationService:
             now=now,
             customer_phone=conversation.customer_phone,
             phone_verified=phone_verified,
+            service_names=tuple(s.name for s in await self._cached_services()),
             events=await self.repo.events(conversation.id),
         )
         prior_events = len(ctx.events)

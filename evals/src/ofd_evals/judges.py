@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Literal, Self, cast
 
 import yaml
-from clinic_api.catalog import TIMEZONE
+from clinic_api.catalog import SERVICES, TIMEZONE
 from openfrontdesk.agent.context import ToolContext, ToolEvent
 from openfrontdesk.backends import BookingBackend
 from openfrontdesk.business import BusinessProfile
@@ -273,6 +273,7 @@ def _context(case: JudgeCase) -> ToolContext:
         business=_business(),
         backend=cast(BookingBackend, _NoBackend()),
         now=NOW,
+        service_names=tuple(service.name for service in SERVICES),
         transcript=transcript,
         events=events,
     )
