@@ -238,6 +238,9 @@ def test_unconfirmed_booking_is_blocked_before_reaching_the_clinic(harness: Harn
     tool_message = harness.llm.calls[-1].messages[-1]
     assert tool_message.role == "tool"
     assert '"status": "blocked"' in tool_message.content
+    # With the details to state, in the system's words, so nothing is paraphrased away.
+    details = "Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 10:00 AM"
+    assert details in event["result"]["reason"]
 
 
 def test_booking_a_second_check_up_is_steered_to_a_reschedule(harness: Harness) -> None:

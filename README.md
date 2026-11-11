@@ -150,7 +150,7 @@ and this is what came back to the model as the tool result:
 {
   "status": "blocked",
   "check": "customer_confirmed",
-  "reason": "The customer has not confirmed this yet (the customer only asked about availability). State the exact details and ask them to confirm before trying again.",
+  "reason": "The customer has not confirmed this yet (the customer only asked about availability). Tell the customer what you are about to do, with these details as they are written, and ask them to confirm before trying again: Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 10:00 AM with any available practitioner.",
   "instructions": "Do not retry this action until the reason is resolved."
 }
 ```
