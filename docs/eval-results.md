@@ -69,7 +69,8 @@ short conversation, the action about to run and the verdict a careful person wou
 cases are hard on purpose: sarcasm, a "yes" to a different question, a confirmation from before
 the details changed, an agreement taken back, a note typed into the chat telling the reviewer to
 approve. Each one goes through the same guard code the engine runs, 3 times per model. Measured
-on October 31, 2026.
+on October 31, 2026. Eight more cases, about service names, came on November 11 and are
+[measured further down](#what-the-confirmation-judge-wasnt-told).
 
 A false approval lets through an action the customer never agreed to: it's the mistake the judges
 exist to stop. A false block makes the assistant ask again.
@@ -300,6 +301,40 @@ names the date. Five runs per model:
   the confirmation judge blocked the booking because the action says "Check-up & X-rays": the
   customer said yes up to four times and wasn't booked. Once it booked, then offered a
   reminder it can't set and never closed the conversation.
+
+## What the confirmation judge wasn't told
+
+Those blocks had one cause. The judge sees the action as the booking system words it, "Book
+Check-up & X-rays", and a conversation where everyone says "a check-up". It read the
+difference as X-rays the customer never agreed to. It also couldn't tell that "tomorrow" was
+the date in the action, because nothing told it what day it was. The engine knows both and the
+conversation says neither, so since November 11, 2026 the judge is given the current date and
+the names of the business's services.
+
+Eight new cases in the judge set, five to approve and three to block, plus the older one
+about short names. Five runs each:
+
+| judge | false blocks, before | after | false approvals, before | after |
+|---|---|---|---|---|
+| gpt-5-mini | 7/30 | **0/30** | 0/15 | 0/15 |
+| claude-haiku-5-5 | 4/30 | **0/30** | 0/15 | 0/15 |
+
+The whole set after the change, 66 cases three times on each model: every verdict matched its
+label.
+
+End to end, with `gpt-5-nano` as the assistant and `gpt-5-mini` as the judge, on the two
+scenarios that book a check-up:
+
+| | before | after |
+|---|---|---|
+| runs where the judge blocked the booking | 5/17 | 0/12 |
+| blocks, every one of them over "X-rays" | 13 | 0 |
+| the check-up got booked | 14/17 | 12/12 |
+
+- **The block made it worse.** It went back to the assistant with the judge's reason, "the
+  proposal adds X-rays", and `gpt-5-nano` answered it by telling the customer the check-up
+  had "no X-rays included". That made the next block a correct one. A block now ends with
+  the action in the system's own words, for the assistant to state as they are.
 
 ## OpenAI and Claude
 

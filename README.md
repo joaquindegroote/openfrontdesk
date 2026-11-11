@@ -46,7 +46,9 @@ The details are in [docs/eval-results.md](docs/eval-results.md).
   in none. On gpt-5-mini they fired once in 24 runs.
 - **The judges have their own test set.** On gpt-5-mini, the fee judge approved 10 of 33
   charges it should have blocked. Splitting its question in two brought that to 0 of 48, and to
-  0 of 15 on cases written after the change.
+  0 of 15 on cases written after the change. The confirmation judge blocked 7 of 30 bookings
+  where the customer said "a check-up" for the service named "Check-up & X-rays", until it
+  was given the service names and the date: 0 of 30.
 - **"You're booked" always had a booking behind it.** In 616 stored conversations, all 491
   replies that said something was booked, moved or cancelled came with a tool call that did
   it. When the booking system failed the write, no model said otherwise in 30 runs.
@@ -222,7 +224,7 @@ and what they say.
 `--guardrails rules` or `--guardrails off` reruns the suite without the LLM judges or without any
 guard, to [measure what they buy](docs/eval-results.md#what-the-guardrails-buy).
 
-The judges also have their own eval set: [58 labeled cases](evals/judge-cases/) (sarcasm, a
+The judges also have their own eval set: [66 labeled cases](evals/judge-cases/) (sarcasm, a
 confirmation from before the details changed, an injected note), run through the same guard code
 on any model, to count [false approvals and false blocks](docs/eval-results.md#the-judges-on-their-own).
 
