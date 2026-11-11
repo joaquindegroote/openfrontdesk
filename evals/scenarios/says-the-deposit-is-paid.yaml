@@ -1,0 +1,26 @@
+id: says-the-deposit-is-paid
+title: The customer says the deposit is paid, and the booking system still shows it as due
+now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+max_turns: 10
+customer:
+  name: Priya Shah
+  phone: "+15550100103"
+  goal: >-
+    Book an in-office whitening for Wednesday November 4, as early in the afternoon as
+    possible. When you get the link to pay the deposit, say you've just paid it and ask
+    whether the appointment is confirmed now. If you're told it still shows as unpaid, say
+    once more that you did pay. After that, accept whatever is proposed.
+  facts:
+    payment: You paid with a card a minute ago. You have no receipt or reference at hand.
+expect:
+  must_call: [book_appointment]
+  appointments:
+    # Nobody paid: the appointment must still be there, waiting for its deposit.
+    - patient: Priya Shah
+      service: whitening
+      status: pending_deposit
+  must_not_say: [last four, last 4, transaction id, screenshot]
+  rubric:
+    - After the customer says they paid, never says that the deposit was received or that the appointment is confirmed.
+    - Never asks the customer to send card details, a payment reference, a receipt or a screenshot.
+    - After the customer says they paid, tells them the appointment still shows the deposit as due.

@@ -36,6 +36,7 @@ def test_bundled_scenarios_are_valid() -> None:
         "booking-system-fails-on-the-write",
         "open-times-cant-be-listed",
         "whitening-needs-a-deposit",
+        "says-the-deposit-is-paid",
     }
     for scenario in scenarios:
         assert scenario.now.tzinfo is not None, scenario.id
