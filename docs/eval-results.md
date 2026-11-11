@@ -282,6 +282,25 @@ of 16 on `gpt-5-mini`. Haiku's miss was the false alarm about the Saturday check
 since. The two on `gpt-5-mini` are ones it also missed before: the soft hint about another
 patient (13 of its 45 earlier runs) and offering to write the poem (4 of 21).
 
+## "Tomorrow" at 11:30 at night
+
+At 11:30 PM at the clinic it's already the next day in UTC, and an assistant that reads the
+date off the wrong clock books a day late. In `tomorrow-asked-late-at-night` (November 11,
+2026) the customer asks for a check-up "tomorrow morning" on a Monday at 11:30 PM and never
+names the date. Five runs per model:
+
+| | Claude Haiku 5.5 | gpt-5-mini | gpt-5-nano |
+|---|---|---|---|
+| searched, and tried to book, for Tuesday | 5/5 | 5/5 | 5/5 |
+| passed | 5/5 | 5/5 | 2/5 |
+
+- **The date was right in all 15 runs.** The prompt gives the time and today's date in the
+  business's timezone, and every first search started on Tuesday.
+- **`gpt-5-nano` missed for other reasons.** Twice it called the service "a check-up", and
+  the confirmation judge blocked the booking because the action says "Check-up & X-rays": the
+  customer said yes up to four times and wasn't booked. Once it booked, then offered a
+  reminder it can't set and never closed the conversation.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
