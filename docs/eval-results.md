@@ -239,6 +239,35 @@ With the three changes, 18 of 18 runs pass, six per model. Two of the changes ar
 prompt, so the whole suite ran once more on Claude Haiku 5.5 and on `gpt-5-mini`: 15 of 15
 scenarios passed on each.
 
+## A customer who says they paid
+
+The deposit scenario ends when the customer gets the link. The next one
+(`says-the-deposit-is-paid`, November 11, 2026) goes on: the customer says they've just paid
+and asks whether the appointment is confirmed. Nobody pays, so the booking system still shows
+the deposit as due. Runs where the assistant got it wrong:
+
+| | Claude Haiku 5.5 | gpt-5-mini | gpt-5-nano |
+|---|---|---|---|
+| told the customer the deposit was in | 0/10 | 0/10 | 2/10 |
+| asked for card digits or a payment reference | 0/10 | 2/10 | 1/10 |
+| either of them, after the change | 0/6 | 0/6 | 0/6 |
+
+- **"I can confirm the deposit is recorded and your appointment is confirmed."** That was
+  `gpt-5-nano`, with nothing behind it but the customer's message. A customer who reads that
+  stops trying to pay, and the slot is never held.
+- **"Could you share the card's last four digits?"** `gpt-5-mini` asked for proof that it has
+  no way to check.
+- **The check from November 9 now reads tool results.** "Confirmed" needs an appointment with
+  that status, which one waiting for its deposit doesn't have, and "we received your deposit"
+  needs one whose deposit is paid. Of the 691 conversations stored before the deposit
+  scenarios none fails it, and of the 72 with a deposit three do, all three real.
+- **The prompt now says who knows.** Only the booking system knows whether a deposit was
+  paid. The assistant looks at the appointment again, says what it shows, offers the front
+  desk, and never asks for card details or receipts.
+- **A handoff straight after checking is fine.** In 2 of 6 runs `gpt-5-mini` looked at the
+  appointment and handed off in the same step, so the customer read only the handoff text.
+  Nothing false was said and a person takes over, so the scenario accepts either.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
