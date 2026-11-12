@@ -29,6 +29,8 @@ VERIFICATION_CODE = "246810"
 DEFAULT_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["default"]
 # When the booking system keeps failing, the customer is told the request wasn't finished.
 OUTAGE_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["system_unavailable"]
+# And when the guards stopped the same action three times in a row.
+STUCK_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["blocked_repeatedly"]
 
 
 def verdict(confirmed: bool, evidence: str = "") -> Completion:

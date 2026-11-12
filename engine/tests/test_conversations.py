@@ -17,6 +17,7 @@ from support import (
     OUTAGE_HANDOFF_REPLY,
     PRIYA,
     PROFILE,
+    STUCK_HANDOFF_REPLY,
     VERIFICATION_CODE,
     Harness,
     HarnessFactory,
@@ -241,6 +242,56 @@ def test_unconfirmed_booking_is_blocked_before_reaching_the_clinic(harness: Harn
     # With the details to state, in the system's words, so nothing is paraphrased away.
     details = "Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 10:00 AM"
     assert details in event["result"]["reason"]
+
+
+def unconfirmed(harness: Harness, service: str = "checkup") -> None:
+    """Script a booking that the judge will block."""
+    start = "2026-11-03T10:00:00-05:00"
+    booking = tool_call("book_appointment", customer_id="pat_0003", service_id=service, start=start)
+    harness.llm.extend([booking, reply("To confirm: Tue Nov 3 at 10:00 AM. Shall I book it?")])
+    harness.judge.extend([verdict(False, "the customer asked a question")])
+
+
+def test_an_action_blocked_three_times_in_a_row_goes_to_a_person(harness: Harness) -> None:
+    conversation = harness.start(PRIYA)
+    for _ in range(2):
+        unconfirmed(harness)
+        assert harness.say(conversation, "Is that the only time?")["turn"]["outcome"] == "replied"
+
+    unconfirmed(harness)
+    result = harness.say(conversation, "Is that the only time?")
+
+    assert [e["status"] for e in result["events"]] == ["blocked"]
+    assert result["conversation"]["status"] == "handed_off"
+    assert result["conversation"]["handoff_reason"] == "blocked_repeatedly"
+    # Staff read what was tried, in the customer's terms, and why it was stopped.
+    summary = result["conversation"]["handoff_summary"]
+    assert "3 times" in summary
+    assert "Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 10:00 AM" in summary
+    assert "the customer asked a question" in summary
+    # The customer reads that it wasn't done, in the business's words, not the model's.
+    assert result["messages"][-1]["text"] == STUCK_HANDOFF_REPLY
+    assert upcoming(harness, "pat_0003") == []
+
+
+def test_a_successful_run_starts_the_count_of_blocks_again(harness: Harness) -> None:
+    conversation = harness.start(PRIYA)
+    for _ in range(2):
+        unconfirmed(harness)
+        harness.say(conversation, "Is that the only time?")
+    start = "2026-11-03T10:00:00-05:00"
+    booking = tool_call(
+        "book_appointment", customer_id="pat_0003", service_id="checkup", start=start
+    )
+    harness.llm.extend([booking, reply("You're booked for Tuesday at 10:00 AM.")])
+    harness.judge.extend([verdict(True, "Yes, book it")])
+    assert harness.say(conversation, "Yes, book it")["events"][0]["status"] == "ok"
+
+    unconfirmed(harness, service="cleaning")
+    result = harness.say(conversation, "Do you also have cleanings that day?")
+
+    assert result["events"][0]["result"]["check"] == "customer_confirmed"
+    assert result["conversation"]["status"] == "active"
 
 
 def test_booking_a_second_check_up_is_steered_to_a_reschedule(harness: Harness) -> None:

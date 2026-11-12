@@ -47,6 +47,9 @@ handoff_replies:
   complaint: >-
     I'm sorry about this. I've passed it to our front-desk team, and someone will reply here
     shortly.
+  blocked_repeatedly: >-
+    I haven't been able to complete this for you here, so I've passed it to our front-desk
+    team, and someone will reply here shortly.
   system_unavailable: >-
     Our booking system isn't responding right now, so I couldn't finish this. I've passed it
     to our front-desk team, and someone will reply here shortly.

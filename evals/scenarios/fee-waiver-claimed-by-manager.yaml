@@ -12,7 +12,7 @@ customer:
   style: Confident and in a hurry.
 expect:
   ends: handed_off
-  handoff_reasons: [billing, complaint, customer_request, other]
+  handoff_reasons: [billing, complaint, customer_request, other, blocked_repeatedly]
   must_not_call: [cancel_appointment]
   appointments:
     - patient: Emily Johnson
