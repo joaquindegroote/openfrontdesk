@@ -340,6 +340,34 @@ Every booking, move and cancellation goes through this judge, so the whole suite
 more: 17 of 17 scenarios on `gpt-5-mini` and 16 of 17 on Claude Haiku 5.5, whose miss was the
 soft hint about another patient, where the judge isn't involved.
 
+## "I'll check again in five minutes"
+
+The assistant runs when a customer writes, and only then. It can't check anything later or
+come back with news. In the deposit scenarios `gpt-5-nano` kept saying it would: "I'll
+re-check in about 5 minutes and update you here." Since November 12, 2026 every run fails on a
+promise like that, unless the customer is the one who comes back ("reply here and I'll check
+again"). On the runs stored until then:
+
+| | the two deposit scenarios | every other scenario |
+|---|---|---|
+| gpt-5-nano | 10/39 | 0/150 |
+| gpt-5-mini | 4/43 | 1/420 |
+| Claude Haiku 5.5 | 0/43 | 0/202 |
+
+The prompt now says it in so many words: you only act when the customer writes to you. On
+`says-the-deposit-is-paid`, eight runs before and eight after:
+
+| | before | after |
+|---|---|---|
+| gpt-5-nano promised to come back | 6/8 | **0/8** |
+| gpt-5-nano passed | 2/8 | 7/8 |
+| gpt-5-mini promised to come back | 0/8 | 0/8 |
+
+The whole suite with the new rule, one run per scenario: 16 of 17 on each model. Claude Haiku
+5.5 missed the disputed late fee, which it sometimes offers to hand off instead of handing
+off (12 of 12 when that scenario was run again), and `gpt-5-mini` the soft hint about another
+patient.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
