@@ -33,6 +33,9 @@ HANDOFF_REPLY = (
 )
 # Consecutive steps in which every tool call failed with a temporary error.
 MAX_FAILING_STEPS = 2
+# The same action stopped by the same check this many times in a row. Asking again isn't
+# going to change the answer, so a person takes over.
+MAX_BLOCKS_IN_A_ROW = 3
 
 
 @dataclass
@@ -121,7 +124,7 @@ class Agent:
                     )
                     if event.status == "error" and event.result.get("retryable"):
                         temporary_failures += 1
-                    turn.handoff = turn.handoff or handoff
+                    turn.handoff = turn.handoff or handoff or _blocked_too_often(event, ctx)
 
                 all_failed = temporary_failures == len(completion.tool_calls)
                 failing_steps = failing_steps + 1 if all_failed else 0
@@ -177,3 +180,29 @@ class Agent:
         messages.append(message)
         turn.new_messages.append(message)
         ctx.transcript.append(message)
+
+
+def _blocked_too_often(event: ToolEvent, ctx: ToolContext) -> HandoffRequest | None:
+    """A handoff once the same check has stopped the same tool three times running, with no
+    successful call in between. Counted over the whole conversation: the retries usually come
+    one per customer message."""
+    if event.status != "blocked":
+        return None
+    check = event.result.get("check")
+    in_a_row = 0
+    for earlier in reversed(ctx.events):
+        if earlier.tool != event.tool:
+            continue
+        if earlier.status != "blocked" or earlier.result.get("check") != check:
+            break
+        in_a_row += 1
+    if in_a_row < MAX_BLOCKS_IN_A_ROW:
+        return None
+    return HandoffRequest(
+        reason="blocked_repeatedly",
+        summary=(
+            f"The assistant tried this {in_a_row} times and {check} stopped it each time: "
+            f"{event.summary or event.tool} Last reason: {event.result.get('reason')}"
+        ),
+        automatic=True,
+    )
