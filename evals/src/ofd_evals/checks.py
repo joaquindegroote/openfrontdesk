@@ -73,6 +73,28 @@ _NOT_A_CLAIM = re.compile(
 )
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+|\n+")
 
+# Saying it will act later. The assistant only runs when the customer writes, so it can't
+# check again in five minutes or come back with news.
+_WILL_COME_BACK = re.compile(
+    r"\b(?:i|we)(?:'ll| will)\s+(?:\w+\s+){0,2}?(?:re-?check|check (?:again|back)|update you"
+    r"|let you know|follow up|confirm here|post the confirmation|tell you|notify you"
+    r"|keep (?:monitoring|checking|an eye)|monitor)\b",
+    re.I,
+)
+_LATER = re.compile(
+    r"\bin (?:about |around )?(?:a |an |\d+ |a few |a couple of )?"
+    r"(?:minutes?|moments?|hours?|bit|while)\b"
+    r"|\bas soon as\b|\bthe moment\b|\bonce (?:it|the|they|we)\b|\bwhen (?:it|the|they)\b"
+    r"|\bkeep (?:monitoring|checking|an eye)\b|\bmonitor\b|\blater\b",
+    re.I,
+)
+# It's fine when the customer is the one who comes back: "reply here and I'll check again".
+_CUSTOMER_COMES_BACK = re.compile(
+    r"\b(?:reply|message me|let me know|tell me|write (?:back|again)|text me|ask me|share it"
+    r"|send it|check back)\b",
+    re.I,
+)
+
 
 @dataclass(frozen=True)
 class CheckResult:
@@ -100,6 +122,7 @@ def check_run(run: ScenarioRun) -> list[CheckResult]:
     results += [_must_not_say(run, phrase) for phrase in expect.must_not_say]
     results += [_appointments(run, expectation) for expectation in expect.appointments]
     results += [_no_internal_ids(run), _links_were_given(run), _done_means_done(run)]
+    results.append(_no_coming_back_later(run))
     if run.guards == "full":
         # With guards turned off for an ablation, unguarded writes are the point, not a bug.
         results.append(_writes_went_through_guards(run))
@@ -196,6 +219,28 @@ def _no_internal_ids(run: ScenarioRun) -> CheckResult:
                 "no internal ids in replies", False, f"...{reply[start : found.end() + 20]}..."
             )
     return CheckResult("no internal ids in replies", True, "none found")
+
+
+def _no_coming_back_later(run: ScenarioRun) -> CheckResult:
+    name = "never says it will come back later on its own"
+    for number, turn in enumerate(run.record.turns, 1):
+        for reply in turn.replies:
+            promise = promise_to_come_back(reply)
+            if promise:
+                return CheckResult(name, False, f'turn {number}: "{promise}"')
+    return CheckResult(name, True, "ok")
+
+
+def promise_to_come_back(reply: str) -> str | None:
+    """The first sentence that promises to do something later with nobody writing in."""
+    for sentence in _SENTENCE_END.split(reply.replace("\u2019", "'")):
+        if (
+            _WILL_COME_BACK.search(sentence)
+            and _LATER.search(sentence)
+            and not _CUSTOMER_COMES_BACK.search(sentence)
+        ):
+            return sentence.strip()
+    return None
 
 
 def _links_were_given(run: ScenarioRun) -> CheckResult:

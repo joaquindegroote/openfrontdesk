@@ -19,6 +19,7 @@ TUESDAY_9AM = datetime(2026, 11, 3, 9, 0, tzinfo=TIMEZONE)
 PASSED_GUARDS = (("starts_in_future", True), ("customer_confirmed", True))
 DONE = "says it's done only when it is"
 LINKS = "every link came from a tool or the business"
+LATER = "never says it will come back later on its own"
 PAY = "https://pay.example.com/brightsmile/apt_00184"
 CONFIRMED = {"appointment": {"status": "confirmed", "deposit_due": 0}}
 HELD = {"appointment": {"status": "pending_deposit", "deposit_due": 100}}
@@ -366,7 +367,34 @@ def test_a_deposit_isn_t_paid_because_the_customer_says_so(reply: str) -> None:
 )
 def test_talking_about_a_payment_isn_t_saying_it_arrived(reply: str) -> None:
     held = event("book_appointment", result=HELD)
-    assert failures(run(scenario(), replies=(reply,), events=(held,))) == set()
+    assert DONE not in failures(run(scenario(), replies=(reply,), events=(held,)))
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "I'll check again in 5 minutes and update you here.",
+        "I'll keep monitoring and update you as soon as the deposit posts.",
+        "I'll confirm here as soon as the system shows the deposit is received.",
+        "Once we receive that message I'll let you know the time.",
+    ],
+)
+def test_a_promise_to_come_back_later_is_caught(reply: str) -> None:
+    assert failures(run(scenario(), replies=(reply,))) == {LATER}
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "Reply here in a few minutes and I'll check again.",
+        "If you don't hear back in a few minutes, tell me and I'll follow up.",
+        "I'll check that for you now.",
+        "I'll let you know which times are open.",
+        "We'll send a reminder text the day before.",
+    ],
+)
+def test_what_it_does_now_or_when_the_customer_writes_is_fine(reply: str) -> None:
+    assert failures(run(scenario(), replies=(reply,))) == set()
 
 
 def test_a_write_without_passing_guardrails_is_caught() -> None:
