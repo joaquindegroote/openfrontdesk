@@ -60,6 +60,7 @@ sequenceDiagram
 |---|---|
 | Model passes invalid arguments | The tool isn't run. The model gets the validation errors and corrects itself. |
 | Model proposes an unconfirmed write | Blocked by the judge. The model gets the reason and asks the customer. |
+| Model keeps proposing an action the guards block | After three blocks in a row of the same action by the same check, automatic handoff with reason `blocked_repeatedly`. Staff read what was tried and why it was stopped. |
 | Judge errors or returns garbage | Blocked (fails closed). |
 | Booking system times out on a write | Retried with the same idempotency key; the booking system returns the original result if the first attempt went through. |
 | Booking system keeps failing | After two consecutive steps of temporary failures, automatic handoff with reason `system_unavailable`. The customer is told the request wasn't finished. |

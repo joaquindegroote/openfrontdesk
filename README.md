@@ -23,8 +23,8 @@ hanging when the booking system goes down. openfrontdesk is built around those f
   so a retried booking after a lost response returns the original appointment instead of a
   second one. A message the channel delivers twice, like a retried webhook, is answered once.
 - **Human handoff as a first-class path.** The assistant hands off on request, on policy
-  triggers (urgent symptoms, complaints, billing), when the booking system keeps failing, or when
-  it runs out of steps. Staff reply from an inbox and hand the conversation back.
+  triggers (urgent symptoms, complaints, billing), when the booking system keeps failing, when
+  the guards stop the same action three times in a row, or when it runs out of steps. Staff reply from an inbox and hand the conversation back.
 - **Backend-agnostic.** The agent talks to a `BookingBackend` interface. The reference
   implementation is a mock clinic API that misbehaves on purpose (latency, 503s); adapters for
   real systems plug in the same way.
