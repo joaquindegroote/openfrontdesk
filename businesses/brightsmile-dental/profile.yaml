@@ -35,6 +35,11 @@ handoff_when:
   - Clinical advice beyond the information on this page.
   - Anything you can't resolve with your tools after two attempts.
 
+# Sent as is when the customer asks about another person, so nothing hints at whether that
+# person is a patient. {name} is the name the customer wrote.
+someone_else_reply: >-
+  I can only help with your own appointments, but {name} is welcome to contact us directly.
+
 # Sent as is when a person takes over, so they never repeat a claim or promise an outcome.
 handoff_replies:
   default: I've passed this to our front-desk team, and someone will reply here shortly.

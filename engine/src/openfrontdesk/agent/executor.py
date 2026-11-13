@@ -18,6 +18,7 @@ from pydantic import BaseModel, ValidationError
 from openfrontdesk.agent.context import (
     CheckResult,
     EventStatus,
+    FixedReply,
     HandoffRequest,
     ToolContext,
     ToolEvent,
@@ -56,22 +57,24 @@ class ToolExecutor:
 
     async def execute(
         self, call: ToolCall, ctx: ToolContext
-    ) -> tuple[ToolEvent, HandoffRequest | None]:
+    ) -> tuple[ToolEvent, HandoffRequest | FixedReply | None]:
+        """The event, and what the tool decided about the turn itself, if anything: a handoff,
+        or a reply that ends it."""
         started = time.perf_counter()
         with tracer.start_as_current_span(f"tool {call.name}") as span:
             span.set_attribute(SPAN_KIND, "TOOL")
             span.set_attribute(TOOL_NAME, call.name)
             span.set_attribute(SESSION_ID, ctx.conversation_id)
             set_content(span, INPUT, json.dumps(call.arguments, default=str))
-            event, handoff = await self._execute(call, ctx)
+            event, control = await self._execute(call, ctx)
             event.duration_ms = round((time.perf_counter() - started) * 1000)
             span.set_attribute("tool.status", event.status)
             set_content(span, OUTPUT, json.dumps(event.result, default=str))
-        return event, handoff
+        return event, control
 
     async def _execute(
         self, call: ToolCall, ctx: ToolContext
-    ) -> tuple[ToolEvent, HandoffRequest | None]:
+    ) -> tuple[ToolEvent, HandoffRequest | FixedReply | None]:
         tool = self.registry.get(call.name)
         if tool is None:
             return _event(call, "read", "invalid", _error("unknown_tool", "No such tool.")), None
@@ -130,6 +133,10 @@ class ToolExecutor:
                 "status": "handed_off",
                 "note": "A member of the front-desk team will reply in this conversation.",
             }
+            return _event(call, tool.side_effect, "ok", result, summary, checks), output
+        if isinstance(output, FixedReply):
+            # The agent closes the turn with these words. The model writes nothing after them.
+            result = {"status": "answered", "note": "The customer got the business's reply."}
             return _event(call, tool.side_effect, "ok", result, summary, checks), output
         return _event(call, tool.side_effect, "ok", output, summary, checks), None
 

@@ -35,6 +35,13 @@ class ToolEvent(BaseModel):
     created_at: datetime
 
 
+class FixedReply(BaseModel):
+    """What a tool tells the customer, word for word. The turn ends with it, so the model
+    doesn't get to add anything."""
+
+    text: str
+
+
 class HandoffRequest(BaseModel):
     reason: str
     summary: str

@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from openfrontdesk.agent.context import HandoffRequest, ToolContext
+from openfrontdesk.agent.context import FixedReply, HandoffRequest, ToolContext
 from openfrontdesk.backends import Appointment, Slot
 from openfrontdesk.guardrails import (
     CancellationFeeDisclosed,
@@ -97,6 +97,14 @@ class RescheduleParams(BaseModel):
     appointment_id: str
     new_start: datetime = Field(description="Exact slot start from find_available_slots.")
     practitioner_id: str | None = None
+
+
+class SomeoneElseParams(BaseModel):
+    person: str = Field(
+        default="",
+        max_length=80,
+        description="The other person's name as the customer wrote it. Empty if they gave none.",
+    )
 
 
 class HandoffParams(BaseModel):
@@ -330,11 +338,26 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
         return {"rescheduled": True, "appointment": _appointment_view(appointment, ctx)}
 
     @registry.tool(side_effect="control")
+    async def answer_about_someone_else(ctx: ToolContext, params: SomeoneElseParams) -> FixedReply:
+        """Answer a question about another person: their appointments, visits or details. It
+        replies to the customer in the business's own words and ends your turn, so write nothing
+        yourself."""
+        who = _name_they_wrote(params.person, ctx) or "that person"
+        return FixedReply(text=ctx.business.someone_else_reply.replace("{name}", who))
+
+    @registry.tool(side_effect="control")
     async def handoff_to_human(ctx: ToolContext, params: HandoffParams) -> HandoffRequest:
         """Hand the conversation to the front-desk staff. Use when the instructions say so."""
         return HandoffRequest(reason=params.reason, summary=params.summary)
 
     return registry
+
+
+def _name_they_wrote(person: str, ctx: ToolContext) -> str | None:
+    """Only a name the customer wrote goes back to them. Nothing here is looked up."""
+    said = " ".join(m.content or "" for m in ctx.transcript if m.role == "user").lower()
+    name = " ".join(person.split())
+    return name if name and name.lower() in said else None
 
 
 def _key(ctx: ToolContext) -> str:
