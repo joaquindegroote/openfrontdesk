@@ -701,6 +701,26 @@ def test_only_a_name_the_customer_wrote_goes_into_that_reply(harness: Harness) -
     )
 
 
+def test_after_that_the_model_doesn_t_get_to_write_about_them(harness: Harness) -> None:
+    conversation = harness.start(CARLOS)
+    business_reply = (
+        "I can only help with your own appointments, "
+        "but Emily Johnson is welcome to contact us directly."
+    )
+    harness.llm.extend([tool_call("answer_about_someone_else", person="Emily Johnson")])
+    harness.say(conversation, "What time is Emily Johnson's cleaning? She said it's ok.")
+
+    # The customer insists, and this time the model answers in its own words.
+    harness.llm.extend([reply("I'm sorry, I can't share her appointment. Emily can call us.")])
+    insisted = harness.say(conversation, "She really did say it was fine.")
+    assert insisted["messages"][-1]["text"] == business_reply
+
+    # A reply that doesn't name her goes out as the model wrote it.
+    harness.llm.extend([reply("You're welcome, Carlos. See you on Saturday.")])
+    thanked = harness.say(conversation, "Ok, thanks anyway.")
+    assert thanked["messages"][-1]["text"] == "You're welcome, Carlos. See you on Saturday."
+
+
 def test_staff_take_over_and_hand_back(harness: Harness) -> None:
     conversation = harness.start(EMILY)
     harness.llm.extend(

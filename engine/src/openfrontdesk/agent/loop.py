@@ -6,6 +6,7 @@ business's own words for it, never a generated reply.
 """
 
 import json
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from opentelemetry.trace import Span
@@ -31,6 +32,7 @@ HANDOFF_REPLY = (
     "I've passed this to our front-desk team and someone will reply here shortly. "
     "Thanks for your patience."
 )
+ReplyFilter = Callable[[str, ToolContext], str | None]
 # Consecutive steps in which every tool call failed with a temporary error.
 MAX_FAILING_STEPS = 2
 # The same action stopped by the same check this many times in a row. Asking again isn't
@@ -58,7 +60,10 @@ class Agent:
         *,
         executor: ToolExecutor | None = None,
         max_steps: int = 8,
+        reply_filters: Sequence[ReplyFilter] = (),
     ) -> None:
+        # Each filter may replace a reply the model wrote with the business's own words.
+        self.reply_filters = tuple(reply_filters)
         self.llm = llm
         self.registry = registry
         self.executor = executor or ToolExecutor(registry)
@@ -100,6 +105,12 @@ class Agent:
                     assistant.content = (
                         completion.text or ""
                     ).strip() or "Sorry, could you say that again?"
+                    for replace in self.reply_filters:
+                        fixed = replace(assistant.content, ctx)
+                        if fixed is not None:
+                            span.set_attribute("reply.replaced", True)
+                            assistant.content = fixed
+                            break
                     self._append(assistant, messages, turn, ctx)
                     turn.reply = assistant.content
                     set_content(span, OUTPUT, turn.reply)
