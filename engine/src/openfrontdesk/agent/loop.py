@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 from opentelemetry.trace import Span
 
-from openfrontdesk.agent.context import HandoffRequest, ToolContext, ToolEvent
+from openfrontdesk.agent.context import FixedReply, HandoffRequest, ToolContext, ToolEvent
 from openfrontdesk.agent.executor import ToolExecutor
 from openfrontdesk.llm import ChatMessage, Completion, LLMClient, ToolSpec, Usage
 from openfrontdesk.observability import (
@@ -107,8 +107,12 @@ class Agent:
 
                 self._append(assistant, messages, turn, ctx)
                 temporary_failures = 0
+                answer: FixedReply | None = None
                 for call in completion.tool_calls:
-                    event, handoff = await self.executor.execute(call, ctx)
+                    event, control = await self.executor.execute(call, ctx)
+                    handoff = control if isinstance(control, HandoffRequest) else None
+                    if isinstance(control, FixedReply):
+                        answer = answer or control
                     ctx.events.append(event)
                     turn.events.append(event)
                     self._append(
@@ -136,6 +140,12 @@ class Agent:
                     )
                 if turn.handoff:
                     return self._close_with_handoff(turn, messages, ctx, span)
+                if answer:
+                    # A tool answered the customer in the business's words.
+                    self._append(ChatMessage.assistant(answer.text), messages, turn, ctx)
+                    turn.reply = answer.text
+                    set_content(span, OUTPUT, turn.reply)
+                    return turn
 
             # Out of steps: stop here rather than loop, and let a person take it from here.
             turn.handoff = HandoffRequest(

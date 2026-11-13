@@ -35,6 +35,11 @@ class BusinessProfile(BaseModel):
     # the rest. Fixed words rather than generated ones: a handoff never repeats the customer's
     # claims or promises an outcome.
     handoff_replies: dict[str, str] = {}
+    # What the customer reads when they ask about another person. Fixed for the same reason:
+    # a generated refusal tends to add "for details about her cleaning", which says she has one.
+    someone_else_reply: str = (
+        "I can only help with your own appointments, but {name} is welcome to contact us directly."
+    )
     faq: list[FAQ] = []
 
     @property

@@ -35,6 +35,7 @@ def test_tool_schemas_are_compact_and_typed() -> None:
         "get_cancellation_quote",
         "cancel_appointment",
         "reschedule_appointment",
+        "answer_about_someone_else",
         "handoff_to_human",
     }
     booking = specs["book_appointment"].parameters

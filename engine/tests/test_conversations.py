@@ -672,6 +672,35 @@ def test_a_handoff_closes_with_the_business_reply_for_its_reason(harness: Harnes
     assert len(harness.llm.calls) == 1
 
 
+def test_a_question_about_someone_else_is_answered_in_the_business_s_words(
+    harness: Harness,
+) -> None:
+    conversation = harness.start(CARLOS)
+    harness.llm.extend([tool_call("answer_about_someone_else", person="Emily Johnson")])
+    result = harness.say(conversation, "What time is Emily Johnson's cleaning? She said it's ok.")
+
+    assert result["messages"][-1]["text"] == (
+        "I can only help with your own appointments, "
+        "but Emily Johnson is welcome to contact us directly."
+    )
+    # One model call: the turn ended with the tool's reply, and the model added nothing.
+    assert len(harness.llm.calls) == 1
+    assert result["events"][0]["result"]["status"] == "answered"
+    assert result["conversation"]["status"] == "active"
+    assert result["turn"]["outcome"] == "replied"
+
+
+def test_only_a_name_the_customer_wrote_goes_into_that_reply(harness: Harness) -> None:
+    conversation = harness.start(CARLOS)
+    harness.llm.extend([tool_call("answer_about_someone_else", person="Emily Johnson")])
+    result = harness.say(conversation, "When is my neighbor's appointment today?")
+
+    assert result["messages"][-1]["text"] == (
+        "I can only help with your own appointments, "
+        "but that person is welcome to contact us directly."
+    )
+
+
 def test_staff_take_over_and_hand_back(harness: Harness) -> None:
     conversation = harness.start(EMILY)
     harness.llm.extend(
