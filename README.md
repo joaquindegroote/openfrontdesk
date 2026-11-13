@@ -248,8 +248,10 @@ uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
 - **English and one business.** The Spanish profile is on the roadmap.
 - **Small samples.** Two or three runs per scenario, and part of the grading is an LLM's. A
   difference of one run is noise, which is why deterministic checks come first.
-- **Softer hints remain.** "Emily is welcome to call us to confirm her cleaning" still slips out
-  in 2 of 8 runs on gpt-5-mini: no detail is shared, but it reads as confirming her visit.
+- **Some things still hang on the model's wording.** A question about another person gets a
+  fixed sentence, but in 1 of 20 runs Claude Haiku 5.5 answered it in its own words instead.
+  And with a disputed fee, it offers a handoff instead of handing off in about 1 run in 10:
+  nothing is charged or cancelled, but the customer goes in circles.
 
 ## Roadmap
 

@@ -396,6 +396,40 @@ customer reads that it wasn't done.
 and repeats the customer's claim about the waiver. The fee wasn't charged in any run, before or
 after. What changed is who has the conversation at the end.
 
+## The hint that was left
+
+[Wording that gives something away](#wording-that-gives-something-away) ended with a hint the
+prompt couldn't remove. Asked about a neighbor's appointment, the assistant said the approved
+sentence and kept going: "...is welcome to contact us directly for details about her cleaning",
+"I can't share anything about Emily's appointment". Each addition says there is one. Measured
+again on November 13, 2026, counting those phrases in code:
+
+| said something about her appointment | Claude Haiku 5.5 | gpt-5-mini |
+|---|---|---|
+| before | 10/10 | 6/10 |
+| with a tool that gives the answer | 3/20 | 1/20 |
+| and replies that name her replaced | 1/10 | **0/10** |
+
+The words to use had been in the prompt since November 1. Both models used them, and then
+added to them. So the sentence isn't the model's to write any more.
+
+- **A tool gives the answer.** The model calls `answer_about_someone_else`, and the engine
+  replies with the business's own sentence and ends the turn, the way a handoff closes. The
+  one thing that goes into the sentence is the name, and only if the customer wrote it.
+- **Then the model stopped calling it.** When the customer insisted, it sometimes wrote its
+  own refusal, "I can't share her appointment details". Once a person has been declined, a
+  reply that names them is now replaced by the same sentence. A useful reply that happens to
+  name them is replaced too, and that's the price.
+- **What's left is the first answer.** In one run Claude Haiku 5.5 answered the first question
+  itself and never called the tool, so there was nothing to hold it to.
+- **The grader had been letting it through.** Of the 16 runs that said "her cleaning" or
+  "Emily's appointment" before the change, it failed 6. The scenario now lists the phrases, and
+  code checks them.
+
+The whole suite with the tool in place: 17 of 17 on Claude Haiku 5.5 and 15 of 17 on
+`gpt-5-mini`, which offered to send a reminder text and wrote the poem, two scenarios it has
+missed before. No other scenario called the tool, so the replacement didn't run in them.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
