@@ -19,7 +19,7 @@ from openfrontdesk.llm.openai_client import OpenAIChatClient
 from openfrontdesk.service import ConversationService
 from openfrontdesk.settings import Settings
 from openfrontdesk.storage import ConversationRepository, Database
-from openfrontdesk.tools.booking import build_booking_tools
+from openfrontdesk.tools.booking import about_someone_else, build_booking_tools
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,7 @@ async def open_conversation_service(
             tools,
             executor=ToolExecutor(tools, timeout_s=settings.tool_timeout_s, guards=guards),
             max_steps=settings.max_agent_steps,
+            reply_filters=[about_someone_else],
         )
     else:
         logger.warning("no LLM configured; set the API key for the configured models")

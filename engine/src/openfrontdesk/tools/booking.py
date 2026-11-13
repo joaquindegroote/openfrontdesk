@@ -1,5 +1,6 @@
 """The standard toolset for appointment-based businesses."""
 
+import re
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
@@ -358,6 +359,21 @@ def _name_they_wrote(person: str, ctx: ToolContext) -> str | None:
     said = " ".join(m.content or "" for m in ctx.transcript if m.role == "user").lower()
     name = " ".join(person.split())
     return name if name and name.lower() in said else None
+
+
+def about_someone_else(reply: str, ctx: ToolContext) -> str | None:
+    """Once the customer has been told the assistant can't discuss a person, the model doesn't
+    get to write about that person either: a reply that names them is replaced by the same
+    sentence. A customer who shares a first name with that person gets it for replies that
+    use theirs."""
+    for event in ctx.events:
+        if event.tool != "answer_about_someone_else" or event.status != "ok":
+            continue
+        name = _name_they_wrote(str(event.arguments.get("person", "")), ctx)
+        parts = [part for part in (name or "").split() if len(part) > 2]
+        if name and any(re.search(rf"\b{re.escape(part)}\b", reply, re.I) for part in parts):
+            return ctx.business.someone_else_reply.replace("{name}", name)
+    return None
 
 
 def _key(ctx: ToolContext) -> str:
