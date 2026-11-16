@@ -150,15 +150,24 @@ def _routes(
 
     @router.post("/conversations/{conversation_id}/messages")
     async def send_customer_message(
-        conversation_id: str, body: CustomerMessageIn, service: ServiceDep
+        conversation_id: str,
+        body: CustomerMessageIn,
+        service: ServiceDep,
+        authorization: Annotated[str | None, Header()] = None,
     ) -> CustomerMessageOut:
         outcome = await service.handle_customer_message(
             conversation_id, body.text, message_id=body.message_id
         )
+        # The tool events and the summary written for staff are for staff. A channel gets the
+        # replies, and calling this directly doesn't get anyone more than that.
+        for_staff = _holds_staff_key(authorization, staff_key)
+        conversation = ConversationOut.model_validate(outcome.conversation)
+        if not for_staff:
+            conversation = conversation.model_copy(update={"handoff_summary": None})
         return CustomerMessageOut(
-            conversation=ConversationOut.model_validate(outcome.conversation),
+            conversation=conversation,
             messages=visible_messages(outcome.messages),
-            events=outcome.events,
+            events=outcome.events if for_staff else [],
             turn=TurnOut.model_validate(outcome.turn) if outcome.turn else None,
             duplicate=outcome.duplicate,
         )
@@ -203,6 +212,16 @@ def _staff_only(staff_key: SecretStr | None) -> Callable[..., Awaitable[None]]:
             )
 
     return check
+
+
+def _holds_staff_key(authorization: str | None, staff_key: SecretStr | None) -> bool:
+    scheme, _, token = (authorization or "").partition(" ")
+    return (
+        staff_key is not None
+        and bool(staff_key.get_secret_value())
+        and scheme.lower() == "bearer"
+        and _matches(token, staff_key)
+    )
 
 
 def _matches(given: str | None, secret: SecretStr) -> bool:
