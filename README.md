@@ -111,8 +111,9 @@ cp .env.example .env   # then set ANTHROPIC_API_KEY or OPENAI_API_KEY
 docker compose up --build
 ```
 
-Compose gives the engine and the console a demo staff key. Set your own `OFD_STAFF_KEY` in
-`.env` before it runs anywhere but your own machine.
+Compose gives the engine and the console demo keys for the staff inbox and for WhatsApp-style
+chats. Set your own `OFD_STAFF_KEY` and `OFD_INTEGRATION_KEY` in `.env` before it runs anywhere
+but your own machine.
 
 - Console: http://localhost:3000
 - Engine API docs: http://localhost:8000/docs
@@ -131,7 +132,8 @@ cd console && npm install && npm run dev
 ```
 
 The engine uses SQLite locally; set `OFD_OTLP_ENDPOINT` to export traces. For the staff
-inbox, set `OFD_STAFF_KEY` in `.env` and the same value in `console/.env.local`.
+inbox and the seeded patients' chats, set `OFD_STAFF_KEY` and `OFD_INTEGRATION_KEY` in `.env`
+and the same values in `console/.env.local`.
 
 ## Try it
 

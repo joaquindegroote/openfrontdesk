@@ -1,5 +1,6 @@
-// The browser talks to the engine through this route, so the staff key stays on the server.
-// That also means anyone who can open the console acts as staff: put it behind your sign-in.
+// The browser talks to the engine through this route, so the keys stay on the server: the
+// staff key for the inbox, and the integration key for the chat demo, which plays a WhatsApp
+// channel. Anyone who can open the console acts as both: put it behind your own sign-in.
 
 import type { NextRequest } from "next/server";
 
@@ -16,6 +17,8 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
   const headers = new Headers({ "Content-Type": "application/json" });
   const staffKey = process.env.OFD_STAFF_KEY;
   if (staffKey) headers.set("Authorization", `Bearer ${staffKey}`);
+  const integrationKey = process.env.OFD_INTEGRATION_KEY;
+  if (integrationKey) headers.set("X-Integration-Key", integrationKey);
 
   let response: Response;
   try {
