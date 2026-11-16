@@ -19,6 +19,12 @@ booking system:
    action and the recent transcript, it decides whether the customer explicitly agreed to *this
    exact* action after its details (date, time, price, fee) were stated.
 
+The summary is written only after the rules pass. It reads the booking system (which service,
+what time), and one of the rules is that the customer owns the appointment, so a try on someone
+else's is blocked before anything about it is read. Until November 16, 2026 it was written
+first, and a web visitor who got the model to try cancelling another patient's appointment
+found the service and time in the blocked event that came back.
+
 If any check fails, the action is not executed and the model receives a `blocked` result with
 the reason and what to do next. Every decision, passed or failed, is stored with the tool event.
 
