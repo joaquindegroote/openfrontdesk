@@ -25,6 +25,8 @@ CARLOS = "+15550100102"  # pat_0002, check-up on Saturday (apt_00002): free to c
 PRIYA = "+15550100103"  # pat_0003, no upcoming appointments
 # The staff key in tests. The harness's client sends it, like the console does.
 STAFF_KEY = "test-staff-key"
+# The integration key in tests. The harness sends it too, so it can open WhatsApp conversations.
+INTEGRATION_KEY = "test-integration-key"
 # The mock clinic's code in tests, where nobody receives a text.
 VERIFICATION_CODE = "246810"
 # What the reference business says when a person takes over for a reason it has no text for.

@@ -157,6 +157,25 @@ def test_verified_channels_need_the_integration_key(monkeypatch: pytest.MonkeyPa
     assert web.status_code == 201
 
 
+def test_without_an_integration_key_only_web_chats_open(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        database_url="sqlite+aiosqlite:///:memory:",
+        business_profile=PROFILE,
+    )
+    with TestClient(create_app(settings, backend=_NoBackend())) as client:
+        whatsapp = client.post(
+            "/v1/conversations",
+            json={"channel": "whatsapp", "customer_phone": CARLOS},
+            headers={"X-Integration-Key": "anything"},
+        )
+        web = client.post("/v1/conversations", json={"channel": "web", "customer_phone": CARLOS})
+    assert whatsapp.status_code == 503
+    assert "OFD_INTEGRATION_KEY" in whatsapp.json()["detail"]
+    assert web.status_code == 201
+
+
 def test_a_claimed_number_unlocks_nothing(harness: Harness) -> None:
     """A web visitor who types Carlos's number can't look him up, see or touch his appointment."""
     conversation = harness.start(CARLOS, channel="web")
