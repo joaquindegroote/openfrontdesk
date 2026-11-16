@@ -24,7 +24,8 @@ hanging when the booking system goes down. openfrontdesk is built around those f
   second one. A message the channel delivers twice, like a retried webhook, is answered once.
 - **Human handoff as a first-class path.** The assistant hands off on request, on policy
   triggers (urgent symptoms, complaints, billing), when the booking system keeps failing, when
-  the guards stop the same action three times in a row, or when it runs out of steps. Staff reply from an inbox and hand the conversation back.
+  the guards stop the same action three times in a row, or when it runs out of steps. Staff
+  reply from an inbox and hand the conversation back.
 - **Backend-agnostic.** The agent talks to a `BookingBackend` interface. The reference
   implementation is a mock clinic API that misbehaves on purpose (latency, 503s); adapters for
   real systems plug in the same way.
@@ -110,6 +111,9 @@ cp .env.example .env   # then set ANTHROPIC_API_KEY or OPENAI_API_KEY
 docker compose up --build
 ```
 
+Compose gives the engine and the console a demo staff key. Set your own `OFD_STAFF_KEY` in
+`.env` before it runs anywhere but your own machine.
+
 - Console: http://localhost:3000
 - Engine API docs: http://localhost:8000/docs
 - Clinic API docs: http://localhost:8001/docs
@@ -126,7 +130,8 @@ uv run uvicorn openfrontdesk.api.app:create_app --factory --port 8000
 cd console && npm install && npm run dev
 ```
 
-The engine uses SQLite locally; set `OFD_OTLP_ENDPOINT` to export traces.
+The engine uses SQLite locally; set `OFD_OTLP_ENDPOINT` to export traces. For the staff
+inbox, set `OFD_STAFF_KEY` in `.env` and the same value in `console/.env.local`.
 
 ## Try it
 
@@ -238,9 +243,9 @@ uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
   idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
 - **Codes aren't really texted.** The mock clinic accepts a fixed code; a deployment needs an SMS
   provider behind the same endpoint.
-- **The staff endpoints have no authentication.** Listing conversations, taking one over,
-  replying and handing it back are open to anyone who can reach the engine. Put them behind your
-  own auth before exposing it.
+- **The console has no sign-in.** The engine's staff endpoints need a key, and the console's
+  server holds it, so whoever can open the console acts as the front desk. Put it behind your
+  own sign-in. The key is one shared secret, with no per-person accounts or audit trail.
 - **Registering a customer isn't judged.** It needs a verified phone, but not the customer's
   explicit yes, since it only creates a record.
 - **One engine process.** Turns are serialized per conversation within a process; see
