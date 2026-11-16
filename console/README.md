@@ -12,4 +12,11 @@ npm install
 npm run dev   # http://localhost:3000, expects the engine at http://localhost:8000
 ```
 
-Set `NEXT_PUBLIC_ENGINE_URL` to point at another engine.
+The browser never calls the engine. It calls the console's own server (`/api/engine/...`),
+which forwards to the engine and adds the staff key, so the key stays out of the browser. Set
+both in the server's environment, for example in `.env.local`:
+
+- `ENGINE_URL`: where the engine is (default `http://localhost:8000`).
+- `OFD_STAFF_KEY`: the engine's staff key. Without it, the inbox gets "staff endpoints are off".
+
+Anyone who can open the console can act as staff, so it needs your own sign-in in front of it.

@@ -45,6 +45,9 @@ services:
       OFD_DATABASE_URL: postgresql+asyncpg://ofd:ofd@postgres:5432/ofd
       OFD_BACKEND_URL: http://clinic-api:8001
       OFD_OTLP_ENDPOINT: http://phoenix:6006/v1/traces
+      # A demo key, shared with the console. Set your own OFD_STAFF_KEY in .env before this
+      # runs anywhere but your own machine.
+      OFD_STAFF_KEY: ${OFD_STAFF_KEY:-local-demo-staff-key}
     ports:
       - "8000:8000"
     depends_on:
@@ -58,6 +61,10 @@ services:
   console:
     build:
       context: console
+    environment:
+      # The console's server calls the engine, so the staff key stays out of the browser.
+      ENGINE_URL: http://engine:8000
+      OFD_STAFF_KEY: ${OFD_STAFF_KEY:-local-demo-staff-key}
     ports:
       - "3000:3000"
     depends_on:

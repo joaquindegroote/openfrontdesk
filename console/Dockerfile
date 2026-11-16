@@ -3,11 +3,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# Read by the browser, so they are baked in at build time.
-ARG NEXT_PUBLIC_ENGINE_URL=http://localhost:8000
+# Read by the browser, so it's baked in at build time. ENGINE_URL and OFD_STAFF_KEY are read
+# by the server when it runs, and never reach the browser.
 ARG NEXT_PUBLIC_TRACES_URL=http://localhost:6006
-ENV NEXT_PUBLIC_ENGINE_URL=$NEXT_PUBLIC_ENGINE_URL \
-    NEXT_PUBLIC_TRACES_URL=$NEXT_PUBLIC_TRACES_URL \
+ENV NEXT_PUBLIC_TRACES_URL=$NEXT_PUBLIC_TRACES_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
