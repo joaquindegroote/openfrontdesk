@@ -246,12 +246,17 @@ uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
 - **The console has no sign-in.** The engine's staff endpoints need a key, and the console's
   server holds it, so whoever can open the console acts as the front desk. Put it behind your
   own sign-in. The key is one shared secret, with no per-person accounts or audit trail.
+- **No rate limits.** Anyone who can reach the engine can start conversations, and each message
+  is a model call on your key. Put a rate limit in front of it before it's public.
+- **Conversations are kept.** Messages and tool data stay in the database, with no retention
+  period and no way yet to delete one customer's data. `OFD_TRACE_CONTENT=false` keeps them
+  out of the traces, not out of the database.
 - **Registering a customer isn't judged.** It needs a verified phone, but not the customer's
   explicit yes, since it only creates a record.
 - **One engine process.** Turns are serialized per conversation within a process; see
   [what holds when things happen at once](docs/architecture.md#concurrency).
 - **English and one business.** The Spanish profile is on the roadmap.
-- **Small samples.** Two or three runs per scenario, and part of the grading is an LLM's. A
+- **Small samples.** Two to ten runs per scenario, and part of the grading is an LLM's. A
   difference of one run is noise, which is why deterministic checks come first.
 - **Some things still hang on the model's wording.** A question about another person gets a
   fixed sentence, but in 1 of 20 runs Claude Haiku 5.5 answered it in its own words instead.
