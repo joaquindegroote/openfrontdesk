@@ -1,4 +1,6 @@
-export const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://localhost:8000";
+// The console's own server forwards these calls to the engine and adds the staff key, which
+// never reaches the browser. See app/api/engine.
+const API = "/api/engine";
 
 export type ConversationStatus = "active" | "handed_off";
 
@@ -83,13 +85,13 @@ export class EngineError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${ENGINE_URL}${path}`, {
+    response = await fetch(`${API}${path}`, {
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
       cache: "no-store",
     });
   } catch {
-    throw new EngineError(`Can't reach the engine at ${ENGINE_URL}. Is it running?`);
+    throw new EngineError("Can't reach the console's server. Is it running?");
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
