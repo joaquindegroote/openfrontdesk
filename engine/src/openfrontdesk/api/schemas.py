@@ -88,6 +88,7 @@ class ConversationDetail(BaseModel):
 class CustomerMessageOut(BaseModel):
     conversation: ConversationOut
     messages: list[MessageOut]
+    # The turn's tool calls, only for a caller with the staff key. Empty for anyone else.
     events: list[ToolEvent]
     turn: TurnOut | None
     # This message_id was handled before. The messages are the ones from the first time, so a

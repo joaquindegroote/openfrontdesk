@@ -93,21 +93,29 @@ class ToolExecutor:
 
         # From here on, events record the validated arguments (defaults filled, types normalized).
         call = call.model_copy(update={"arguments": params.model_dump(mode="json")})
-        summary = await _summarize(tool, ctx, params)
-        checks: list[CheckResult] = []
         guards = self._active_guards(tool)
-        if guards:
-            action = ProposedAction(tool=tool.name, params=params, summary=summary or tool.name)
-            checks = await evaluate(guards, ctx, action)
+        rules = [g for g in guards if g.kind == "rule"]
+        judges = [g for g in guards if g.kind != "rule"]
+        # The rules, identity among them, go first and need no description. Describing the
+        # action reads the booking system (which service, what time), so it waits until they
+        # pass: a try on someone else's appointment is blocked before anything about it is read.
+        checks: list[CheckResult] = []
+        if rules:
+            checks = await evaluate(rules, ctx, ProposedAction(tool.name, params, tool.name))
+        failed = next((c for c in checks if not c.passed), None)
+        summary = None if failed else await _summarize(tool, ctx, params)
+        if failed is None and judges:
+            action = ProposedAction(tool.name, params, summary or tool.name)
+            checks += await evaluate(judges, ctx, action)
             failed = next((c for c in checks if not c.passed), None)
-            if failed is not None:
-                result = {
-                    "status": "blocked",
-                    "check": failed.name,
-                    "reason": failed.detail,
-                    "instructions": "Do not retry this action until the reason is resolved.",
-                }
-                return _event(call, tool.side_effect, "blocked", result, summary, checks), None
+        if failed is not None:
+            result = {
+                "status": "blocked",
+                "check": failed.name,
+                "reason": failed.detail,
+                "instructions": "Do not retry this action until the reason is resolved.",
+            }
+            return _event(call, tool.side_effect, "blocked", result, summary, checks), None
 
         if tool.side_effect == "write":
             ctx = replace(ctx, idempotency_key=idempotency_key(ctx, tool, params))
