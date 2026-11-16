@@ -10,7 +10,15 @@ from openfrontdesk.api.app import create_app
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.llm.scripted import ScriptedLLM
 from openfrontdesk.settings import Settings
-from support import NOW, PROFILE, STAFF_KEY, VERIFICATION_CODE, Harness, HarnessFactory
+from support import (
+    INTEGRATION_KEY,
+    NOW,
+    PROFILE,
+    STAFF_KEY,
+    VERIFICATION_CODE,
+    Harness,
+    HarnessFactory,
+)
 
 
 @pytest.fixture
@@ -43,9 +51,12 @@ def make_harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[HarnessFactory]:
             max_agent_steps=max_steps,
             turn_timeout_s=turn_timeout_s,
             staff_key=staff_key,
+            integration_key=INTEGRATION_KEY,
         )
         app = create_app(settings, llm=llm, judge_llm=judge, backend=backend, clock=lambda: NOW)
-        headers = {"Authorization": f"Bearer {staff_key}"} if staff_key else {}
+        headers = {"X-Integration-Key": INTEGRATION_KEY}
+        if staff_key:
+            headers["Authorization"] = f"Bearer {staff_key}"
         client = TestClient(app, headers=headers)
         client.__enter__()
         clients.append(client)

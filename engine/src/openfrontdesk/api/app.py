@@ -55,7 +55,7 @@ def create_app(
     business = BusinessProfile.load(settings.business_profile)
     configure_tracing(settings.otlp_endpoint, content=settings.trace_content)
     if settings.integration_key is None:
-        logger.warning("no integration key: any client can open a verified-channel conversation")
+        logger.warning("no integration key: whatsapp, sms and voice conversations are off")
     if settings.staff_key is None:
         logger.warning("no staff key: the staff endpoints are off")
 
@@ -118,12 +118,11 @@ def _routes(
     ) -> ConversationOut:
         # On WhatsApp, SMS or a call the phone number is proven by the carrier, so only a trusted
         # integration may open such a conversation. A web visitor's number is just a claim.
-        if (
-            body.channel != "web"
-            and integration_key is not None
-            and not _matches(x_integration_key, integration_key)
-        ):
-            raise HTTPException(401, "Only an integration can open this kind of conversation.")
+        if body.channel != "web":
+            if integration_key is None or not integration_key.get_secret_value():
+                raise HTTPException(503, "These channels are off: set OFD_INTEGRATION_KEY.")
+            if not _matches(x_integration_key, integration_key):
+                raise HTTPException(401, "Only an integration can open this kind of conversation.")
         conversation = await service.start(
             channel=body.channel,
             customer_phone=body.customer_phone,

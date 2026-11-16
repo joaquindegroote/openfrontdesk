@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     turn_timeout_s: float = 45.0
 
     # Integrations that open conversations on a verified channel (WhatsApp, SMS, voice) send
-    # this in X-Integration-Key. Unset, any client can: fine for a local demo only.
+    # this in X-Integration-Key. Unset, those channels are off and only web chats open.
     integration_key: SecretStr | None = None
     # The staff endpoints (listing and reading conversations, taking one over, replying, handing
     # it back) need this as a bearer token. Unset, they are off.
