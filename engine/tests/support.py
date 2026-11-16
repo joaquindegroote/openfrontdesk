@@ -23,6 +23,8 @@ NOW = datetime(2026, 11, 2, 8, 0, tzinfo=TIMEZONE)
 EMILY = "+15550100101"  # pat_0001, cleaning today at 11:00 (apt_00001): late-cancellation fee
 CARLOS = "+15550100102"  # pat_0002, check-up on Saturday (apt_00002): free to cancel
 PRIYA = "+15550100103"  # pat_0003, no upcoming appointments
+# The staff key in tests. The harness's client sends it, like the console does.
+STAFF_KEY = "test-staff-key"
 # The mock clinic's code in tests, where nobody receives a text.
 VERIFICATION_CODE = "246810"
 # What the reference business says when a person takes over for a reason it has no text for.
@@ -72,5 +74,10 @@ class Harness:
 
 class HarnessFactory(Protocol):
     def __call__(
-        self, *, chaos: ChaosConfig | None = None, max_steps: int = 8, turn_timeout_s: float = 45.0
+        self,
+        *,
+        chaos: ChaosConfig | None = None,
+        max_steps: int = 8,
+        turn_timeout_s: float = 45.0,
+        staff_key: str | None = STAFF_KEY,
     ) -> Harness: ...
