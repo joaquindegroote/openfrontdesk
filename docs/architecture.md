@@ -93,11 +93,12 @@ the turn, on its own connection pool so locks can't starve the queries.
 | Endpoints | Who calls them | What they need |
 |---|---|---|
 | `GET /v1/business`, `POST /v1/conversations` for a web chat, `POST /v1/conversations/{id}/messages` | A channel: the chat widget, or an integration's server | Only the conversation's id, which the one who started it holds |
-| `POST /v1/conversations` for WhatsApp, SMS or voice | An integration, since the carrier proves the phone | `X-Integration-Key` |
+| `POST /v1/conversations` for WhatsApp, SMS or voice | An integration, since the carrier proves the phone | `X-Integration-Key`. Without a key set, these channels are off. |
 | Listing and reading conversations, taking one over, replying as staff, handing it back | The front desk, through the console | `Authorization: Bearer <OFD_STAFF_KEY>`. Without a key set, these are off. |
 
-The console's browser code never holds the staff key: it calls the console's own server, which
-adds the key and forwards to the engine. Keys are compared in constant time. The API docs at
+The console's browser code never holds a key: it calls the console's own server, which adds
+them and forwards to the engine. The chat demo plays a WhatsApp channel for the seeded
+patients, so the console holds the integration key too. Keys are compared in constant time. The API docs at
 `/docs` mark the staff endpoints, and take the key under "Authorize".
 
 What comes back to a caller without the staff key is the replies and the conversation's status.

@@ -18,5 +18,7 @@ both in the server's environment, for example in `.env.local`:
 
 - `ENGINE_URL`: where the engine is (default `http://localhost:8000`).
 - `OFD_STAFF_KEY`: the engine's staff key. Without it, the inbox gets "staff endpoints are off".
+- `OFD_INTEGRATION_KEY`: the engine's integration key. The chat demo plays a WhatsApp channel
+  for the seeded patients, and without it only the new visitor can start a chat.
 
 Anyone who can open the console can act as staff, so it needs your own sign-in in front of it.
