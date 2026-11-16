@@ -2,7 +2,7 @@
 
 import hmac
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated
@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import SecretStr
 
 from openfrontdesk import __version__
@@ -55,6 +56,8 @@ def create_app(
     configure_tracing(settings.otlp_endpoint, content=settings.trace_content)
     if settings.integration_key is None:
         logger.warning("no integration key: any client can open a verified-channel conversation")
+    if settings.staff_key is None:
+        logger.warning("no staff key: the staff endpoints are off")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -84,7 +87,7 @@ def create_app(
     async def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
-    app.include_router(_routes(business, settings.integration_key))
+    app.include_router(_routes(business, settings.integration_key, settings.staff_key))
     return app
 
 
@@ -95,8 +98,13 @@ def _service(request: Request) -> ConversationService:
 ServiceDep = Annotated[ConversationService, Depends(_service)]
 
 
-def _routes(business: BusinessProfile, integration_key: SecretStr | None) -> APIRouter:
+def _routes(
+    business: BusinessProfile, integration_key: SecretStr | None, staff_key: SecretStr | None
+) -> APIRouter:
     router = APIRouter(prefix="/v1")
+    # A channel only starts conversations and sends the customer's messages. Everything that
+    # reads across conversations or acts as the front desk is staff only.
+    staff = [Depends(_staff_only(staff_key))]
 
     @router.get("/business")
     async def get_business() -> BusinessOut:
@@ -113,7 +121,7 @@ def _routes(business: BusinessProfile, integration_key: SecretStr | None) -> API
         if (
             body.channel != "web"
             and integration_key is not None
-            and not hmac.compare_digest(x_integration_key or "", integration_key.get_secret_value())
+            and not _matches(x_integration_key, integration_key)
         ):
             raise HTTPException(401, "Only an integration can open this kind of conversation.")
         conversation = await service.start(
@@ -123,14 +131,14 @@ def _routes(business: BusinessProfile, integration_key: SecretStr | None) -> API
         )
         return ConversationOut.model_validate(conversation)
 
-    @router.get("/conversations")
+    @router.get("/conversations", dependencies=staff)
     async def list_conversations(
         service: ServiceDep, status: str | None = None
     ) -> list[ConversationOut]:
         rows = await service.repo.list_conversations(status=status)
         return [ConversationOut.model_validate(r) for r in rows]
 
-    @router.get("/conversations/{conversation_id}")
+    @router.get("/conversations/{conversation_id}", dependencies=staff)
     async def get_conversation(conversation_id: str, service: ServiceDep) -> ConversationDetail:
         conversation = await service.get(conversation_id)
         return ConversationDetail(
@@ -155,14 +163,16 @@ def _routes(business: BusinessProfile, integration_key: SecretStr | None) -> API
             duplicate=outcome.duplicate,
         )
 
-    @router.post("/conversations/{conversation_id}/staff-messages", status_code=201)
+    @router.post(
+        "/conversations/{conversation_id}/staff-messages", status_code=201, dependencies=staff
+    )
     async def send_staff_message(
         conversation_id: str, body: StaffMessageIn, service: ServiceDep
     ) -> MessageOut:
         row = await service.staff_reply(conversation_id, body.text, body.author)
         return visible_messages([row])[0]
 
-    @router.post("/conversations/{conversation_id}/takeover")
+    @router.post("/conversations/{conversation_id}/takeover", dependencies=staff)
     async def take_over(
         conversation_id: str, body: TakeOverIn, service: ServiceDep
     ) -> ConversationOut:
@@ -171,8 +181,31 @@ def _routes(business: BusinessProfile, integration_key: SecretStr | None) -> API
         )
         return ConversationOut.model_validate(conversation)
 
-    @router.post("/conversations/{conversation_id}/resume")
+    @router.post("/conversations/{conversation_id}/resume", dependencies=staff)
     async def resume_assistant(conversation_id: str, service: ServiceDep) -> ConversationOut:
         return ConversationOut.model_validate(await service.resume_assistant(conversation_id))
 
     return router
+
+
+_bearer = HTTPBearer(auto_error=False, description="The staff key (OFD_STAFF_KEY).")
+
+
+def _staff_only(staff_key: SecretStr | None) -> Callable[..., Awaitable[None]]:
+    async def check(
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    ) -> None:
+        if staff_key is None or not staff_key.get_secret_value():
+            raise HTTPException(503, "The staff endpoints are off: set OFD_STAFF_KEY.")
+        if credentials is None or not _matches(credentials.credentials, staff_key):
+            raise HTTPException(
+                401, "This needs the staff key.", headers={"WWW-Authenticate": "Bearer"}
+            )
+
+    return check
+
+
+def _matches(given: str | None, secret: SecretStr) -> bool:
+    """Constant time, and as bytes: a header with characters outside ASCII is a mismatch, not
+    an error."""
+    return hmac.compare_digest((given or "").encode(), secret.get_secret_value().encode())

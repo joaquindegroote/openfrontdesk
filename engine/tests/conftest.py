@@ -10,7 +10,7 @@ from openfrontdesk.api.app import create_app
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.llm.scripted import ScriptedLLM
 from openfrontdesk.settings import Settings
-from support import NOW, PROFILE, VERIFICATION_CODE, Harness, HarnessFactory
+from support import NOW, PROFILE, STAFF_KEY, VERIFICATION_CODE, Harness, HarnessFactory
 
 
 @pytest.fixture
@@ -19,7 +19,11 @@ def make_harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[HarnessFactory]:
     clients: list[TestClient] = []
 
     def make(
-        *, chaos: ChaosConfig | None = None, max_steps: int = 8, turn_timeout_s: float = 45.0
+        *,
+        chaos: ChaosConfig | None = None,
+        max_steps: int = 8,
+        turn_timeout_s: float = 45.0,
+        staff_key: str | None = STAFF_KEY,
     ) -> Harness:
         clinic = create_clinic_app(
             FixedClock(NOW),
@@ -38,9 +42,11 @@ def make_harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[HarnessFactory]:
             business_profile=PROFILE,
             max_agent_steps=max_steps,
             turn_timeout_s=turn_timeout_s,
+            staff_key=staff_key,
         )
         app = create_app(settings, llm=llm, judge_llm=judge, backend=backend, clock=lambda: NOW)
-        client = TestClient(app)
+        headers = {"Authorization": f"Bearer {staff_key}"} if staff_key else {}
+        client = TestClient(app, headers=headers)
         client.__enter__()
         clients.append(client)
         return Harness(client=client, llm=llm, judge=judge, clinic=clinic)
