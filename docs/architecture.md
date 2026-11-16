@@ -100,6 +100,11 @@ The console's browser code never holds the staff key: it calls the console's own
 adds the key and forwards to the engine. Keys are compared in constant time. The API docs at
 `/docs` mark the staff endpoints, and take the key under "Authorize".
 
+What comes back to a caller without the staff key is the replies and the conversation's status.
+The turn's tool events, and the summary the assistant wrote for staff when it handed off, go
+only to a caller with the key: a visitor can get the model to try anything, and the events of a
+blocked try are not theirs to read.
+
 ## Data model
 
 - `conversations`: channel, customer phone, status (`active` or `handed_off`), handoff reason and summary.
