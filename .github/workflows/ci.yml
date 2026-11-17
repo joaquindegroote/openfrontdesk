@@ -52,3 +52,12 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  images:
+    name: Docker images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The quickstart is `docker compose up --build`, so the images have to build from a
+      # clean checkout.
+      - run: docker compose build
