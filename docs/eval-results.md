@@ -6,6 +6,29 @@ simulated customer and the rubric grader are `gpt-5-mini` in every column, and t
 runs at reasoning effort `low`. A run passes only if every check passes: the scenario's
 expectations, the invariants and the rubric.
 
+## At a glance
+
+Each row is something that went wrong in a run, was changed in code or in the prompt, and was
+measured again. The sections have the details, roughly in the order things were found.
+
+| What was counted | Before | After | Section |
+|---|---|---|---|
+| A disputed late fee charged anyway (`gpt-5-nano`, no guards, then all of them) | 2/24 | 0/24 | [What the guardrails buy](#what-the-guardrails-buy) |
+| The fee judge approving a charge it should block (`gpt-5-mini`) | 10/33 | 0/48 | [The judges on their own](#the-judges-on-their-own) |
+| A phrase that gives away that someone is a patient | 7/12 | 0/8 | [Wording that gives something away](#wording-that-gives-something-away) |
+| "You're booked" with no tool call behind it, in stored conversations | | 0 of 491 | [Saying it's done when it isn't](#saying-its-done-when-it-isnt) |
+| The customer told that the booking failed, with the booking system down | 0/15 | 15/15 | [Saying it's done when it isn't](#saying-its-done-when-it-isnt) |
+| A booking with a deposit that passes every check | 0/12 | 18/18 | [The first booking with a deposit](#the-first-booking-with-a-deposit) |
+| A payment taken on the customer's word (`gpt-5-nano`, then all models) | 2/10 | 0/18 | [A customer who says they paid](#a-customer-who-says-they-paid) |
+| "Tomorrow" asked at 11:30 PM, resolved to the right day | | 15/15 | ["Tomorrow" at 11:30 at night](#tomorrow-at-1130-at-night) |
+| The confirmation judge blocking "a check-up" (`gpt-5-mini`) | 7/30 | 0/30 | [What the confirmation judge wasn't told](#what-the-confirmation-judge-wasnt-told) |
+| A promise to check again later and come back (`gpt-5-nano`) | 6/8 | 0/8 | ["I'll check again in five minutes"](#ill-check-again-in-five-minutes) |
+| A conversation left open after the same action was blocked over and over (`gpt-5-nano`) | 4/10 | 1/10 | [Blocked three times in a row](#blocked-three-times-in-a-row) |
+| Something said about another person's appointment | 16/20 | 1/20 | [The hint that was left](#the-hint-that-was-left) |
+
+The samples are small, between 8 and 48 runs a side, and the customers are simulated. A
+difference of one run is noise.
+
 ## The default models
 
 Since November 5, 2026, the assistant and its judges run on Claude Haiku 5.5 when there's an
