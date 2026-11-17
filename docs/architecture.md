@@ -75,6 +75,7 @@ sequenceDiagram
 | One message delivered twice by the channel (a retried webhook) | With the channel's `message_id`, the copy gets the first outcome back marked `duplicate`, and no second turn runs. That holds when the copy arrives while the first is still being answered. | `engine/tests/test_redelivery.py` |
 | Messages in different conversations | They don't wait for each other. | `engine/tests/test_concurrency.py` |
 | A write retried after a timeout or a lost response | Same idempotency key, so the booking system returns the original result instead of booking twice. | `test_retried_booking_is_deduplicated_by_the_clinic` |
+| The engine dies after a booking and before saving the turn | The channel delivers the message again and the turn runs again. The booking goes out with the same key, and the booking system answers with the first appointment. | `test_a_crash_after_the_booking_and_before_the_save_books_once` |
 | The same key sent with different arguments | Rejected by the booking system (`idempotency_key_reused`). | `test_reusing_an_idempotency_key_for_another_request_is_rejected` |
 | Two customers going for the same slot | The first gets it, the second gets `slot_unavailable` and is offered other times. | `test_booking_is_idempotent_and_prevents_double_booking` |
 | A second booking for a service the customer already has coming up | Blocked by `NoDuplicateBooking`, unless the customer asked to keep both. | `test_duplicate_booking_rule` |
