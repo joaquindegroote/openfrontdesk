@@ -8,6 +8,11 @@ conversation to a person when it should.
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
+![A booking in the console: the chat on the left, and on the right the tool calls and the four checks the booking passed before it ran](docs/images/booking.png)
+
+*A booking, and what happened under it: the checks on the right ran before the booking system
+was touched.*
+
 AI receptionists are easy to demo and hard to trust. In production they double-book after a
 timeout, cancel without mentioning the late fee, invent availability, and leave customers
 hanging when the booking system goes down. openfrontdesk is built around those failure modes:
@@ -150,6 +155,13 @@ The console lets you chat as one of the clinic's seeded patients:
 Things worth trying: book without saying "yes" and watch the guardrail block it; cancel
 Emily's appointment; ask for a person and reply from the staff inbox; restart the clinic API
 with `CLINIC_CHAOS_ERROR_RATE=1` and watch the automatic handoff.
+
+Emily cancels inside the 24 hours and won't pay the fee. The assistant doesn't argue and doesn't
+cancel: it hands the conversation over, and the front desk gets it with a summary.
+
+| The customer's side | The staff inbox |
+|---|---|
+| ![The chat after a disputed late fee: the conversation is marked as with staff](docs/images/handoff.png) | ![The staff inbox with the same conversation, its reason and the assistant's summary](docs/images/inbox.png) |
 
 ## What a blocked action looks like
 
