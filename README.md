@@ -17,53 +17,38 @@ AI receptionists are easy to demo and hard to trust. In production they double-b
 timeout, cancel without mentioning the late fee, invent availability, and leave customers
 hanging when the booking system goes down. openfrontdesk is built around those failure modes:
 
-- **Propose, verify, execute.** Every booking change the model proposes (book, cancel,
-  reschedule) goes through deterministic rules first and then an LLM judge that checks the
-  customer explicitly agreed to *that exact* action. Unverified actions never reach the booking
-  system, and the model is told why so it can ask for confirmation instead of retrying.
-- **Verified identity.** A phone number counts only when the channel proves it (WhatsApp, SMS,
-  a call) or the customer reads back a code texted to it. A web visitor who types someone
-  else's number gets nothing about that person.
-- **Safe retries.** Writes carry idempotency keys derived from the conversation and the action,
-  so a retried booking after a lost response returns the original appointment instead of a
-  second one. A message the channel delivers twice, like a retried webhook, is answered once.
-- **Human handoff as a first-class path.** The assistant hands off on request, on policy
-  triggers (urgent symptoms, complaints, billing), when the booking system keeps failing, when
-  the guards stop the same action three times in a row, or when it runs out of steps. Staff
+- **Propose, verify, execute.** The model only proposes a booking, a move or a cancellation.
+  Deterministic rules check it first, then an LLM judge checks that the customer agreed to
+  *that exact* action. What isn't verified never reaches the booking system.
+- **Verified identity.** A phone number counts only when the channel proves it or the customer
+  reads back a code texted to it. Typing someone else's number gets nothing about them.
+- **Safe retries.** Writes carry idempotency keys, so a booking retried after a lost response
+  returns the first appointment, and a message the channel delivers twice is answered once.
+- **Handoff to a person.** On request, on policy (urgent symptoms, complaints, billing), and by
+  itself when the booking system keeps failing or the same action keeps getting blocked. Staff
   reply from an inbox and hand the conversation back.
-- **Backend-agnostic.** The agent talks to a `BookingBackend` interface. The reference
-  implementation is a mock clinic API that misbehaves on purpose (latency, 503s); adapters for
-  real systems plug in the same way.
-- **Observable.** Each turn records its tool calls, guardrail decisions, latency and tokens,
-  and exports OpenTelemetry traces that [Arize Phoenix](https://github.com/Arize-ai/phoenix)
-  renders as agent, LLM, tool and guardrail spans. `OFD_TRACE_CONTENT=false` keeps what
-  customers wrote, and the tool data about them, out of the traces.
+- **The business's words where they matter.** A handoff, an outage and a question about another
+  person are answered with fixed sentences from the business profile, not generated ones.
+- **Observable.** Every turn records its tool calls, guardrail decisions, latency and tokens,
+  and exports OpenTelemetry traces to [Arize Phoenix](https://github.com/Arize-ai/phoenix).
 
 ## What the evals measured
 
-Every number here comes from simulated customers talking to the real engine, on real models.
-The details are in [docs/eval-results.md](docs/eval-results.md), which starts with a table of every
-before and after.
+Simulated customers talk to the real engine on real models, and each fix is measured before and
+after. These are six of them; [the full table](docs/eval-results.md#at-a-glance) has the rest.
 
-- **An impostor gets nothing.** A web visitor typing another patient's number saw and moved his
-  appointment in 3 of 3 runs before identity checks were tied to the channel, and in none of 13
-  after.
-- **The guardrails catch what a weaker model lets through.** With every guard removed,
-  gpt-5-nano charged a late fee the customer was disputing in 2 of 24 runs. With all of them on,
-  in none. On gpt-5-mini they fired once in 24 runs.
-- **The judges have their own test set.** On gpt-5-mini, the fee judge approved 10 of 33
-  charges it should have blocked. Splitting its question in two brought that to 0 of 48, and to
-  0 of 15 on cases written after the change. The confirmation judge blocked 7 of 30 bookings
-  where the customer said "a check-up" for the service named "Check-up & X-rays", until it
-  was given the service names and the date: 0 of 30.
-- **"You're booked" always had a booking behind it.** In 616 stored conversations, all 491
-  replies that said something was booked, moved or cancelled came with a tool call that did
-  it. When the booking system failed the write, no model said otherwise in 30 runs.
-- **"I paid" isn't a payment.** When a customer said they'd paid a deposit that the booking
-  system still showed as due, gpt-5-nano confirmed it in 2 of 10 runs and gpt-5-mini asked
-  for card digits in 2 of 10. After the fix, no model confirmed a payment in 18 runs.
-- **Claude Haiku 5.5 runs by default.** It passes as many scenarios as gpt-5-mini (22 of 24) at
-  2.5 s per turn instead of 6.1 s.
+| What was counted | Before | After |
+|---|---|---|
+| An impostor typing another patient's number saw and moved his appointment | 3/3 | 0/13 |
+| A disputed late fee charged anyway (gpt-5-nano with no guards, then with all of them) | 2/24 | 0/24 |
+| The fee judge approving a charge it should block (gpt-5-mini) | 10/33 | 0/48 |
+| A payment taken on the customer's word (gpt-5-nano, then all models) | 2/10 | 0/18 |
+| Something said about another person's appointment | 16/20 | 1/20 |
+| "You're booked" with no tool call behind it, in 616 stored conversations | | 0 of 491 |
+
+Claude Haiku 5.5 runs by default: it passes as many scenarios as gpt-5-mini, at 2.5 s per turn
+instead of 6.1 s. The samples are small and the customers are simulated, which is the first
+thing under [Limitations](#limitations).
 
 ## Why I built this
 
@@ -105,41 +90,28 @@ flowchart LR
 | [`evals/`](evals/) | Simulated customers: an LLM plays a customer with a goal against the real engine. |
 | [`businesses/`](businesses/) | Business profiles: hours, policies, tone, FAQ, when to hand off. |
 
-More detail in [docs/architecture.md](docs/architecture.md).
+The agent talks to a `BookingBackend` interface, so a real booking system plugs in where the
+mock clinic is. [docs/architecture.md](docs/architecture.md) has a turn step by step, what
+happens when things fail or arrive at once, and who can call which endpoint.
 
 ## Quickstart
 
 You need Docker and an API key. With an Anthropic key, the assistant and its judges run on
-Claude Haiku 5.5, the fastest model measured; with only an OpenAI key, on gpt-5-mini.
+Claude Haiku 5.5; with only an OpenAI key, on gpt-5-mini.
 
 ```bash
 cp .env.example .env   # then set ANTHROPIC_API_KEY or OPENAI_API_KEY
 docker compose up --build
 ```
 
-Compose gives the engine and the console demo keys for the staff inbox and for WhatsApp-style
-chats. Set your own `OFD_STAFF_KEY` and `OFD_INTEGRATION_KEY` in `.env` before it runs anywhere
-but your own machine.
-
 - Console: http://localhost:3000
 - Engine API docs: http://localhost:8000/docs
 - Clinic API docs: http://localhost:8001/docs
 - Traces: http://localhost:6006
 
-### Without Docker
-
-Requires [uv](https://docs.astral.sh/uv/) and Node 22. Each command in its own terminal:
-
-```bash
-uv sync
-uv run uvicorn clinic_api.main:create_app --factory --port 8001
-uv run uvicorn openfrontdesk.api.app:create_app --factory --port 8000
-cd console && npm install && npm run dev
-```
-
-The engine uses SQLite locally; set `OFD_OTLP_ENDPOINT` to export traces. For the staff
-inbox and the seeded patients' chats, set `OFD_STAFF_KEY` and `OFD_INTEGRATION_KEY` in `.env`
-and the same values in `console/.env.local`.
+Compose gives the engine and the console demo keys for the staff inbox and for WhatsApp-style
+chats. Set your own `OFD_STAFF_KEY` and `OFD_INTEGRATION_KEY` in `.env` before it runs anywhere
+but your own machine.
 
 ## Try it
 
@@ -152,9 +124,9 @@ The console lets you chat as one of the clinic's seeded patients:
 | Priya Shah | A returning patient with no upcoming visits: book something. |
 | New visitor | No phone on file: the assistant has to identify and register them. |
 
-Things worth trying: book without saying "yes" and watch the guardrail block it; cancel
-Emily's appointment; ask for a person and reply from the staff inbox; restart the clinic API
-with `CLINIC_CHAOS_ERROR_RATE=1` and watch the automatic handoff.
+Things worth trying: book without saying "yes" and watch the guardrail block it; ask Carlos's
+chat about Emily's appointment; ask for a person and reply from the staff inbox; restart the
+clinic API with `CLINIC_CHAOS_ERROR_RATE=1` and watch the automatic handoff.
 
 Emily cancels inside the 24 hours and won't pay the fee. The assistant doesn't argue and doesn't
 cancel: it hands the conversation over, and the front desk gets it with a summary.
@@ -162,23 +134,6 @@ cancel: it hands the conversation over, and the front desk gets it with a summar
 | The customer's side | The staff inbox |
 |---|---|
 | ![The chat after a disputed late fee: the conversation is marked as with staff](docs/images/handoff.png) | ![The staff inbox with the same conversation, its reason and the assistant's summary](docs/images/inbox.png) |
-
-## What a blocked action looks like
-
-The model proposed a booking before the customer confirmed. The rules passed, the judge did not,
-and this is what came back to the model as the tool result:
-
-```json
-{
-  "status": "blocked",
-  "check": "customer_confirmed",
-  "reason": "The customer has not confirmed this yet (the customer only asked about availability). Tell the customer what you are about to do, with these details as they are written, and ask them to confirm before trying again: Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 10:00 AM with any available practitioner.",
-  "instructions": "Do not retry this action until the reason is resolved."
-}
-```
-
-The judge fails closed: if it errors or returns something unparseable, the action is blocked.
-Rules run first, so the judge (a paid model call) only sees actions that already passed them.
 
 ## Development
 
@@ -189,96 +144,59 @@ cd console && npm run lint && npm run build
 ```
 
 The conversation tests drive the real API, agent loop, guardrails and clinic API in process,
-with a scripted model in place of the LLM, so they're fast, free and deterministic.
+with a scripted model in place of the LLM, so they're fast, free and deterministic. The ones
+with two engine workers need a Postgres, in `OFD_TEST_POSTGRES_URL`, and are skipped without it.
 
-### Evals with simulated customers
-
-An LLM plays a customer with a goal and talks to the real engine and a fresh clinic, in
-process, until the request is done, handed off, or out of turns. Scenarios live in
-[`evals/scenarios/`](evals/scenarios/): a persona, a frozen clock, and what must be true at the
-end (the clinic's real state, the tools that ran, how the conversation ended).
+To run without Docker you need [uv](https://docs.astral.sh/uv/) and Node 22, with each command
+in its own terminal:
 
 ```bash
-uv run python -m ofd_evals run                                  # every scenario
-uv run python -m ofd_evals run -s free-reschedule -n 3          # one scenario, three runs
-uv run python -m ofd_evals --engine-model gpt-5-nano run        # the assistant on another model
-uv run python -m ofd_evals --engine-model claude-haiku-5-5 run  # ... or on Claude
-uv run python -m ofd_evals chat --phone +15550100103 --goal "Book a check-up tomorrow morning"
+uv sync
+uv run uvicorn clinic_api.main:create_app --factory --port 8001
+uv run uvicorn openfrontdesk.api.app:create_app --factory --port 8000
+cd console && npm install && npm run dev
 ```
 
-Every run is checked automatically, and the command exits non-zero if anything fails:
+The engine uses SQLite locally. For the staff inbox and the seeded patients' chats, set
+`OFD_STAFF_KEY` and `OFD_INTEGRATION_KEY` in `.env` and the same values in `console/.env.local`.
 
-- **The scenario's expectations**: how it ended, which tools ran, phrases no reply may
-  contain, and the clinic's real appointments (status, day, time of day, fees).
-- **Invariants for every run**: no internal ids in what the customer reads, no link that
-  didn't come from a tool or the business, nothing said to be booked, confirmed, moved,
-  cancelled or paid without a tool result behind it, no promise to come back later on its
-  own, every executed write passed its guardrails, no double bookings, no engine failures.
-- **Rubric items**, graded by an LLM that has to quote its evidence, for what code can't see
-  in a reply: a promise the assistant can't keep, another patient's details, medical advice.
+### Evals
 
-Each run is saved as soon as it ends, in `evals/results/<date-time>/`: `runs.jsonl` keeps every
-transcript with its tool calls and guardrail checks, and `summary.md` has the table below.
-
-```
-| scenario | passed | avg turns | avg engine tokens | avg engine time |
-|---|---|---|---|---|
-| late-cancellation-accepts-fee | 2/2 | 2.0 | 11,492 | 15.6 s |
-```
+An LLM plays a customer with a goal and talks to the real engine and a fresh clinic until the
+request is done, handed off or out of turns. Every run is checked against the clinic's real
+state, a set of invariants in code, and a rubric graded by an LLM.
 
 ```bash
-uv run python -m ofd_evals show --failed   # transcripts of the latest failed runs
+uv run python -m ofd_evals run                           # every scenario
+uv run python -m ofd_evals run -s free-reschedule -n 3   # one scenario, three runs
+uv run python -m ofd_evals judges -n 3                   # the judges, on their labeled cases
 ```
 
-The [Evals workflow](.github/workflows/evals.yml) runs every scenario each Monday, and on
-demand from the Actions tab with the scenarios, repeats and model to use. The weekly run fails
-only on an unsafe outcome or an engine crash, so a flaky scenario shows in its summary without
-turning it red. It needs an `OPENAI_API_KEY` repository secret for the simulated customer and
-the grader; with `ANTHROPIC_API_KEY` too, the assistant runs on Claude Haiku, as it does by
-default. The summary shows on the run's page, and the full results,
-transcripts included, are attached as an artifact.
-
-[Results by model](docs/eval-results.md), OpenAI and Claude: pass rate per scenario, latency,
-and what they say.
-
-`--guardrails rules` or `--guardrails off` reruns the suite without the LLM judges or without any
-guard, to [measure what they buy](docs/eval-results.md#what-the-guardrails-buy).
-
-The judges also have their own eval set: [66 labeled cases](evals/judge-cases/) (sarcasm, a
-confirmation from before the details changed, an injected note), run through the same guard code
-on any model, to count [false approvals and false blocks](docs/eval-results.md#the-judges-on-their-own).
-
-```bash
-uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
-```
+[evals/README.md](evals/README.md) has what gets checked, how to change models, turn the
+guardrails off or read a failed run, and the weekly run in CI.
 
 ## Limitations
 
+- **Small samples, simulated customers.** Two to ten runs per scenario, and part of the grading
+  is an LLM's. A difference of one run is noise, which is why checks in code come first.
 - **The booking system is a mock.** Adapters for real ones are on the roadmap. One without
   idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
 - **Codes aren't really texted.** The mock clinic accepts a fixed code; a deployment needs an SMS
   provider behind the same endpoint.
-- **The console has no sign-in.** The engine's staff endpoints need a key, and the console's
-  server holds it, so whoever can open the console acts as the front desk. Put it behind your
-  own sign-in. The key is one shared secret, with no per-person accounts or audit trail.
+- **The console has no sign-in.** Its server holds the staff key, so whoever can open it acts as
+  the front desk. It's one shared key, with no per-person accounts or audit trail.
 - **No rate limits.** Anyone who can reach the engine can start conversations, and each message
-  is a model call on your key. Put a rate limit in front of it before it's public.
-- **Conversations are kept.** Messages and tool data stay in the database, with no retention
-  period and no way yet to delete one customer's data. `OFD_TRACE_CONTENT=false` keeps them
-  out of the traces, not out of the database.
-- **Registering a customer isn't judged.** It needs a verified phone, but not the customer's
-  explicit yes, since it only creates a record.
-- **Several workers need Postgres.** A conversation's turns run one at a time across engine
-  processes through a Postgres lock, tested with two workers in CI. On SQLite it's one process
-  only, and no load test has been run on either. See
+  is a model call on your key.
+- **Conversations are kept**, with no retention period and no way yet to delete one customer's
+  data. `OFD_TRACE_CONTENT=false` keeps them out of the traces, not out of the database.
+- **Registering a customer isn't judged.** It needs a verified phone, but not an explicit yes.
+- **Several workers need Postgres**, and nothing has been load tested. See
   [what holds when things happen at once](docs/architecture.md#concurrency).
 - **English and one business.** The Spanish profile is on the roadmap.
-- **Small samples.** Two to ten runs per scenario, and part of the grading is an LLM's. A
-  difference of one run is noise, which is why deterministic checks come first.
-- **Some things still hang on the model's wording.** A question about another person gets a
-  fixed sentence, but in 1 of 20 runs Claude Haiku 5.5 answered it in its own words instead.
-  And with a disputed fee, it offers a handoff instead of handing off in about 1 run in 10:
-  nothing is charged or cancelled, but the customer goes in circles.
+- **Some things still hang on the model's wording.** In 1 of 20 runs Claude Haiku 5.5 answered
+  a question about another person in its own words. With a disputed fee, it offers a handoff
+  instead of handing off in about 1 run in 10: nothing is charged, but the customer goes in
+  circles.
 
 ## Roadmap
 
