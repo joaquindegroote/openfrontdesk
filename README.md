@@ -255,7 +255,9 @@ uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-sonnet-5-5
   out of the traces, not out of the database.
 - **Registering a customer isn't judged.** It needs a verified phone, but not the customer's
   explicit yes, since it only creates a record.
-- **One engine process.** Turns are serialized per conversation within a process; see
+- **Several workers need Postgres.** A conversation's turns run one at a time across engine
+  processes through a Postgres lock, tested with two workers in CI. On SQLite it's one process
+  only, and no load test has been run on either. See
   [what holds when things happen at once](docs/architecture.md#concurrency).
 - **English and one business.** The Spanish profile is on the roadmap.
 - **Small samples.** Two to ten runs per scenario, and part of the grading is an LLM's. A
