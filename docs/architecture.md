@@ -67,6 +67,23 @@ sequenceDiagram
 | Model loops | Step budget (default 8) ends the turn with a handoff. |
 | LLM API fails mid-turn | Whatever the turn did is persisted, the customer gets a holding reply, and the conversation goes to staff. |
 
+### What a blocked action looks like
+
+The model proposed a booking before the customer confirmed. The rules passed, the judge did not,
+and this is what came back to the model as the tool result:
+
+```json
+{
+  "status": "blocked",
+  "check": "customer_confirmed",
+  "reason": "The customer has not confirmed this yet (the customer only asked about availability). Tell the customer what you are about to do, with these details as they are written, and ask them to confirm before trying again: Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 10:00 AM with any available practitioner.",
+  "instructions": "Do not retry this action until the reason is resolved."
+}
+```
+
+The judge fails closed: if it errors or returns something unparseable, the action is blocked.
+Rules run first, so the judge (a paid model call) only sees actions that already passed them.
+
 ## Concurrency
 
 | Situation | What holds | Test |
