@@ -37,7 +37,8 @@ hanging when the booking system goes down. openfrontdesk is built around those f
 ## What the evals measured
 
 Every number here comes from simulated customers talking to the real engine, on real models.
-The details are in [docs/eval-results.md](docs/eval-results.md).
+The details are in [docs/eval-results.md](docs/eval-results.md), which starts with a table of every
+before and after.
 
 - **An impostor gets nothing.** A web visitor typing another patient's number saw and moved his
   appointment in 3 of 3 runs before identity checks were tied to the channel, and in none of 13
