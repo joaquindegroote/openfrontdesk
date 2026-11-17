@@ -70,8 +70,9 @@ class ConversationService:
         self.backend = backend
         self.clock = clock or (lambda: datetime.now(business.tz))
         self.turn_timeout_s = turn_timeout_s
-        # Serializes turns per conversation within this process. A lock lives only while a
-        # turn holds or awaits it, so conversations that went quiet don't pile up in memory.
+        # Serializes turns per conversation within this process; on Postgres a database lock
+        # does the same across processes. A lock lives only while a turn holds or awaits it,
+        # so conversations that went quiet don't pile up in memory.
         self._locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
         self._services: tuple[float, list[Service]] | None = None
 
@@ -98,7 +99,8 @@ class ConversationService:
         webhook retried after a slow answer), and a message that was already handled gets its
         first outcome back instead of a second turn."""
         lock = self._locks.setdefault(conversation_id, asyncio.Lock())
-        async with lock:
+        # This process's lock first, then the database's, which other workers share.
+        async with lock, self.repo.db.conversation_lock(conversation_id):
             conversation = await self.get(conversation_id)
             if message_id is not None:
                 # Under the lock: a copy that arrives while the first is still being answered

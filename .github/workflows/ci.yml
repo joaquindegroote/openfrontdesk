@@ -9,6 +9,23 @@ jobs:
   python:
     name: Engine and clinic API
     runs-on: ubuntu-latest
+    # For the tests that run two engine workers against one database.
+    services:
+      postgres:
+        image: postgres:17.10-alpine
+        env:
+          POSTGRES_USER: ofd
+          POSTGRES_PASSWORD: ofd
+          POSTGRES_DB: ofd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ofd"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      OFD_TEST_POSTGRES_URL: postgresql+asyncpg://ofd:ofd@localhost:5432/ofd
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
