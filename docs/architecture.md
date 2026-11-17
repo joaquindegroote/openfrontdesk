@@ -74,20 +74,23 @@ sequenceDiagram
 | Two messages in one conversation at once (a double send) | The turns run one after the other, and the second sees the first. | `engine/tests/test_concurrency.py` |
 | One message delivered twice by the channel (a retried webhook) | With the channel's `message_id`, the copy gets the first outcome back marked `duplicate`, and no second turn runs. That holds when the copy arrives while the first is still being answered. | `engine/tests/test_redelivery.py` |
 | Messages in different conversations | They don't wait for each other. | `engine/tests/test_concurrency.py` |
+| Two engine workers get messages for the same conversation, or the same message | On Postgres, one turn at a time across workers, and one answer for a message both received. | `engine/tests/test_two_workers.py`, against a real Postgres in CI |
 | A write retried after a timeout or a lost response | Same idempotency key, so the booking system returns the original result instead of booking twice. | `test_retried_booking_is_deduplicated_by_the_clinic` |
 | The engine dies after a booking and before saving the turn | The channel delivers the message again and the turn runs again. The booking goes out with the same key, and the booking system answers with the first appointment. | `test_a_crash_after_the_booking_and_before_the_save_books_once` |
 | The same key sent with different arguments | Rejected by the booking system (`idempotency_key_reused`). | `test_reusing_an_idempotency_key_for_another_request_is_rejected` |
 | Two customers going for the same slot | The first gets it, the second gets `slot_unavailable` and is offered other times. | `test_booking_is_idempotent_and_prevents_double_booking` |
 | A second booking for a service the customer already has coming up | Blocked by `NoDuplicateBooking`, unless the customer asked to keep both. | `test_duplicate_booking_rule` |
 
-The turn lock is per process, and a lock only exists while a turn holds or waits for it. The
-Docker image runs a single engine process, which is what that covers. With several workers, two
-of them could run turns of the same conversation at once: the booking system would still
-prevent double bookings and repeated writes, because idempotency keys come from the conversation
-and not the process, but the transcript could interleave, and two copies of one message
-arriving at the same moment could both be answered. Before scaling out, route each
-conversation to one worker, or take a Postgres advisory lock per conversation for the length of
-the turn, on its own connection pool so locks can't starve the queries.
+A turn takes two locks on its conversation. The first is in the process, and exists only
+while a turn holds or waits for it. The second is a Postgres advisory lock, which every worker
+on the same database shares, so several engine processes can run side by side. It's held on a
+connection from a pool of its own, so turns waiting for a conversation can't use up the
+connections the queries need, and Postgres drops it if the process dies mid-turn. That pool
+allows 50 turns running or waiting per process.
+
+On SQLite there's only the first lock, which is fine for one process and wrong for more. Either
+way the booking system prevents double bookings and repeated writes by itself, because
+idempotency keys come from the conversation and not from the process.
 
 ## Who can call what
 
