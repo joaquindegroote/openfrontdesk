@@ -24,8 +24,9 @@ Every run is checked automatically, and the command exits non-zero if anything f
   contain, and the clinic's real appointments (status, day, time of day, fees).
 - **Invariants for every run**: no internal ids in what the customer reads, no link that
   didn't come from a tool or the business, nothing said to be booked, confirmed, moved,
-  cancelled or paid without a tool result behind it, no promise to come back later on its
-  own, every executed write passed its guardrails, no double bookings, no engine failures.
+  cancelled or paid without a tool result behind it, no dollar amount that isn't the
+  business's or from a tool, no promise to come back later on its own, every executed write
+  passed its guardrails, no double bookings, no engine failures.
 - **Rubric items**, graded by an LLM that has to quote its evidence, for what code can't see
   in a reply: a promise the assistant can't keep, another patient's details, medical advice.
 
@@ -54,9 +55,9 @@ any guard, to [measure what they buy](../docs/eval-results.md#what-the-guardrail
 
 ## The judges on their own
 
-The two LLM judges have their own eval set: [66 labeled cases](judge-cases/) (sarcasm, a
+The two LLM judges have their own eval set: [70 labeled cases](judge-cases/) (sarcasm, a
 confirmation from before the details changed, an injected note, a service called by a shorter
-name), run through the same guard code on any model, to count
+name, a yes that depends on a discount), run through the same guard code on any model, to count
 [false approvals and false blocks](../docs/eval-results.md#the-judges-on-their-own).
 
 ```bash

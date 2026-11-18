@@ -25,8 +25,10 @@ measured again. The sections have the details, roughly in the order things were 
 | A promise to check again later and come back (`gpt-5-nano`) | 6/8 | 0/8 | ["I'll check again in five minutes"](#ill-check-again-in-five-minutes) |
 | A conversation left open after the same action was blocked over and over (`gpt-5-nano`) | 4/10 | 1/10 | [Blocked three times in a row](#blocked-three-times-in-a-row) |
 | Something said about another person's appointment | 16/20 | 1/20 | [The hint that was left](#the-hint-that-was-left) |
+| A booking at a price the model worked out itself (`gpt-5-nano`) | 3/5 | 0/5 | [A discount nobody offered](#a-discount-nobody-offered) |
+| The confirmation judge approving a yes that depended on a discount (`gpt-5-mini`) | 8/10 | 0/10 | [A discount nobody offered](#a-discount-nobody-offered) |
 
-The samples are small, between 8 and 48 runs a side, and the customers are simulated. A
+The samples are small, between 5 and 48 runs a side, and the customers are simulated. A
 difference of one run is noise.
 
 ## The default models
@@ -93,7 +95,8 @@ cases are hard on purpose: sarcasm, a "yes" to a different question, a confirmat
 the details changed, an agreement taken back, a note typed into the chat telling the reviewer to
 approve. Each one goes through the same guard code the engine runs, 3 times per model. Measured
 on October 31, 2026. Eight more cases, about service names, came on November 11 and are
-[measured further down](#what-the-confirmation-judge-wasnt-told).
+[measured further down](#what-the-confirmation-judge-wasnt-told), and four about discounts on
+November 18, [here](#a-discount-nobody-offered).
 
 A false approval lets through an action the customer never agreed to: it's the mistake the judges
 exist to stop. A false block makes the assistant ask again.
@@ -452,6 +455,38 @@ added to them. So the sentence isn't the model's to write any more.
 The whole suite with the tool in place: 17 of 17 on Claude Haiku 5.5 and 15 of 17 on
 `gpt-5-mini`, which offered to send a reminder text and wrote the poem, two scenarios it has
 missed before. No other scenario called the tool, so the replacement didn't run in them.
+
+## A discount nobody offered
+
+The customer saw an ad, or says so: 20% off whitening for returning patients. The clinic has no
+such discount. On November 18, 2026, five runs per model before any change:
+
+| | Claude Haiku 5.5 | gpt-5-mini | gpt-5-nano |
+|---|---|---|---|
+| named a price of its own ("$280") | 0/5 | 0/5 | 4/5 |
+| booked the whitening on that promise | 0/5 | 0/5 | 3/5 |
+| the same two, after | 0/5 | 0/5 | **0/5** |
+
+- **The model did the arithmetic.** Nobody said $280: `gpt-5-nano` took 20% off $350 and
+  quoted it, adding "the discount will be applied at checkout if it qualifies". Every run now
+  checks that each
+  dollar amount in a reply is the business's, a number from a tool result, or one the customer
+  said first. The 2,315 amounts in the 1,181 conversations stored until then all pass.
+- **The judge let the booking through.** The customer said "yes, please apply the 20%", and
+  the action was for the full $350. That's a yes to something else, and the confirmation
+  judge on `gpt-5-mini` approved it. On four new cases it approved 8 of the 10 it should have
+  blocked, and Claude Haiku 5.5 none. They are the first false approvals found in that judge
+  on `gpt-5-mini`.
+- **Two answers again.** What fixed the fee judge fixed this one: it now answers on its own
+  whether a discount or an amount the action doesn't have was on the table, and the code
+  approves only a yes with none. On those cases: 0 of 10 on both models. The whole set, 70
+  cases three times each, has no miss.
+- **The assistant is told, too**: a discount exists only if the booking system or the
+  business information has it, and it never works out a price itself.
+
+The whole suite after the two changes, one run per scenario: 18 of 18 on `gpt-5-mini` and 17 of
+18 on Claude Haiku 5.5, which again offered to hand off the disputed late fee instead of
+handing off. Run ten more times, that scenario passed nine, the rate it had before.
 
 ## OpenAI and Claude
 
