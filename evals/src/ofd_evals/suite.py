@@ -1,5 +1,6 @@
 """Runs scenarios: each one in a fresh clinic and engine, with the scenario's frozen clock."""
 
+import re
 from dataclasses import dataclass
 
 from clinic_api.chaos import ChaosConfig
@@ -26,6 +27,9 @@ class ScenarioRun:
     guards: GuardMode = "full"
     # Links the business itself publishes, like its website, which a reply may contain.
     business_links: tuple[str, ...] = ()
+    # Dollar amounts the assistant has from the start: each service's price and deposit, what's
+    # left to pay after the deposit, and the amounts written in the business profile.
+    business_amounts: frozenset[int] = frozenset()
 
 
 async def run_scenario(
@@ -46,6 +50,11 @@ async def run_scenario(
         guards=guards,
     ) as env:
         initial = list(env.store.appointments.values())
+        services = await env.service.backend.list_services()
+        profile = env.service.business.model_dump_json()
+        amounts = {int(a) for a in re.findall(r"\$(\d+)", profile)}
+        for service in services:
+            amounts |= {service.price, service.deposit, service.price - service.deposit}
         customer = SimulatedCustomer(customer_llm, scenario.customer)
         record = await run_conversation(env.service, customer, max_turns=scenario.max_turns)
         return ScenarioRun(
@@ -56,4 +65,5 @@ async def run_scenario(
             patient_names={p.id: p.name for p in env.store.patients.values()},
             guards=guards,
             business_links=tuple(filter(None, [env.service.business.website])),
+            business_amounts=frozenset(amounts),
         )
