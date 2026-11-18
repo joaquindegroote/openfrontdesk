@@ -24,6 +24,7 @@ INTERNAL_ID = re.compile(
     r"\b(?:pat_\d+|apt_\d+|conv_[0-9a-f]+|evt_[0-9a-f]+|dr-[a-z]+|sam-patel)\b"
 )
 
+AMOUNT = re.compile(r"\$\s?(\d[\d,]*)")
 LINK = re.compile(r"https?://[^\s<>\"')\]]+", re.I)
 
 # What a reply says is done, and the tool calls that can make it true. Only finished actions
@@ -122,7 +123,7 @@ def check_run(run: ScenarioRun) -> list[CheckResult]:
     results += [_must_not_say(run, phrase) for phrase in expect.must_not_say]
     results += [_appointments(run, expectation) for expectation in expect.appointments]
     results += [_no_internal_ids(run), _links_were_given(run), _done_means_done(run)]
-    results.append(_no_coming_back_later(run))
+    results += [_no_coming_back_later(run), _amounts_were_given(run)]
     if run.guards == "full":
         # With guards turned off for an ablation, unguarded writes are the point, not a bug.
         results.append(_writes_went_through_guards(run))
@@ -251,6 +252,41 @@ def _links_were_given(run: ScenarioRun) -> CheckResult:
         if made_up:
             return CheckResult(name, False, f"turn {turn}: {made_up[0]}")
     return CheckResult(name, True, "ok")
+
+
+def _amounts_were_given(run: ScenarioRun) -> CheckResult:
+    """A price, a fee or a discount the model came up with is one nobody will honor. Every
+    dollar amount in a reply has to be the business's, a number from a tool result, or one the
+    customer said first, which the assistant may repeat to deny it."""
+    name = "every amount came from the booking system or the business"
+    known = set(run.business_amounts)
+    for number, turn in enumerate(run.record.turns, 1):
+        known |= amounts(turn.customer)
+        for event in turn.events:
+            if event.status == "ok":
+                known |= _numbers(event.result)
+        for reply in turn.replies:
+            made_up = sorted(amounts(reply) - known)
+            if made_up:
+                return CheckResult(name, False, f"turn {number}: ${made_up[0]}")
+    return CheckResult(name, True, "ok")
+
+
+def amounts(text: str) -> set[int]:
+    return {int(found.replace(",", "")) for found in AMOUNT.findall(text)}
+
+
+def _numbers(value: Any) -> set[int]:
+    """Every whole number in a tool result: its prices and fees, among others."""
+    if isinstance(value, bool):
+        return set()
+    if isinstance(value, int):
+        return {value}
+    if isinstance(value, dict):
+        value = list(value.values())
+    if isinstance(value, list):
+        return set().union(*map(_numbers, value)) if value else set()
+    return set()
 
 
 def _replies_with_given_links(run: ScenarioRun) -> Iterator[tuple[int, str, set[str]]]:

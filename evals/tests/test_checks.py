@@ -112,6 +112,7 @@ def run(
         appointments=list(appointments),
         patient_names={"pat_0003": "Priya Shah", "pat_0001": "Emily Johnson"},
         business_links=("https://brightsmile.example.com",),
+        business_amounts=frozenset({95, 120, 350, 100, 250, 50}),
     )
 
 
@@ -234,6 +235,34 @@ def test_a_link_the_model_wrote_itself_is_caught(reply: str) -> None:
 def test_the_business_s_own_links_are_fine() -> None:
     reply = "You can read more at https://brightsmile.example.com/."
     assert failures(run(scenario(), replies=(reply,))) == set()
+
+
+AMOUNTS = "every amount came from the booking system or the business"
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "With the 20% off, your whitening comes to $280.",
+        "I can take $70 off for you today.",
+        "The late fee is $25.",
+    ],
+)
+def test_an_amount_nobody_gave_the_assistant_is_caught(reply: str) -> None:
+    assert failures(run(scenario(), replies=(reply,))) == {AMOUNTS}
+
+
+def test_amounts_from_the_business_a_tool_or_the_customer_are_fine() -> None:
+    quote = event("get_cancellation_quote", result={"quote": {"fee": 35, "late": True}})
+    replies = (
+        "The whitening is $350, with a $100 deposit and the remaining $250 at the visit.",
+        "Cancelling now has a $35 fee.",
+        "I don't have a $280 price for it: it's $350.",
+    )
+    record = run(scenario(), replies=replies, events=(quote,))
+    record.record.turns[0].customer = "The ad said it's $280 this month."
+
+    assert failures(record) == set()
 
 
 def test_a_phrase_that_must_not_be_said_is_caught_in_any_case() -> None:
