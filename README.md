@@ -179,8 +179,9 @@ guardrails off or read a failed run, and the weekly run in CI.
 
 - **Small samples, simulated customers.** Two to ten runs per scenario, and part of the grading
   is an LLM's. A difference of one run is noise, which is why checks in code come first.
-- **The booking system is a mock.** Adapters for real ones are on the roadmap. One without
-  idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
+- **The booking system is a mock.** Adapters for real ones are on the roadmap, and
+  [the tests one has to pass](engine/tests/test_backend_contract.py) are written. A system
+  without idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
 - **Codes aren't really texted.** The mock clinic accepts a fixed code; a deployment needs an SMS
   provider behind the same endpoint.
 - **The console has no sign-in.** Its server holds the staff key, so whoever can open it acts as

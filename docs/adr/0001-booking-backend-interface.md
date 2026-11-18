@@ -22,7 +22,12 @@ escalate.
 
 ## Consequences
 
-- Adding a real system means writing one adapter, without touching the agent.
+- Adding a real system means writing one adapter, without touching the agent. The adapter is
+  ready when it passes `engine/tests/test_backend_contract.py`: what the engine relies on from
+  any booking system, written without assuming a seeded patient, a price or a fee policy. A
+  taken slot is refused, the same idempotency key gives the same booking, a move frees the old
+  time, a cancellation charges what was quoted, and what doesn't exist is an error instead of
+  an empty answer.
 - The mock is a separate service on purpose: the agent is developed and tested against HTTP,
   timeouts and 5xx responses, not against an in-memory object.
 - The protocol has to stay small. Anything system-specific (insurance checks, resources,
