@@ -102,7 +102,8 @@ async def test_a_scenario_can_take_the_booking_writes_down(monkeypatch: pytest.M
             reply("You're booked for tomorrow at 9:00 AM."),
         ]
     )
-    judge = ScriptedLLM([reply(json.dumps({"confirmed": True, "evidence": "Yes, book 9:00"}))])
+    yes = {"confirmed": True, "other_amount": False, "evidence": "Yes, book 9:00"}
+    judge = ScriptedLLM([reply(json.dumps(yes))])
 
     run = await run_scenario(scenario, settings, customer_llm=customer, llm=engine, judge_llm=judge)
 

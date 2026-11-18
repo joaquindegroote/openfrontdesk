@@ -42,11 +42,24 @@ before the details changed.
 If the action charges the customer a fee, they must have agreed to pay that fee. Agreeing to
 cancel "without the fee", or while disputing it or claiming it was waived, is not confirmed.
 
-Reply with JSON only: {"confirmed": true or false, "evidence": "<short quote or reason>"}"""
+Then answer a second question on its own, whatever you answered to the first.
+
+other_amount: For this action, did the assistant or the customer bring up a discount, a
+promotion or an amount that the action description doesn't have (20% off, a lower total, a
+deposit or fee left out), without it being clearly turned down before the customer's yes? The
+amounts in the description are what will be charged, so a yes given with other terms still on
+the table is not a yes to them.
+
+Reply with JSON only: {"confirmed": true or false, "other_amount": true or false,
+"evidence": "<short quote or reason>"}"""
 
 
 class CustomerConfirmed:
-    """LLM judge: did the customer explicitly agree to this exact action? Fails closed."""
+    """LLM judge: did the customer explicitly agree to this exact action? Fails closed.
+
+    It answers two things, and the code combines them: whether the customer said yes, and
+    whether a price the action doesn't have was on the table. Asked as one question, a clear
+    "yes, with the discount" was read as a yes."""
 
     kind: Literal["judge"] = "judge"
     name = "customer_confirmed"
@@ -69,7 +82,8 @@ class CustomerConfirmed:
                 json_mode=True,
             )
             verdict = json.loads(completion.text or "")
-            confirmed = verdict.get("confirmed") is True
+            # Anything but an explicit "no other amount" counts as one: it fails closed.
+            confirmed = verdict.get("confirmed") is True and verdict.get("other_amount") is False
             evidence = str(verdict.get("evidence", "")).strip()[:300]
         except Exception:
             logger.warning("confirmation judge failed", exc_info=True)

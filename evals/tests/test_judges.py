@@ -40,7 +40,10 @@ def case(judge: str = "confirmation", **fields: Any) -> JudgeCase:
 
 def confirmed(*values: bool, evidence: str = "") -> ScriptedLLM:
     return ScriptedLLM(
-        [reply(json.dumps({"confirmed": value, "evidence": evidence})) for value in values]
+        [
+            reply(json.dumps({"confirmed": value, "other_amount": False, "evidence": evidence}))
+            for value in values
+        ]
     )
 
 

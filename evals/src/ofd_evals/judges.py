@@ -283,7 +283,7 @@ def _model_verdict(case: JudgeCase, reply: str | None) -> bool | None:
     try:
         verdict = json.loads(reply or "")
         if case.judge == "confirmation":
-            return verdict.get("confirmed") is True
+            return verdict.get("confirmed") is True and verdict.get("other_amount") is False
         return verdict.get("agreed") is True and verdict.get("objects") is False
     except (ValueError, AttributeError):
         return None

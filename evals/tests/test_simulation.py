@@ -123,7 +123,8 @@ async def test_runs_until_the_customer_is_done(settings: Settings) -> None:
             reply("Booked for Tue Nov 3 at 9:00 AM."),
         ]
     )
-    judge = ScriptedLLM([reply(json.dumps({"confirmed": True, "evidence": "Yes, book it."}))])
+    yes = {"confirmed": True, "other_amount": False, "evidence": "Yes, book it."}
+    judge = ScriptedLLM([reply(json.dumps(yes))])
 
     async with eval_environment(settings, llm=agent, judge_llm=judge, now=NOW) as env:
         record = await run_conversation(env.service, SimulatedCustomer(customer_llm, PRIYA))

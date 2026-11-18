@@ -381,6 +381,41 @@ def test_keeping_both_appointments_still_needs_the_customer_to_agree(harness: Ha
     assert "The customer also keeps their existing one." in judge_prompt
 
 
+def test_a_yes_with_a_discount_on_the_table_is_not_a_yes(harness: Harness) -> None:
+    """The judge answers two things and the code combines them: a clear yes isn't enough when
+    it came with a price the action doesn't have."""
+    conversation = harness.start(PRIYA)
+    booking = tool_call(
+        "book_appointment",
+        customer_id="pat_0003",
+        service_id="whitening",
+        start="2026-11-04T15:00:00-05:00",
+    )
+    harness.llm.extend([booking, reply("To confirm: whitening on Wed Nov 4 at 3:00 PM, $350.")])
+    harness.judge.extend([verdict(True, "Yes, with the 20% off", other_amount=True)])
+    result = harness.say(conversation, "Yes, book it with the 20% off from the ad")
+
+    assert result["events"][0]["status"] == "blocked"
+    assert result["events"][0]["result"]["check"] == "customer_confirmed"
+    assert upcoming(harness, "pat_0003") == []
+
+
+def test_a_judge_that_leaves_the_second_answer_out_blocks(harness: Harness) -> None:
+    conversation = harness.start(PRIYA)
+    booking = tool_call(
+        "book_appointment",
+        customer_id="pat_0003",
+        service_id="checkup",
+        start="2026-11-03T10:00:00-05:00",
+    )
+    harness.llm.extend([booking, reply("To confirm: a check-up on Tue Nov 3 at 10:00 AM, $95.")])
+    harness.judge.extend([reply('{"confirmed": true, "evidence": "Yes"}')])
+    result = harness.say(conversation, "Yes, book it")
+
+    assert result["events"][0]["status"] == "blocked"
+    assert upcoming(harness, "pat_0003") == []
+
+
 def test_judge_failure_fails_closed(harness: Harness) -> None:
     conversation = harness.start(PRIYA)
     harness.llm.extend(

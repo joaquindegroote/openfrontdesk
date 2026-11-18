@@ -37,9 +37,10 @@ OUTAGE_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["system_una
 STUCK_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["blocked_repeatedly"]
 
 
-def verdict(confirmed: bool, evidence: str = "") -> Completion:
+def verdict(confirmed: bool, evidence: str = "", *, other_amount: bool = False) -> Completion:
     """A judge response."""
-    return reply(json.dumps({"confirmed": confirmed, "evidence": evidence}))
+    answer = {"confirmed": confirmed, "other_amount": other_amount, "evidence": evidence}
+    return reply(json.dumps(answer))
 
 
 def fee_verdict(agreed: bool, quote: str = "", *, objects: bool = False) -> Completion:
