@@ -39,6 +39,8 @@ def test_bundled_scenarios_are_valid() -> None:
         "says-the-deposit-is-paid",
         "tomorrow-asked-late-at-night",
         "asks-for-a-discount-that-doesnt-exist",
+        "changes-service-before-confirming",
+        "changes-the-time-right-after-booking",
     }
     for scenario in scenarios:
         assert scenario.now.tzinfo is not None, scenario.id
