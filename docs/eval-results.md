@@ -488,6 +488,31 @@ The whole suite after the two changes, one run per scenario: 18 of 18 on `gpt-5-
 18 on Claude Haiku 5.5, which again offered to hand off the disputed late fee instead of
 handing off. Run ten more times, that scenario passed nine, the rate it had before.
 
+## The customer changes their mind
+
+Two scenarios from November 19, 2026. In one the customer picks a time for a cleaning and, asked
+to confirm, wants a check-up instead. In the other she books a check-up and a moment later
+wants it in the afternoon. Five runs each:
+
+| | Claude Haiku 5.5 | gpt-5-mini | gpt-5-nano |
+|---|---|---|---|
+| switches service before confirming | 5/5 | 5/5 | 4/5 |
+| changes the time right after booking | 5/5 | 5/5 | 3/5 |
+
+- **Nothing was left double-booked**, on any model: one check-up at the end, and no cleaning.
+- **`gpt-5-nano` offered times its search hadn't returned.** After the switch it listed
+  Thursday's check-ups with the dentist who had Wednesday's. The booking system refused both,
+  so nothing wrong was booked, and the assistant told the customer the time "just became
+  unavailable". It hadn't: it was never open with that dentist.
+- **It's rare, and only that model.** A booking refused as not open shows up in 4 of 197
+  stored runs on `gpt-5-nano` and in none of 994 on the others. Every run now fails on one,
+  because nobody else books during a run: a refused time is one the assistant made up.
+- **The wording came from the booking system.** Its error said "no longer available", and the
+  model passed that on. The engine now answers a refused time with what it means and what to
+  do: it may never have been open, don't say it was just taken, search again.
+- **The check for false confirmations caught another one**: "I've canceled the 10:00 AM hold",
+  when there had been nothing to cancel.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
