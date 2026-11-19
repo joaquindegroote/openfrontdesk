@@ -136,6 +136,8 @@ async def test_a_taken_slot_is_refused_and_not_worth_retrying(world: World) -> N
         )
 
     assert not refused.value.retryable
+    # By this code the engine knows to tell the model to search again.
+    assert refused.value.code == "slot_unavailable"
     assert await world.backend.list_appointments(second.id) == []
 
 

@@ -416,6 +416,28 @@ def test_a_judge_that_leaves_the_second_answer_out_blocks(harness: Harness) -> N
     assert upcoming(harness, "pat_0003") == []
 
 
+def test_a_time_that_isn_t_open_comes_back_with_what_to_do(harness: Harness) -> None:
+    """Emily has Sam Patel at 11:00 today, so that time isn't open with him."""
+    conversation = harness.start(PRIYA)
+    taken = tool_call(
+        "book_appointment",
+        customer_id="pat_0003",
+        service_id="cleaning",
+        start="2026-11-02T11:00:00-05:00",
+        practitioner_id="sam-patel",
+    )
+    harness.llm.extend([taken, reply("Let me look at the open times again.")])
+    harness.judge.extend([verdict(True, "Yes, book it")])
+    result = harness.say(conversation, "Yes, book it")
+
+    refused = result["events"][0]
+    assert (refused["status"], refused["result"]["error"]) == ("error", "slot_unavailable")
+    assert not refused["result"]["retryable"]
+    assert "Don't tell the customer it was just taken" in refused["result"]["message"]
+    assert "find_available_slots" in refused["result"]["message"]
+    assert upcoming(harness, "pat_0003") == []
+
+
 def test_judge_failure_fails_closed(harness: Harness) -> None:
     conversation = harness.start(PRIYA)
     harness.llm.extend(

@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from openfrontdesk.agent.context import FixedReply, HandoffRequest, ToolContext
-from openfrontdesk.backends import Appointment, Slot
+from openfrontdesk.backends import Appointment, BackendError, Slot
 from openfrontdesk.guardrails import (
     CancellationFeeDisclosed,
     CustomerConfirmed,
@@ -274,13 +274,16 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
     )
     async def book_appointment(ctx: ToolContext, params: BookParams) -> dict[str, Any]:
         """Book an appointment. Only after the customer explicitly confirmed the exact details."""
-        appointment = await ctx.backend.book(
-            params.customer_id,
-            params.service_id,
-            params.start,
-            params.practitioner_id,
-            idempotency_key=_key(ctx),
-        )
+        try:
+            appointment = await ctx.backend.book(
+                params.customer_id,
+                params.service_id,
+                params.start,
+                params.practitioner_id,
+                idempotency_key=_key(ctx),
+            )
+        except BackendError as refused:
+            raise _not_open(refused) from refused
         result: dict[str, Any] = {
             "booked": True,
             "appointment": _appointment_view(appointment, ctx),
@@ -330,12 +333,15 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
     )
     async def reschedule_appointment(ctx: ToolContext, params: RescheduleParams) -> dict[str, Any]:
         """Move an appointment to a new time. Only after the customer confirmed the new time."""
-        appointment = await ctx.backend.reschedule(
-            params.appointment_id,
-            params.new_start,
-            params.practitioner_id,
-            idempotency_key=_key(ctx),
-        )
+        try:
+            appointment = await ctx.backend.reschedule(
+                params.appointment_id,
+                params.new_start,
+                params.practitioner_id,
+                idempotency_key=_key(ctx),
+            )
+        except BackendError as refused:
+            raise _not_open(refused) from refused
         return {"rescheduled": True, "appointment": _appointment_view(appointment, ctx)}
 
     @registry.tool(side_effect="control")
@@ -352,6 +358,22 @@ def build_booking_tools(judge: LLMClient) -> ToolRegistry:
         return HandoffRequest(reason=params.reason, summary=params.summary)
 
     return registry
+
+
+def _not_open(refused: BackendError) -> BackendError:
+    """A refused time comes back with what it means and what to do. A booking system says "no
+    longer available", and a model passes that on as "it was just taken" when it had offered a
+    time, or a practitioner, that its search never returned."""
+    if refused.code != "slot_unavailable":
+        return refused
+    return BackendError(
+        refused.code,
+        "That time isn't open with that practitioner, and it may never have been. Don't tell the "
+        "customer it was just taken. Search again with find_available_slots and offer only the "
+        "times and practitioners it returns.",
+        status=refused.status,
+        retryable=False,
+    )
 
 
 def _name_they_wrote(person: str, ctx: ToolContext) -> str | None:
