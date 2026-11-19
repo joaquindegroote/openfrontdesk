@@ -415,7 +415,7 @@ class ClinicStore:
         for practitioner in candidates:
             if not _overlaps(busy.get(practitioner.id, []), start, end):
                 return practitioner
-        raise ClinicError(409, "slot_unavailable", "That time is no longer available.")
+        raise ClinicError(409, "slot_unavailable", "That time isn't open.")
 
     def _seed(self, rng: random.Random, *, filler: bool) -> None:
         now = self.clock.now()
