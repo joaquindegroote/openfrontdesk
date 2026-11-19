@@ -84,6 +84,24 @@ and this is what came back to the model as the tool result:
 The judge fails closed: if it errors or returns something unparseable, the action is blocked.
 Rules run first, so the judge (a paid model call) only sees actions that already passed them.
 
+### Who watches the judges
+
+A judge is a model call, and it can stop working without anything crashing: a provider changes
+the model behind a name, a key runs out, a prompt edit makes it answer in prose. It fails closed,
+so nothing unsafe happens, but every booking gets blocked and the first to notice is a customer.
+
+`GET /v1/guardrails?hours=24`, with the staff key, counts what each check did lately: how many
+actions it looked at, how many it blocked, and how many of those blocks were the check not
+being able to decide.
+
+```json
+{"name": "customer_confirmed", "checked": 212, "blocked": 9, "undecided": 0}
+```
+
+Three things to alert on: `undecided` above zero (the judge is failing), `blocked` equal to
+`checked` (it blocks everything), and `blocked` at zero over many checks (it may be approving
+everything, which the weekly evals would confirm).
+
 ## Concurrency
 
 | Situation | What holds | Test |
@@ -115,7 +133,7 @@ idempotency keys come from the conversation and not from the process.
 |---|---|---|
 | `GET /v1/business`, `POST /v1/conversations` for a web chat, `POST /v1/conversations/{id}/messages` | A channel: the chat widget, or an integration's server | Only the conversation's id, which the one who started it holds |
 | `POST /v1/conversations` for WhatsApp, SMS or voice | An integration, since the carrier proves the phone | `X-Integration-Key`. Without a key set, these channels are off. |
-| Listing and reading conversations, taking one over, replying as staff, handing it back | The front desk, through the console | `Authorization: Bearer <OFD_STAFF_KEY>`. Without a key set, these are off. |
+| Listing and reading conversations, taking one over, replying as staff, handing it back, and the guardrail counts | The front desk, through the console | `Authorization: Bearer <OFD_STAFF_KEY>`. Without a key set, these are off. |
 
 The console's browser code never holds a key: it calls the console's own server, which adds
 them and forwards to the engine. The chat demo plays a WhatsApp channel for the seeded

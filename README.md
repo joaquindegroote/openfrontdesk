@@ -30,7 +30,8 @@ hanging when the booking system goes down. openfrontdesk is built around those f
 - **The business's words where they matter.** A handoff, an outage and a question about another
   person are answered with fixed sentences from the business profile, not generated ones.
 - **Observable.** Every turn records its tool calls, guardrail decisions, latency and tokens,
-  and exports OpenTelemetry traces to [Arize Phoenix](https://github.com/Arize-ai/phoenix).
+  and exports OpenTelemetry traces to [Arize Phoenix](https://github.com/Arize-ai/phoenix). The
+  judges are counted too: how much each one checks, blocks, or fails to decide.
 
 ## What the evals measured
 
