@@ -433,6 +433,18 @@ def test_a_write_without_passing_guardrails_is_caught() -> None:
     )
 
 
+def test_trying_a_time_that_isn_t_open_is_caught() -> None:
+    refused = event("book_appointment", status="error", result={"error": "slot_unavailable"})
+    refused.arguments = {"start": "2026-11-05T10:00:00-05:00", "practitioner_id": "dr-chen"}
+    down = event("book_appointment", status="error", result={"error": "service_unavailable"})
+
+    [result] = [c for c in check_run(run(scenario(), events=(refused,))) if not c.passed]
+    assert result.name == "only tries times that are open"
+    assert result.detail == "turn 1: 2026-11-05T10:00:00-05:00 with dr-chen"
+    # The booking system being down is not the assistant offering a time that isn't there.
+    assert failures(run(scenario(), events=(down,))) == set()
+
+
 def test_a_new_overlapping_appointment_is_caught() -> None:
     existing = appointment("apt_1", patient="pat_0001")
     overlapping = appointment("apt_2", start=TUESDAY_9AM + timedelta(minutes=15))
