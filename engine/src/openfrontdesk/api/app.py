@@ -4,10 +4,10 @@ import hmac
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -21,6 +21,8 @@ from openfrontdesk.api.schemas import (
     ConversationOut,
     CustomerMessageIn,
     CustomerMessageOut,
+    GuardrailCount,
+    GuardrailsOut,
     MessageOut,
     StaffMessageIn,
     TakeOverIn,
@@ -136,6 +138,25 @@ def _routes(
     ) -> list[ConversationOut]:
         rows = await service.repo.list_conversations(status=status)
         return [ConversationOut.model_validate(r) for r in rows]
+
+    @router.get("/guardrails", dependencies=staff)
+    async def guardrail_counts(
+        service: ServiceDep, hours: Annotated[int, Query(ge=1, le=24 * 90)] = 24
+    ) -> GuardrailsOut:
+        """Who watches the judges: what each check looked at and stopped lately. One that
+        blocks everything, blocks nothing, or can't decide shows here before a customer
+        complains."""
+        since = datetime.now(UTC) - timedelta(hours=hours)
+        counts: dict[str, GuardrailCount] = {}
+        for check in await service.repo.checks_since(since):
+            count = counts.setdefault(
+                check["name"],
+                GuardrailCount(name=check["name"], checked=0, blocked=0, undecided=0),
+            )
+            count.checked += 1
+            count.blocked += not check["passed"]
+            count.undecided += bool(check.get("error"))
+        return GuardrailsOut(since=since, checks=sorted(counts.values(), key=lambda c: c.name))
 
     @router.get("/conversations/{conversation_id}", dependencies=staff)
     async def get_conversation(conversation_id: str, service: ServiceDep) -> ConversationDetail:

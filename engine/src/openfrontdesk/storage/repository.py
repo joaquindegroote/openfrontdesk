@@ -101,6 +101,12 @@ class ConversationRepository:
             rows = (await session.scalars(query)).all()
         return [_event_from_row(row) for row in rows]
 
+    async def checks_since(self, since: datetime) -> list[dict[str, Any]]:
+        """Every guardrail check run on a tool call since then, across conversations."""
+        query = select(ToolEventRow.checks).where(ToolEventRow.created_at >= since)
+        async with self.db.sessions() as session:
+            return [check for checks in (await session.scalars(query)).all() for check in checks]
+
     async def turns(self, conversation_id: str) -> list[TurnRow]:
         query = (
             select(TurnRow)

@@ -65,6 +65,21 @@ class MessageOut(BaseModel):
     created_at: datetime
 
 
+class GuardrailCount(BaseModel):
+    name: str
+    # How many actions this check looked at, and how many of those it stopped.
+    checked: int
+    blocked: int
+    # Blocks where the check couldn't decide and stopped the action to be safe. A judge whose
+    # every block is one of these has stopped working.
+    undecided: int
+
+
+class GuardrailsOut(BaseModel):
+    since: datetime
+    checks: list[GuardrailCount]
+
+
 class TurnOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
