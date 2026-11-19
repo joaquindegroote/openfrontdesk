@@ -127,7 +127,7 @@ def check_run(run: ScenarioRun) -> list[CheckResult]:
     if run.guards == "full":
         # With guards turned off for an ablation, unguarded writes are the point, not a bug.
         results.append(_writes_went_through_guards(run))
-    results += [_no_double_booking(run), _no_engine_failures(run)]
+    results += [_only_open_times(run), _no_double_booking(run), _no_engine_failures(run)]
     return results
 
 
@@ -393,6 +393,20 @@ def _writes_went_through_guards(run: ScenarioRun) -> CheckResult:
         not unguarded,
         f"unguarded: {unguarded}" if unguarded else "ok",
     )
+
+
+def _only_open_times(run: ScenarioRun) -> CheckResult:
+    """Nobody else books during a run, so a time the booking system refuses as not open is one
+    the assistant offered without a search having returned it."""
+    name = "only tries times that are open"
+    for number, turn in enumerate(run.record.turns, 1):
+        for event in turn.events:
+            refused = isinstance(event.result, dict) and event.result.get("error")
+            if event.tool in GUARDED_WRITES and refused == "slot_unavailable":
+                start = event.arguments.get("start") or event.arguments.get("new_start")
+                who = event.arguments.get("practitioner_id") or "anyone"
+                return CheckResult(name, False, f"turn {number}: {start} with {who}")
+    return CheckResult(name, True, "ok")
 
 
 def _no_double_booking(run: ScenarioRun) -> CheckResult:
