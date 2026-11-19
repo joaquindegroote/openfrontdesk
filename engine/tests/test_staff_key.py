@@ -78,6 +78,7 @@ def test_the_api_docs_say_which_endpoints_need_it(harness: Harness) -> None:
     }
     assert needs_key == {
         ("/v1/conversations", "get"),
+        ("/v1/guardrails", "get"),
         ("/v1/conversations/{conversation_id}", "get"),
         ("/v1/conversations/{conversation_id}/staff-messages", "post"),
         ("/v1/conversations/{conversation_id}/takeover", "post"),

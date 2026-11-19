@@ -91,6 +91,7 @@ class CustomerConfirmed:
                 name=self.name,
                 passed=False,
                 detail="Could not verify the customer's confirmation. Ask them to confirm.",
+                error=True,
             )
         if confirmed:
             return CheckResult(name=self.name, passed=True, detail=f"Confirmed: {evidence}")
@@ -159,9 +160,10 @@ class FeeAccepted:
             # Only an explicit "no objection" counts: a missing answer is an objection.
             agreed = verdict.get("agreed") is True and verdict.get("objects") is False
             said = _plain(str(verdict.get("quote", "")))
+            failed = False
         except Exception:
             logger.warning("fee judge failed", exc_info=True)
-            agreed, said = False, ""
+            agreed, said, failed = False, "", True
         customer = [_plain(m.content) for m in ctx.transcript if m.role == "user" and m.content]
         # "I'll pay the $25" is a real quote, and still not an agreement to a $50 fee.
         other_amounts = {int(amount) for amount in _DOLLARS.findall(said)} - {fee}
@@ -175,6 +177,7 @@ class FeeAccepted:
                 "cancel only if they accept it. Only staff can make exceptions: hand off if "
                 "they dispute it."
             ),
+            error=failed,
         )
 
 

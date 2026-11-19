@@ -16,6 +16,9 @@ class CheckResult(BaseModel):
     name: str
     passed: bool
     detail: str
+    # The check couldn't decide (a judge that failed, or answered something unreadable) and
+    # blocked to be safe. Counted apart: a judge that fails every time looks like a strict one.
+    error: bool = False
 
 
 class ToolEvent(BaseModel):

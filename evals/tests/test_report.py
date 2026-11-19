@@ -35,6 +35,7 @@ def test_a_run_keeps_its_transcript_events_and_checks() -> None:
         "name": "customer_confirmed",
         "passed": False,
         "detail": "",
+        "error": False,
     }
     assert "· book_appointment: blocked (customer_confirmed)" in format_transcript(entry)
     assert format_checks(entry) == "  FAIL  calls book_appointment: never called"

@@ -510,6 +510,7 @@ def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -
         "name": "fee_accepted",
         "passed": True,
         "detail": 'Accepted: "i accept the $50 fee"',
+        "error": False,
     }
 
 
@@ -795,6 +796,37 @@ def test_after_that_the_model_doesn_t_get_to_write_about_them(harness: Harness) 
     harness.llm.extend([reply("You're welcome, Carlos. See you on Saturday.")])
     thanked = harness.say(conversation, "Ok, thanks anyway.")
     assert thanked["messages"][-1]["text"] == "You're welcome, Carlos. See you on Saturday."
+
+
+def test_the_judges_are_counted_too(harness: Harness) -> None:
+    """Three bookings: one the judge approves, one it blocks, and one where it answers
+    something unreadable, which blocks as well but isn't the judge doing its job."""
+    conversation = harness.start(PRIYA)
+    for start, answer in (
+        ("2026-11-03T09:00:00-05:00", verdict(False, "only a question")),
+        ("2026-11-03T10:00:00-05:00", reply("I think so?")),
+        ("2026-11-03T11:30:00-05:00", verdict(True, "Yes, book it")),
+    ):
+        booking = tool_call(
+            "book_appointment", customer_id="pat_0003", service_id="checkup", start=start
+        )
+        harness.llm.extend([booking, reply("Done or not, here's where we are.")])
+        harness.judge.extend([answer])
+        harness.say(conversation, "Yes, book it")
+
+    counted = harness.client.get("/v1/guardrails").json()
+    by_name = {c["name"]: c for c in counted["checks"]}
+
+    assert by_name["customer_confirmed"] == {
+        "name": "customer_confirmed",
+        "checked": 3,
+        "blocked": 2,
+        "undecided": 1,
+    }
+    # The rules run before the judge, on all three, and stop none of them.
+    rule = by_name["starts_in_future"]
+    assert (rule["checked"], rule["blocked"], rule["undecided"]) == (3, 0, 0)
+    assert harness.client.get("/v1/guardrails", headers={"Authorization": ""}).status_code == 401
 
 
 def test_staff_take_over_and_hand_back(harness: Harness) -> None:
