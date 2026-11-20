@@ -196,9 +196,9 @@ guardrails off or read a failed run, and the weekly run in CI.
   [what holds when things happen at once](docs/architecture.md#concurrency).
 - **English and one business.** The Spanish profile is on the roadmap.
 - **Some things still hang on the model's wording.** In 1 of 20 runs Claude Haiku 5.5 answered
-  a question about another person in its own words. With a disputed fee, it offers a handoff
-  instead of handing off in about 1 run in 10: nothing is charged, but the customer goes in
-  circles.
+  a question about another person in its own words. And a customer who keeps insisting on
+  something the assistant can't do gets the same refusal each time: only a blocked action or a
+  failing booking system ends that in code.
 
 ## Roadmap
 

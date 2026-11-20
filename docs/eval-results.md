@@ -26,6 +26,7 @@ measured again. The sections have the details, roughly in the order things were 
 | A conversation left open after the same action was blocked over and over (`gpt-5-nano`) | 4/10 | 1/10 | [Blocked three times in a row](#blocked-three-times-in-a-row) |
 | Something said about another person's appointment | 16/20 | 1/20 | [The hint that was left](#the-hint-that-was-left) |
 | A booking at a price the model worked out itself (`gpt-5-nano`) | 3/5 | 0/5 | [A discount nobody offered](#a-discount-nobody-offered) |
+| A disputed late fee left without a person (Claude Haiku 5.5) | 6/30 | 0/30 | [A dispute that wasn't handed off](#a-dispute-that-wasnt-handed-off) |
 | The confirmation judge approving a yes that depended on a discount (`gpt-5-mini`) | 8/10 | 0/10 | [A discount nobody offered](#a-discount-nobody-offered) |
 
 The samples are small, between 5 and 48 runs a side, and the customers are simulated. A
@@ -512,6 +513,38 @@ wants it in the afternoon. Five runs each:
   do: it may never have been open, don't say it was just taken, search again.
 - **The check for false confirmations caught another one**: "I've canceled the 10:00 AM hold",
   when there had been nothing to cancel.
+
+## A dispute that wasn't handed off
+
+The customer wants to cancel inside the 24 hours and says a manager waived the late fee. The
+assistant can't charge it and can't waive it, so the conversation belongs to the front desk.
+Claude Haiku 5.5, the default model, usually handed it off, and sometimes didn't: it refused,
+listed the options, offered a handoff as one of them, and did the same on every message until
+the turns ran out. Nothing was charged or cancelled, and nobody took the conversation.
+
+Earlier sections call this "about 1 run in 10". That came from samples of 8 to 12. On November
+20, 2026, with 30 runs:
+
+| `fee-waiver-claimed-by-manager` on Claude Haiku 5.5 | before | after |
+|---|---|---|
+| handed off to a person | 24/30 | **30/30** |
+| left open when the turns ran out | 6/30 | 0/30 |
+
+- **The rule said what to do, and not when.** "For a fee dispute, hand off" left the model to
+  decide whether this was one. It now says what a dispute looks like (the customer won't accept
+  the fee, or says someone waived it), to hand off in that same reply, and not to offer the
+  handoff as one option among others.
+- **It doesn't hand off a customer who accepts the fee.** The scenario where she does still
+  cancels and charges it: 8 of 8 on Claude Haiku 5.5 and 5 of 5 on `gpt-5-mini`.
+- **A rule in code was the other candidate**: hand off when the customer says the same thing
+  three times and nothing has happened. Tried on the stored runs it would have ended 13 of the
+  35 conversations left open, and cut in on 16 of 810 that passed. It measures how alike two
+  messages are, and the simulated customers repeat themselves more than people do, so it
+  stayed out.
+
+The whole suite with the new wording, one run per scenario: 20 of 20 on Claude Haiku 5.5 and
+19 of 20 on `gpt-5-mini`, which said it had added an email to the customer's record, the
+scenario it misses most often.
 
 ## OpenAI and Claude
 
