@@ -27,6 +27,7 @@ measured again. The sections have the details, roughly in the order things were 
 | Something said about another person's appointment | 16/20 | 1/20 | [The hint that was left](#the-hint-that-was-left) |
 | A booking at a price the model worked out itself (`gpt-5-nano`) | 3/5 | 0/5 | [A discount nobody offered](#a-discount-nobody-offered) |
 | A disputed late fee left without a person (Claude Haiku 5.5) | 6/30 | 0/30 | [A dispute that wasn't handed off](#a-dispute-that-wasnt-handed-off) |
+| What 1,000 conversations cost in model tokens (Claude Haiku 5.5, whole suite) | $2.44 | $1.08 | [What a conversation costs](#what-a-conversation-costs) |
 | The confirmation judge approving a yes that depended on a discount (`gpt-5-mini`) | 8/10 | 0/10 | [A discount nobody offered](#a-discount-nobody-offered) |
 
 The samples are small, between 5 and 48 runs a side, and the customers are simulated. A
@@ -581,12 +582,55 @@ runs each, on Claude Haiku 5.5:
   cent ($3.26 per 1,000). The same shape on a model twenty times the price is real money.
 
 The whole suite with the clock moving, one run per scenario: 20 of 20 passed, 37% of the input
-read from the cache, $2.44 per 1,000 conversations. The five conversations that end in one turn
-read nothing at all. Each one's prompt has its own customer near the top, so no conversation
-reuses what the one before it wrote.
+read from the cache, $2.44 per 1,000 conversations. Five conversations read nothing at all:
+the ones where every turn is a single model call. Each one's prompt has its own customer near
+the top, so no conversation reuses what the one before it wrote.
 
 `gpt-5-mini` caches by itself and doesn't charge for writing. On the same four scenarios it read
 47% of its input from the cache: $4.37 per 1,000 conversations.
+
+### What never changes goes first
+
+The system prompt is now two messages. The first has the rules, the business's information and
+its services, and is the same for every customer at any time. The second has the time, who is
+writing and their appointments. With the tools, which go before both, that puts about 4,800
+of a prompt's 5,100 tokens ahead of anything that varies. The Claude adapter marks the end of
+the first message, so every call reads that much from the cache whatever comes after it.
+
+The same four scenarios on Claude Haiku 5.5, a minute between messages, three runs each:
+
+| | time and customer first | rules and business first |
+|---|---|---|
+| read from the cache | 41% | **86%** |
+| written to the cache | 59% | 12% |
+| cost of 1,000 conversations | $2.63 | **$1.19** |
+| runs passed | 12/12 | 12/12 |
+
+And the whole suite, one run per scenario:
+
+| | before | after |
+|---|---|---|
+| read from the cache | 37% | **87%** |
+| cost of 1,000 conversations | $2.44 | **$1.08** |
+| runs passed | 20/20 | 20/20 |
+
+- **Conversations now share it.** The five that read nothing before read 92% or more now:
+  the first message was written by whoever wrote in before them.
+- **That depends on traffic.** The cache keeps a prompt for five minutes after its last use, and
+  the suite's conversations come one after another. One that starts cold writes those 4,800
+  tokens once, which adds $0.56 per 1,000: about $1.75, a third less than before.
+- **It didn't make turns faster.** 2.3 s a turn before and 2.6 s after, on the four scenarios.
+- **The judges' calls stopped writing to the cache.** A judge's prompt is its instructions and
+  then a case that never repeats. The automatic mark at the end of the request wrote all of it
+  at 1.25 times the price, to be read by nobody. Calls without tools no longer carry it.
+- **What's left.** The second message changes every turn, so what comes after it, the
+  conversation so far, is written again once per turn: the 12%.
+
+`gpt-5-mini` has no marks to place, and the order helped it too. On the four scenarios it read
+72% of its input from the cache instead of 47%, and 71% over the whole suite, where it passed
+19 of 20 (the email scenario, which it has failed before). Its cost per 1,000 conversations
+stayed where it was, $4.34 after $4.37, on 4 and 8 runs: half of it is output tokens, and
+these conversations took more turns.
 
 ## OpenAI and Claude
 

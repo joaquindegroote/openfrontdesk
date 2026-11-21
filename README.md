@@ -32,6 +32,10 @@ hanging when the booking system goes down. openfrontdesk is built around those f
 - **Observable.** Every turn records its tool calls, guardrail decisions, latency and tokens,
   and exports OpenTelemetry traces to [Arize Phoenix](https://github.com/Arize-ai/phoenix). The
   judges are counted too: how much each one checks, blocks, or fails to decide.
+- **Costed.** Each turn keeps the tokens of every model call, the judges' included, and how
+  much of the input came from the prompt cache. The prompt puts what never changes first, so
+  [87% of it does](docs/eval-results.md#what-a-conversation-costs): between a tenth and a
+  fifth of a cent per conversation on Claude Haiku 5.5.
 
 ## What the evals measured
 
