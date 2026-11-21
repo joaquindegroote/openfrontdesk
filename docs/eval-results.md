@@ -546,6 +546,48 @@ The whole suite with the new wording, one run per scenario: 20 of 20 on Claude H
 19 of 20 on `gpt-5-mini`, which said it had added an email to the customer's record, the
 scenario it misses most often.
 
+## What a conversation costs
+
+Until November 21, 2026, a run reported one token count, and it left things out. Three changes
+to the measuring, before changing anything else:
+
+- **The judges are counted.** A turn's tokens were the assistant's. The two judges make their
+  own model calls on every booking, move and cancellation, and those weren't in any number.
+- **Cached input is counted apart.** Claude charges a tenth of the price for input it reads
+  from its prompt cache, and 1.25 times the price for input it writes there. Each turn now
+  keeps how much of its input was each, by model, and the summary turns it into money at list
+  prices.
+- **The clock moves.** A scenario ran at one frozen instant. The prompt carries the time, so
+  every turn's prompt was the same to the byte, and the suite read from the cache what a real
+  conversation, with a minute or more between messages, can't. A minute now passes after each
+  of the customer's messages.
+
+Four scenarios (a booking, one with a deposit, a reschedule and a late cancellation), three
+runs each, on Claude Haiku 5.5:
+
+| | clock frozen | a minute between messages |
+|---|---|---|
+| input tokens per conversation | 29,212 | 28,118 |
+| read from the cache | 72% | 41% |
+| written to the cache | 28% | 59% |
+| cost of 1,000 conversations | $1.72 | $2.63 |
+
+- **The frozen clock made the suite look a third cheaper than a real conversation is.**
+- **Most of the input is written to the cache and not read again.** The prompt opens with the
+  time, so each turn writes all 5,100 tokens of tools and instructions again, at 1.25 times
+  the price. The cache only pays inside a turn, where the second model call reads what the
+  first one wrote. A turn with a single call costs more than it would with no caching.
+- **It's a quarter of a cent a conversation.** Without any caching it would be a third of a
+  cent ($3.26 per 1,000). The same shape on a model twenty times the price is real money.
+
+The whole suite with the clock moving, one run per scenario: 20 of 20 passed, 37% of the input
+read from the cache, $2.44 per 1,000 conversations. The five conversations that end in one turn
+read nothing at all. Each one's prompt has its own customer near the top, so no conversation
+reuses what the one before it wrote.
+
+`gpt-5-mini` caches by itself and doesn't charge for writing. On the same four scenarios it read
+47% of its input from the cache: $4.37 per 1,000 conversations.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.

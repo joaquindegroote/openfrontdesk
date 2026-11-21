@@ -2,8 +2,9 @@
 
 An LLM plays a customer with a goal and talks to the real engine and a fresh clinic, in
 process, until the request is done, handed off, or out of turns. Scenarios live in
-[`scenarios/`](scenarios/): a persona, a frozen clock, and what must be true at the end (the
-clinic's real state, the tools that ran, how the conversation ended).
+[`scenarios/`](scenarios/): a persona, the time it starts at, and what must be true at the end
+(the clinic's real state, the tools that ran, how the conversation ended). A minute passes
+after each of the customer's messages.
 
 ```bash
 uv run python -m ofd_evals run                                  # every scenario
@@ -40,10 +41,14 @@ Each run is saved as soon as it ends, in `results/<date-time>/`: `runs.jsonl` ke
 transcript with its tool calls and guardrail checks, and `summary.md` has the table below.
 
 ```
-| scenario | passed | avg turns | avg engine tokens | avg engine time |
-|---|---|---|---|---|
-| late-cancellation-accepts-fee | 2/2 | 2.0 | 11,492 | 15.6 s |
+| scenario | passed | avg turns | avg engine tokens | input from cache | cost per 1,000 | avg engine time |
+|---|---|---|---|---|---|---|
+| late-cancellation-accepts-fee | 3/3 | 2.0 | 24,341 | 45% | $2.06 | 5.0 s |
 ```
+
+The tokens are the assistant's and the judges'. The cost is what 1,000 conversations like these
+would cost at the list prices in [`pricing.py`](src/ofd_evals/pricing.py), with input read from
+the model's prompt cache and input written to it at their own rates.
 
 ```bash
 uv run python -m ofd_evals show --failed   # transcripts of the latest failed runs
