@@ -150,4 +150,6 @@ blocked try are not theirs to read.
 - `conversations`: channel, customer phone, status (`active` or `handed_off`), handoff reason and summary.
 - `messages`: the model-facing transcript (customer, assistant, tool and staff messages), in order.
 - `tool_events`: every tool call with arguments, status, result, guardrail checks and duration. This is the audit trail.
-- `turns`: per-turn steps, tokens, latency, model and outcome.
+- `turns`: per-turn steps, latency, model and outcome, and the tokens of every model call it
+  made, the judges' included: by model, with how much of the input was read from the prompt
+  cache and how much was written to it.
