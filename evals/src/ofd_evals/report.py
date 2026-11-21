@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ofd_evals.checks import ENGINE_FAILURES, CheckResult
+from ofd_evals.pricing import UsageByModel, add, cost
 from ofd_evals.runner import ConversationRecord
 from ofd_evals.suite import ScenarioRun
 
@@ -40,6 +41,8 @@ def conversation_entry(record: ConversationRecord) -> Entry:
         "handoff_reason": record.handoff_reason,
         "error": record.error,
         "tokens": record.tokens,
+        "usage": record.usage,
+        "cost_usd": cost(record.usage),
         "latency_ms": record.latency_ms,
         "transcript": [
             {
@@ -53,6 +56,7 @@ def conversation_entry(record: ConversationRecord) -> Entry:
                 "replies": turn.replies,
                 "outcome": turn.outcome,
                 "tokens": turn.input_tokens + turn.output_tokens,
+                "usage": turn.usage,
                 "latency_ms": turn.latency_ms,
             }
             for turn in record.turns
@@ -95,8 +99,9 @@ def summary_markdown(entries: list[Entry], models: dict[str, str]) -> str:
         "",
         " · ".join(f"{role} {model}" for role, model in models.items()),
         "",
-        "| scenario | passed | avg turns | avg engine tokens | avg engine time |",
-        "|---|---|---|---|---|",
+        "| scenario | passed | avg turns | avg engine tokens | input from cache "
+        "| cost per 1,000 | avg engine time |",
+        "|---|---|---|---|---|---|---|",
     ]
     for scenario_id, runs in by_scenario.items():
         passed = sum(run["passed"] for run in runs)
@@ -104,6 +109,7 @@ def summary_markdown(entries: list[Entry], models: dict[str, str]) -> str:
             f"| {scenario_id} | {passed}/{len(runs)} | "
             f"{_mean(len(r['transcript']) for r in runs):.1f} | "
             f"{_mean(r['tokens'] for r in runs):,.0f} | "
+            f"{_from_cache(runs)} | {_per_thousand(runs)} | "
             f"{_mean(r['latency_ms'] for r in runs) / 1000:.1f} s |"
         )
     total = sum(entry["passed"] for entry in entries)
@@ -113,6 +119,13 @@ def summary_markdown(entries: list[Entry], models: dict[str, str]) -> str:
         f"{total}/{len(entries)} runs passed every check. "
         f"{unsafe} did something they shouldn't have.",
     ]
+    if _per_thousand(entries) != "-":
+        lines += [
+            "",
+            f"1,000 conversations like these cost {_per_thousand(entries)} in engine tokens, "
+            f"the judges' included. {_from_cache(entries)} of the input was read from the "
+            "prompt cache.",
+        ]
     failures = [
         f"- {entry['scenario']} (run {entry['attempt']}): {check['name']}: {check['detail']}"
         for entry in entries
@@ -146,6 +159,8 @@ def compare_markdown(results: dict[str, list[Entry]]) -> str:
         totals("runs passed", lambda e: f"{sum(r['passed'] for r in e)}/{len(e)}"),
         totals("runs with an unsafe outcome", lambda e: f"{sum(_unsafe(r) for r in e)}/{len(e)}"),
         totals("avg engine tokens", lambda e: f"{_mean(r['tokens'] for r in e):,.0f}"),
+        totals("input read from the prompt cache", _from_cache),
+        totals("cost per 1,000 conversations", _per_thousand),
         totals(
             "avg engine time per turn",
             lambda e: f"{_per_turn(e) / 1000:.1f} s",
@@ -171,6 +186,24 @@ def _unsafe(entry: Entry) -> bool:
     return bool(entry.get("unsafe", False))
 
 
+def _from_cache(entries: list[Entry]) -> str:
+    """The share of the input tokens that the provider read from its prompt cache."""
+    used: UsageByModel = {}
+    for entry in entries:
+        add(used, entry.get("usage") or {})
+    sent = sum(tokens.get("input_tokens", 0) for tokens in used.values())
+    read = sum(tokens.get("cache_read_tokens", 0) for tokens in used.values())
+    return f"{read / sent:.0%}" if sent else "-"
+
+
+def _per_thousand(entries: list[Entry]) -> str:
+    """Results saved before usage was kept by model, or on a model without a price, show none."""
+    costs = [entry.get("cost_usd") for entry in entries]
+    if not costs or any(c is None for c in costs):
+        return "-"
+    return f"${_mean(costs) * 1000:.2f}"
+
+
 def _per_turn(entries: list[Entry]) -> float:
     turns = sum(len(e["transcript"]) for e in entries)
     return sum(e["latency_ms"] for e in entries) / turns if turns else 0.0
@@ -190,6 +223,8 @@ def format_transcript(entry: Entry) -> str:
         f"{len(entry['transcript'])} turns · {entry['tokens']:,} engine tokens · "
         f"{entry['latency_ms'] / 1000:.1f} s in the engine"
     )
+    if entry.get("cost_usd") is not None:
+        lines[-1] += f" · ${entry['cost_usd']:.4f} ({_from_cache([entry])} of input from cache)"
     if entry["error"]:
         lines.append(f"error: {entry['error']}")
     return "\n".join(lines)

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pytest
 from ofd_evals.checks import ENGINE_FAILURES, CheckResult
 from ofd_evals.report import (
     append_run,
@@ -70,9 +71,45 @@ def test_summary_counts_passes_and_lists_failed_checks() -> None:
     summary = summary_markdown(entries, MODELS)
 
     assert "engine gpt-5-mini (low) · customer gpt-5-mini" in summary
-    assert "| test | 1/2 | 1.0 | 0 | 0.0 s |" in summary
+    assert "| test | 1/2 | 1.0 | 0 | - | - | 0.0 s |" in summary
+    assert "1,000 conversations" not in summary
     assert "1/2 runs passed every check. 0 did something they shouldn't have." in summary
     assert "- test (run 2): calls book_appointment: never called" in summary
+
+
+def test_a_run_says_what_it_cost_and_how_much_came_from_the_cache() -> None:
+    conversation = run(scenario())
+    conversation.record.turns[0].usage = {
+        # 10,000 tokens in: 2,000 at $0.10 a million, 6,000 read at $0.01, 2,000 written at
+        # $0.125. And 1,000 out at $0.50.
+        "claude-haiku-5-5": {
+            "input_tokens": 10_000,
+            "output_tokens": 1_000,
+            "cache_read_tokens": 6_000,
+            "cache_write_tokens": 2_000,
+        },
+        # A dated name is priced as its model: 4,000 in at $0.25, none of it cached.
+        "gpt-5-mini-2025-08-07": {"input_tokens": 4_000, "output_tokens": 0},
+    }
+    entry = run_entry(conversation, PASSED, attempt=1)
+
+    assert entry["cost_usd"] == pytest.approx(0.00201)
+    summary = summary_markdown([entry], MODELS)
+    assert "| test | 1/1 | 1.0 | 0 | 43% | $2.01 | 0.0 s |" in summary
+    assert "1,000 conversations like these cost $2.01 in engine tokens" in summary
+    assert "$0.0020 (43% of input from cache)" in format_transcript(entry)
+    table = compare_markdown({"haiku": [entry]})
+    assert "| **input read from the prompt cache** | 43% |" in table
+    assert "| **cost per 1,000 conversations** | $2.01 |" in table
+
+
+def test_a_model_without_a_price_shows_no_cost() -> None:
+    conversation = run(scenario())
+    conversation.record.turns[0].usage = {"some-local-model": {"input_tokens": 500}}
+    entry = run_entry(conversation, PASSED, attempt=1)
+
+    assert entry["cost_usd"] is None
+    assert "| test | 1/1 | 1.0 | 0 | 0% | - | 0.0 s |" in summary_markdown([entry], MODELS)
 
 
 def test_a_suite_can_fail_only_on_unsafe_outcomes_and_crashes() -> None:
