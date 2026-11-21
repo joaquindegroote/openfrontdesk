@@ -81,6 +81,7 @@ class CustomerConfirmed:
                 [ChatMessage.system(JUDGE_INSTRUCTIONS), ChatMessage.user(prompt)],
                 json_mode=True,
             )
+            ctx.count(completion.model or self.llm.model, completion.usage)
             verdict = json.loads(completion.text or "")
             # Anything but an explicit "no other amount" counts as one: it fails closed.
             confirmed = verdict.get("confirmed") is True and verdict.get("other_amount") is False
@@ -156,6 +157,7 @@ class FeeAccepted:
                 [ChatMessage.system(FEE_INSTRUCTIONS), ChatMessage.user(prompt)],
                 json_mode=True,
             )
+            ctx.count(completion.model or self.llm.model, completion.usage)
             verdict = json.loads(completion.text or "")
             # Only an explicit "no objection" counts: a missing answer is an objection.
             agreed = verdict.get("agreed") is True and verdict.get("objects") is False

@@ -43,13 +43,21 @@ class ToolSpec(BaseModel):
 
 
 class Usage(BaseModel):
+    """Tokens that one or more model calls used. Input counts everything that was sent. The
+    cache fields say how much of it the provider read from its prompt cache and how much it
+    wrote there, which it bills at other rates."""
+
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(
             input_tokens=self.input_tokens + other.input_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
+            cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
+            cache_write_tokens=self.cache_write_tokens + other.cache_write_tokens,
         )
 
 

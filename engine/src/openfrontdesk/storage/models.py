@@ -84,8 +84,13 @@ class TurnRow(Base):
     conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id"), index=True)
     model: Mapped[str | None] = mapped_column(String(80))
     steps: Mapped[int]
+    # Every model call of the turn, the judges' included.
     input_tokens: Mapped[int]
     output_tokens: Mapped[int]
+    # The same by model, with what was read from and written to the prompt cache:
+    # {model: {input_tokens, output_tokens, cache_read_tokens, cache_write_tokens}}.
+    # Empty for turns stored before it was kept.
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     latency_ms: Mapped[int]
     # replied | handed_off | failed
     outcome: Mapped[str] = mapped_column(String(20))

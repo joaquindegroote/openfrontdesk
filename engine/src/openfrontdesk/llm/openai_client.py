@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from openai import AsyncOpenAI
+from openai.types import CompletionUsage
 
 from openfrontdesk.llm.base import INVALID_JSON_KEY
 from openfrontdesk.llm.types import ChatMessage, Completion, ToolCall, ToolSpec, Usage
@@ -66,15 +67,12 @@ class OpenAIChatClient:
             for call in message.tool_calls or []
             if getattr(call, "function", None) is not None
         ]
-        usage = (
-            Usage(
-                input_tokens=response.usage.prompt_tokens,
-                output_tokens=response.usage.completion_tokens,
-            )
-            if response.usage
-            else Usage()
+        return Completion(
+            text=message.content,
+            tool_calls=calls,
+            usage=_usage(response.usage),
+            model=response.model,
         )
-        return Completion(text=message.content, tool_calls=calls, usage=usage, model=response.model)
 
 
 def _parse_arguments(raw: str | None) -> dict[str, Any]:
@@ -83,6 +81,18 @@ def _parse_arguments(raw: str | None) -> dict[str, Any]:
     except json.JSONDecodeError:
         return {INVALID_JSON_KEY: raw}
     return parsed if isinstance(parsed, dict) else {INVALID_JSON_KEY: raw}
+
+
+def _usage(usage: CompletionUsage | None) -> Usage:
+    if usage is None:
+        return Usage()
+    details = usage.prompt_tokens_details
+    return Usage(
+        input_tokens=usage.prompt_tokens,
+        output_tokens=usage.completion_tokens,
+        # OpenAI caches a repeated prefix by itself, and writing to its cache costs nothing.
+        cache_read_tokens=(details.cached_tokens or 0) if details else 0,
+    )
 
 
 def _to_openai(message: ChatMessage) -> dict[str, Any]:
