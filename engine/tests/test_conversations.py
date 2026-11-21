@@ -23,6 +23,7 @@ from support import (
     HarnessFactory,
     fee_verdict,
     verdict,
+    whole_system_prompt,
 )
 
 
@@ -99,12 +100,30 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
     }
 
 
+def test_what_changes_from_turn_to_turn_comes_after_what_doesn_t(harness: Harness) -> None:
+    """The model's provider keeps a prompt it has just seen, up to the first character that
+    differs. So the rules and the business's information go first, the same for everyone, and
+    the customer and the time go in a second message."""
+    for phone in (PRIYA, EMILY, None):
+        harness.llm.extend([reply("Hi! How can I help?")])
+        harness.say(harness.start(phone), "Hi")
+
+    firsts, seconds = zip(*(call.messages[:2] for call in harness.llm.calls), strict=True)
+    assert all(m.role == "system" for m in firsts + seconds)
+    assert len({m.content for m in firsts}) == 1
+    assert len({m.content for m in seconds}) == 3
+    assert "Never invent availability" in firsts[0].content
+    assert "Priya" not in firsts[0].content and "2026" not in firsts[0].content
+    assert "It is Monday, November 2, 2026, 8:00 AM" in seconds[0].content
+    assert "This customer is Priya Shah" in seconds[0].content
+
+
 def test_known_customer_and_services_are_preloaded_into_the_prompt(harness: Harness) -> None:
     conversation = harness.start(PRIYA)
     harness.llm.extend([reply("Hi Priya! How can I help?")])
     harness.say(conversation, "Hi")
 
-    system_prompt = harness.llm.calls[0].messages[0].content
+    system_prompt = whole_system_prompt(harness.llm.calls[0])
     assert "This customer is Priya Shah, identified by the phone number" in system_prompt
     assert "Their customer_id for tools is pat_0003." in system_prompt
     assert "They have no upcoming appointments." in system_prompt
@@ -117,11 +136,11 @@ def test_upcoming_appointments_are_preloaded_so_changes_reschedule(harness: Harn
     harness.llm.extend([reply("Hi Carlos! How can I help?")])
     harness.say(conversation, "Hi, I need to change my appointment")
 
-    system_prompt = harness.llm.calls[0].messages[0].content
+    system_prompt = whole_system_prompt(harness.llm.calls[0])
     assert (
         "Their upcoming appointments:\n"
-        "   - Check-up & X-rays on Sat Nov 7, 9:00 AM (appointment_id apt_00002)\n"
-        "   To change the time of one of these, reschedule it; don't book a new one."
+        "- Check-up & X-rays on Sat Nov 7, 9:00 AM (appointment_id apt_00002)\n"
+        "To change the time of one of these, reschedule it; don't book a new one."
     ) in system_prompt
 
 
@@ -131,7 +150,7 @@ def test_a_web_visitor_s_number_is_only_a_claim(harness: Harness) -> None:
     harness.llm.extend([reply("I'll text you a code to confirm the number.")])
     harness.say(conversation, "Hi, this is Carlos")
 
-    system_prompt = harness.llm.calls[0].messages[0].content
+    system_prompt = whole_system_prompt(harness.llm.calls[0])
     assert "this chat doesn't prove it" in system_prompt
     assert "Carlos Rivera" not in system_prompt
     assert "appointment_id" not in system_prompt
@@ -230,7 +249,7 @@ def test_unknown_phone_is_flagged_for_registration(harness: Harness) -> None:
     harness.llm.extend([reply("Welcome! What's your full name?")])
     harness.say(conversation, "Hi, I'm new")
 
-    system_prompt = harness.llm.calls[0].messages[0].content
+    system_prompt = whole_system_prompt(harness.llm.calls[0])
     assert "nobody is registered with that number" in system_prompt
 
 

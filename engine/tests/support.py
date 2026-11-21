@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.llm import Completion
-from openfrontdesk.llm.scripted import ScriptedLLM, reply
+from openfrontdesk.llm.scripted import ScriptedCall, ScriptedLLM, reply
 
 ROOT = Path(__file__).resolve().parents[2]
 PROFILE = ROOT / "businesses" / "brightsmile-dental" / "profile.yaml"
@@ -35,6 +35,11 @@ DEFAULT_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["default"]
 OUTAGE_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["system_unavailable"]
 # And when the guards stopped the same action three times in a row.
 STUCK_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["blocked_repeatedly"]
+
+
+def whole_system_prompt(call: ScriptedCall) -> str:
+    """Both parts of the system prompt, as the model reads them."""
+    return "\n".join(m.content or "" for m in call.messages if m.role == "system")
 
 
 def verdict(confirmed: bool, evidence: str = "", *, other_amount: bool = False) -> Completion:

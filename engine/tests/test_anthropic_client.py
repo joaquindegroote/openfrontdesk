@@ -66,6 +66,7 @@ async def test_requests_use_the_messages_api_shape() -> None:
     await llm.complete(
         [
             ChatMessage.system("You are Ava."),
+            ChatMessage.system("It is Monday."),
             ChatMessage.user("Book a cleaning"),
             ChatMessage(
                 role="assistant",
@@ -84,8 +85,14 @@ async def test_requests_use_the_messages_api_shape() -> None:
     )
 
     [request] = sdk.requests
-    assert request["system"] == "You are Ava."
+    # The first system message is the part that repeats: the cache mark goes on it, and the
+    # tools, which come before it, are cached with it.
+    assert request["system"] == [
+        {"type": "text", "text": "You are Ava.", "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": "It is Monday."},
+    ]
     assert request["output_config"] == {"effort": "low"}  # Claude has no "minimal"
+    # And the API's own mark at the end, for the next step of the turn.
     assert request["cache_control"] == {"type": "ephemeral"}
     assert request["tools"] == [
         {
@@ -124,6 +131,19 @@ async def test_requests_use_the_messages_api_shape() -> None:
         },
         {"role": "user", "content": "Thanks"},
     ]
+
+
+async def test_a_call_without_tools_only_caches_its_instructions() -> None:
+    """A judge's call: the same instructions every time, then a case that never repeats."""
+    client, sdk = fake(message({"type": "text", "text": "{}"}))
+    llm = AnthropicChatClient("claude-haiku-5-5", client=client)
+    await llm.complete([ChatMessage.system("Judge this."), ChatMessage.user("The case.")])
+
+    [request] = sdk.requests
+    assert request["system"] == [
+        {"type": "text", "text": "Judge this.", "cache_control": {"type": "ephemeral"}}
+    ]
+    assert "cache_control" not in request
 
 
 async def test_thinking_blocks_go_back_unchanged_with_the_tool_results() -> None:

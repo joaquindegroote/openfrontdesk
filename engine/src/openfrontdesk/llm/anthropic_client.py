@@ -1,10 +1,16 @@
 """Messages API adapter for Claude models.
 
 Thinking blocks are replayed verbatim within a turn, as the API expects alongside tool results,
-but never across turns. The system prompt carries the time and the customer's appointments, so
-it changes every turn, and a changed prefix invalidates earlier blocks. They travel only on the
-in-memory messages of the turn that produced them (`ChatMessage.provider_content`), which is
-never stored, so every later turn starts from a history the API accepts.
+but never across turns. The second part of the system prompt carries the time and the
+customer's appointments, so it changes every turn, and a changed prefix invalidates earlier
+blocks. They travel only on the in-memory messages of the turn that produced them
+(`ChatMessage.provider_content`), which is never stored, so every later turn starts from a
+history the API accepts.
+
+Prompt caching has two marks. One is on the first system message, which callers keep the same
+from call to call: the tools and that message are read from the cache whatever follows them.
+The other is the API's automatic one at the end of the request, for calls with tools, which
+come back a step later with everything before it unchanged.
 """
 
 import json
@@ -23,6 +29,8 @@ FALLBACK_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5")
 EFFORT = {"minimal": "low", "low": "low", "medium": "medium", "high": "high"}
 # Response blocks sent back on the next step of the same turn.
 REPLAYED_BLOCKS = {"thinking", "redacted_thinking", "text", "tool_use"}
+# Kept for five minutes, and for five more each time it's read.
+CACHED = {"type": "ephemeral"}
 _JSON = json.JSONDecoder()
 
 
@@ -54,8 +62,6 @@ class AnthropicChatClient:
             "model": self.model,
             "max_tokens": self.max_tokens,
             "messages": _to_anthropic(conversation),
-            # Tools, system prompt and earlier steps repeat on every step of a turn.
-            "cache_control": {"type": "ephemeral"},
         }
         if system:
             request["system"] = system
@@ -64,6 +70,10 @@ class AnthropicChatClient:
                 {"name": t.name, "description": t.description, "input_schema": t.parameters}
                 for t in tools
             ]
+            # The next step of the turn sends all of this again, plus what this one adds. A
+            # call without tools (a judge's) is one of a kind after its instructions, and
+            # writing its tail to the cache would cost more and never be read.
+            request["cache_control"] = CACHED
         if self.effort:
             request["output_config"] = {"effort": self.effort}
 
@@ -110,12 +120,19 @@ class AnthropicChatClient:
         )
 
 
-def _split_system(messages: Sequence[ChatMessage]) -> tuple[str, list[ChatMessage]]:
-    """Leading system messages become the top-level system prompt."""
+def _split_system(
+    messages: Sequence[ChatMessage],
+) -> tuple[list[dict[str, Any]], list[ChatMessage]]:
+    """Leading system messages become the top-level system prompt, a block each. The first is
+    the part that repeats, and carries the cache mark."""
     leading = 0
     while leading < len(messages) and messages[leading].role == "system":
         leading += 1
-    system = "\n\n".join(m.content or "" for m in messages[:leading])
+    system: list[dict[str, Any]] = [
+        {"type": "text", "text": m.content} for m in messages[:leading] if m.content
+    ]
+    if system:
+        system[0]["cache_control"] = CACHED
     return system, list(messages[leading:])
 
 
