@@ -1,5 +1,5 @@
 import type { ToolEvent, Turn } from "@/lib/api";
-import { seconds } from "@/lib/format";
+import { percentFromCache, seconds } from "@/lib/format";
 import { EventStatusBadge } from "./badges";
 
 export function EventTimeline({ turns, events }: { turns: Turn[]; events: ToolEvent[] }) {
@@ -14,6 +14,7 @@ export function EventTimeline({ turns, events }: { turns: Turn[]; events: ToolEv
     <ol className="flex flex-col gap-4 p-4">
       {turns.map((turn, index) => {
         const turnEvents = events.filter((event) => event.turn_id === turn.id);
+        const cached = percentFromCache(turn.usage);
         return (
           <li key={turn.id} className="flex flex-col gap-2">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-muted">
@@ -21,6 +22,7 @@ export function EventTimeline({ turns, events }: { turns: Turn[]; events: ToolEv
               <span>
                 {turn.steps} {turn.steps === 1 ? "step" : "steps"} · {seconds(turn.latency_ms)} ·{" "}
                 {(turn.input_tokens + turn.output_tokens).toLocaleString()} tokens
+                {cached !== null && ` · ${cached}% from cache`}
                 {turn.outcome !== "replied" && (
                   <span className="ml-1 font-medium text-warn">· {turn.outcome.replace("_", " ")}</span>
                 )}
