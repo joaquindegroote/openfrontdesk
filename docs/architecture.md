@@ -46,7 +46,7 @@ sequenceDiagram
 | `service.py` | Conversation lifecycle: who replies, per-conversation locking, a deadline for each turn, persistence of each turn, and failure handling (a failed turn hands off and never stores a tool call without its result). |
 | `agent/loop.py` | The bounded loop for one turn: step budget, automatic handoff after repeated outages, and the business's fixed reply to close any handoff. |
 | `agent/executor.py` | Runs one tool call: validation, guards, idempotency key, timeout, and turning every failure into a result the model can act on. |
-| `agent/prompt.py` | Renders the system prompt from the business profile and the current time in the business's timezone. |
+| `agent/prompt.py` | Renders the system prompt in two parts: the rules and the business profile, the same for everyone, and then the time in the business's timezone, the customer and their appointments. |
 | `tools/` | Typed tool registry and the standard booking toolset. Arguments are Pydantic models; their JSON schema is what the model sees. |
 | `guardrails/` | Deterministic rules and the confirmation judge. |
 | `backends/` | The `BookingBackend` interface and the clinic API adapter (retries only what is safe to retry). |
@@ -126,6 +126,35 @@ allows 50 turns running or waiting per process.
 On SQLite there's only the first lock, which is fine for one process and wrong for more. Either
 way the booking system prevents double bookings and repeated writes by itself, because
 idempotency keys come from the conversation and not from the process.
+
+## Prompt order and the cache
+
+A request to the model goes from what changes least to what changes most:
+
+1. The tools.
+2. The rules, the business's information and its services: the same for every customer.
+3. This conversation: the time, who is writing, their appointments.
+4. The messages so far.
+
+Model providers keep a prompt they have just seen and charge a fraction to read it again, up
+to the first character that differs. With the time on the prompt's second line, as it used to
+be, no two turns shared anything and each one paid to write the whole prompt to the cache. Now
+1 and 2, about 4,800 of 5,100 tokens, are read from it by any call made within five minutes of
+another, whoever the customer is. The Claude adapter marks the end of 2. OpenAI caches a
+repeated prefix without being asked.
+
+Three things keep it that way:
+
+- `render_system_prompt` renders part 2 with nothing but the business profile and the services,
+  so a time or a name can't get into it.
+- A test opens conversations for three different customers and checks that the first message
+  the model gets is the same in all of them.
+- Every turn stores how much of its input was read from the cache and how much was written. A
+  request that misses the cache still succeeds, at a higher price, so that number is the only
+  place where it shows.
+
+[What it measured](eval-results.md#what-a-conversation-costs): 87% of the input read from the
+cache instead of 37%, and less than half the cost per conversation.
 
 ## Who can call what
 
