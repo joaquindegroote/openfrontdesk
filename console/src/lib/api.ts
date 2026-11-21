@@ -55,12 +55,22 @@ export interface ToolEvent {
   created_at: string;
 }
 
+export interface TokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+  // Parts of input_tokens: read from the model's prompt cache, and written to it.
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+}
+
 export interface Turn {
   id: string;
   model: string | null;
   steps: number;
   input_tokens: number;
   output_tokens: number;
+  // By model. Null for turns stored before it was kept.
+  usage: Record<string, TokenUsage> | null;
   latency_ms: number;
   outcome: "replied" | "handed_off" | "failed";
   created_at: string;
