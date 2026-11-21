@@ -1,5 +1,6 @@
 """Plays a simulated customer against the engine until the conversation ends."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -7,6 +8,7 @@ from openfrontdesk.agent.context import ToolEvent
 from openfrontdesk.service import ConversationService
 
 from ofd_evals.customer import SimulatedCustomer, SimulatorError, Speaker
+from ofd_evals.pricing import UsageByModel, add
 
 StopReason = Literal["customer_done", "handed_off", "max_turns", "simulator_error"]
 
@@ -19,6 +21,8 @@ class TurnRecord:
     latency_ms: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    # The same tokens by model, with what was read from and written to the prompt cache.
+    usage: UsageByModel = field(default_factory=dict)
     # replied | handed_off | failed (the engine's own error path)
     outcome: str = "replied"
 
@@ -41,12 +45,23 @@ class ConversationRecord:
         return sum(t.input_tokens + t.output_tokens for t in self.turns)
 
     @property
+    def usage(self) -> UsageByModel:
+        total: UsageByModel = {}
+        for turn in self.turns:
+            add(total, turn.usage)
+        return total
+
+    @property
     def latency_ms(self) -> int:
         return sum(t.latency_ms for t in self.turns)
 
 
 async def run_conversation(
-    service: ConversationService, customer: SimulatedCustomer, *, max_turns: int = 8
+    service: ConversationService,
+    customer: SimulatedCustomer,
+    *,
+    max_turns: int = 8,
+    after_turn: Callable[[], None] | None = None,
 ) -> ConversationRecord:
     # A persona with a phone writes from it, as on WhatsApp; one without is a web visitor.
     conversation = await service.start(
@@ -79,6 +94,7 @@ async def run_conversation(
                 latency_ms=outcome.turn.latency_ms if outcome.turn else 0,
                 input_tokens=outcome.turn.input_tokens if outcome.turn else 0,
                 output_tokens=outcome.turn.output_tokens if outcome.turn else 0,
+                usage=(outcome.turn.usage or {}) if outcome.turn else {},
                 outcome=outcome.turn.outcome if outcome.turn else "replied",
             )
         )
@@ -87,6 +103,8 @@ async def run_conversation(
         if outcome.conversation.status != "active":
             record.stop_reason = "handed_off"
             return record
+        if after_turn:
+            after_turn()
 
     record.stop_reason = "max_turns"
     return record
