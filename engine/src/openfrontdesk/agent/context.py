@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from openfrontdesk.backends import BookingBackend
 from openfrontdesk.business import BusinessProfile
-from openfrontdesk.llm import ChatMessage
+from openfrontdesk.llm import ChatMessage, Usage
 
 SideEffect = Literal["read", "write", "control"]
 EventStatus = Literal["ok", "error", "blocked", "invalid"]
@@ -71,3 +71,8 @@ class ToolContext:
     events: list[ToolEvent] = field(default_factory=list)
     # Set by the executor for write tools; passed to the booking system for dedupe.
     idempotency_key: str | None = None
+    # What this turn's model calls used, by model: the assistant's steps and the judges'.
+    usage: dict[str, Usage] = field(default_factory=dict)
+
+    def count(self, model: str, usage: Usage) -> None:
+        self.usage[model] = self.usage.get(model, Usage()) + usage

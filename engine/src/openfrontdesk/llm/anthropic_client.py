@@ -89,13 +89,17 @@ class AnthropicChatClient:
             if b.type == "tool_use"
         ]
         usage = response.usage
-        cached = (usage.cache_read_input_tokens or 0) + (usage.cache_creation_input_tokens or 0)
+        read = usage.cache_read_input_tokens or 0
+        written = usage.cache_creation_input_tokens or 0
         return Completion(
             text=text,
             tool_calls=calls,
-            # Counted like OpenAI's prompt tokens: cached input included.
             usage=Usage(
-                input_tokens=usage.input_tokens + cached, output_tokens=usage.output_tokens
+                # Counted like OpenAI's prompt tokens: cached input included.
+                input_tokens=usage.input_tokens + read + written,
+                output_tokens=usage.output_tokens,
+                cache_read_tokens=read,
+                cache_write_tokens=written,
             ),
             model=response.model,
             provider_content=[

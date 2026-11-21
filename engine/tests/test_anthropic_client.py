@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 from anthropic.types import Message
-from openfrontdesk.llm import ChatMessage, Completion, ToolCall, ToolSpec
+from openfrontdesk.llm import ChatMessage, Completion, ToolCall, ToolSpec, Usage
 from openfrontdesk.llm.anthropic_client import FALLBACK_BETA, AnthropicChatClient
 from openfrontdesk.llm.base import ModelRefusedError
 from openfrontdesk.llm.scripted import reply
@@ -36,7 +36,10 @@ def fake(*responses: Message) -> tuple[Any, FakeMessages]:
 
 
 def message(
-    *content: dict[str, Any], stop_reason: str = "end_turn", cache_read: int = 0
+    *content: dict[str, Any],
+    stop_reason: str = "end_turn",
+    cache_read: int = 0,
+    cache_written: int = 0,
 ) -> Message:
     return Message.model_validate(
         {
@@ -51,7 +54,7 @@ def message(
                 "input_tokens": 100,
                 "output_tokens": 20,
                 "cache_read_input_tokens": cache_read,
-                "cache_creation_input_tokens": 0,
+                "cache_creation_input_tokens": cache_written,
             },
         }
     )
@@ -140,14 +143,18 @@ async def test_thinking_blocks_go_back_unchanged_with_the_tool_results() -> None
 
 
 async def test_replies_are_read_by_block_type_with_cached_tokens_counted() -> None:
-    client, _ = fake(message(THINKING, {"type": "text", "text": "Hello"}, cache_read=900))
+    answer = message(THINKING, {"type": "text", "text": "Hello"}, cache_read=900, cache_written=300)
+    client, _ = fake(answer)
     completion = await AnthropicChatClient("claude-haiku-5-5", client=client).complete(
         [ChatMessage.user("Hi")]
     )
 
     assert completion.text == "Hello"
     assert completion.tool_calls == []
-    assert (completion.usage.input_tokens, completion.usage.output_tokens) == (1000, 20)
+    # The API's input_tokens is only what wasn't cached. Here it is everything that was sent.
+    assert completion.usage == Usage(
+        input_tokens=1300, output_tokens=20, cache_read_tokens=900, cache_write_tokens=300
+    )
     assert completion.model == "claude-haiku-5-5"
 
 

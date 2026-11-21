@@ -15,6 +15,8 @@ from openfrontdesk.agent.context import FixedReply, HandoffRequest, ToolContext,
 from openfrontdesk.agent.executor import ToolExecutor
 from openfrontdesk.llm import ChatMessage, Completion, LLMClient, ToolSpec, Usage
 from openfrontdesk.observability import (
+    CACHE_READ_TOKENS,
+    CACHE_WRITE_TOKENS,
     COMPLETION_TOKENS,
     INPUT,
     MODEL,
@@ -46,7 +48,8 @@ class TurnResult:
     new_messages: list[ChatMessage]
     events: list[ToolEvent]
     handoff: HandoffRequest | None
-    usage: Usage
+    # By model, with the judges' calls: the same dict as the turn's ToolContext.
+    usage: dict[str, Usage]
     steps: int
     model: str | None = None
     errors: list[str] = field(default_factory=list)
@@ -80,7 +83,7 @@ class Agent:
         messages = [ChatMessage.system(system_prompt), *history, user_message]
         ctx.transcript = [*history, user_message]
         turn = TurnResult(
-            reply="", new_messages=[user_message], events=[], handoff=None, usage=Usage(), steps=0
+            reply="", new_messages=[user_message], events=[], handoff=None, usage=ctx.usage, steps=0
         )
         specs = self.registry.specs()
         failing_steps = 0
@@ -93,8 +96,8 @@ class Agent:
             for step in range(1, self.max_steps + 1):
                 turn.steps = step
                 completion = await self._complete(messages, specs, ctx.conversation_id)
-                turn.usage += completion.usage
                 turn.model = completion.model or self.llm.model
+                ctx.count(turn.model, completion.usage)
                 assistant = ChatMessage(
                     role="assistant",
                     content=completion.text,
@@ -189,6 +192,8 @@ class Agent:
             completion = await self.llm.complete(messages, tools=tools)
             span.set_attribute(PROMPT_TOKENS, completion.usage.input_tokens)
             span.set_attribute(COMPLETION_TOKENS, completion.usage.output_tokens)
+            span.set_attribute(CACHE_READ_TOKENS, completion.usage.cache_read_tokens)
+            span.set_attribute(CACHE_WRITE_TOKENS, completion.usage.cache_write_tokens)
             set_content(
                 span, OUTPUT, completion.text or ", ".join(c.name for c in completion.tool_calls)
             )

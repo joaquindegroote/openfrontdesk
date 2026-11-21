@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import Connection, inspect, text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -14,6 +14,24 @@ logger = logging.getLogger(__name__)
 # One lock per conversation, by a 64-bit hash of its id.
 _LOCK = text("SELECT pg_advisory_lock(hashtextextended(:id, 0))")
 _UNLOCK = text("SELECT pg_advisory_unlock(hashtextextended(:id, 0))")
+
+
+def _add_missing_columns(connection: Connection) -> None:
+    """Give a database made by an earlier version the columns added since. `create_all` only
+    makes missing tables. Every column added so far can be empty, so this is all the migration
+    there is; a change that needs more than that needs a migration tool."""
+    known = inspect(connection)
+    only_if_missing = "IF NOT EXISTS " if connection.dialect.name == "postgresql" else ""
+    for table in Base.metadata.sorted_tables:
+        present = {column["name"] for column in known.get_columns(table.name)}
+        for column in table.columns:
+            if column.name not in present:
+                kind = column.type.compile(connection.dialect)
+                connection.execute(
+                    text(
+                        f"ALTER TABLE {table.name} ADD COLUMN {only_if_missing}{column.name} {kind}"
+                    )
+                )
 
 
 class Database:
@@ -38,6 +56,7 @@ class Database:
     async def create_all(self) -> None:
         async with self.engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
+            await connection.run_sync(_add_missing_columns)
 
     @asynccontextmanager
     async def conversation_lock(self, conversation_id: str) -> AsyncIterator[None]:

@@ -16,6 +16,8 @@ OUTPUT = "output.value"
 MODEL = "llm.model_name"
 PROMPT_TOKENS = "llm.token_count.prompt"
 COMPLETION_TOKENS = "llm.token_count.completion"
+CACHE_READ_TOKENS = "llm.token_count.prompt_details.cache_read"
+CACHE_WRITE_TOKENS = "llm.token_count.prompt_details.cache_write"
 TOOL_NAME = "tool.name"
 SESSION_ID = "session.id"
 

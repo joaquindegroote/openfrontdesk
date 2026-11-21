@@ -226,13 +226,15 @@ class ConversationService:
             result = _failed_turn(ctx, text, len(history), prior_events)
             outcome = "failed"
 
+        used = sum(result.usage.values(), Usage())
         turn = TurnRow(
             id=new_id("turn"),
             conversation_id=conversation.id,
             model=result.model,
             steps=result.steps,
-            input_tokens=result.usage.input_tokens,
-            output_tokens=result.usage.output_tokens,
+            input_tokens=used.input_tokens,
+            output_tokens=used.output_tokens,
+            usage={model: usage.model_dump() for model, usage in result.usage.items()},
             latency_ms=round((time.perf_counter() - started) * 1000),
             outcome=outcome,
             created_at=datetime.now(UTC),
@@ -322,7 +324,8 @@ def _failed_turn(
         new_messages=[*done, ChatMessage.assistant(reply)],
         events=ctx.events[prior_events:],
         handoff=handoff,
-        usage=Usage(),
+        # The calls that finished before it failed were still paid for.
+        usage=ctx.usage,
         steps=0,
     )
 

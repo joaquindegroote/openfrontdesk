@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from openfrontdesk.agent.context import ToolEvent
+from openfrontdesk.llm import Usage
 from openfrontdesk.storage.models import MessageRow
 
 Channel = Literal["web", "whatsapp", "sms", "voice"]
@@ -88,6 +89,8 @@ class TurnOut(BaseModel):
     steps: int
     input_tokens: int
     output_tokens: int
+    # By model, with the prompt-cache counts. None for turns stored before it was kept.
+    usage: dict[str, Usage] | None = None
     latency_ms: int
     outcome: str
     created_at: datetime
