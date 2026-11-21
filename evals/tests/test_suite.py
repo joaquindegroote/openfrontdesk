@@ -1,4 +1,4 @@
-"""Running a scenario: a fresh clinic and engine on the scenario's frozen clock."""
+"""Running a scenario: a fresh clinic and engine, starting at the scenario's time."""
 
 import json
 from pathlib import Path
@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RULES = ["starts_in_future", "identity_verified", "no_duplicate_booking"]
 
 
-async def test_a_scenario_runs_on_its_frozen_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_a_scenario_starts_at_its_own_time(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
@@ -38,6 +38,29 @@ async def test_a_scenario_runs_on_its_frozen_clock(monkeypatch: pytest.MonkeyPat
 
 def says(message: str, *, done: bool = False) -> Any:
     return reply(json.dumps({"message": message, "done": done}))
+
+
+async def test_a_minute_passes_between_the_customer_s_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """As it would with a person typing. Standing still, every turn's prompt was the same to
+    the byte, and the model's prompt cache was read as it wouldn't be in a real conversation."""
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+    )
+    [scenario] = [s for s in load_scenarios() if s.id == "book-earliest-checkup"]
+    customer = ScriptedLLM([says("Hi"), says("Are you open today?"), says("", done=True)])
+    engine = ScriptedLLM([reply("Hi! How can I help?"), reply("Yes, from 9 to 5.")])
+
+    await run_scenario(
+        scenario, settings, customer_llm=customer, llm=engine, judge_llm=ScriptedLLM()
+    )
+
+    first, second = (" ".join(m.content or "" for m in call.messages) for call in engine.calls)
+    assert "It is Monday, November 2, 2026, 8:00 AM" in first
+    assert "It is Monday, November 2, 2026, 8:01 AM" in second
 
 
 @pytest.mark.parametrize(
