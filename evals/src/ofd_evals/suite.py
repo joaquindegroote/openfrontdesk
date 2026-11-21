@@ -1,4 +1,4 @@
-"""Runs scenarios: each one in a fresh clinic and engine, with the scenario's frozen clock."""
+"""Runs scenarios: each one in a fresh clinic and engine, starting at the scenario's time."""
 
 import re
 from dataclasses import dataclass
@@ -56,7 +56,12 @@ async def run_scenario(
         for service in services:
             amounts |= {service.price, service.deposit, service.price - service.deposit}
         customer = SimulatedCustomer(customer_llm, scenario.customer)
-        record = await run_conversation(env.service, customer, max_turns=scenario.max_turns)
+        record = await run_conversation(
+            env.service,
+            customer,
+            max_turns=scenario.max_turns,
+            after_turn=env.a_minute_passes,
+        )
         return ScenarioRun(
             scenario=scenario,
             record=record,

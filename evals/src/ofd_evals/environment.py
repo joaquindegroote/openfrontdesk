@@ -3,7 +3,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import httpx
 from clinic_api.catalog import TIMEZONE
@@ -27,6 +27,15 @@ VERIFICATION_CODE = "246810"
 class EvalEnvironment:
     service: ConversationService
     clinic: FastAPI
+    # Set when the run has its own time, which the clinic and the engine both read.
+    clock: FixedClock | None = None
+
+    def a_minute_passes(self) -> None:
+        """Between a reply and the customer's next message. With time standing still, every
+        turn's prompt says the same minute, and the suite reads from the model's prompt cache
+        what a real conversation can't."""
+        if self.clock:
+            self.clock.at += timedelta(minutes=1)
 
     @property
     def store(self) -> ClinicStore:
@@ -44,10 +53,13 @@ async def eval_environment(
     chaos: ChaosConfig | None = None,
     guards: GuardMode = "full",
 ) -> AsyncIterator[EvalEnvironment]:
-    """`now` freezes the clock for both the clinic and the engine, for reproducible runs."""
-    clinic_clock = FixedClock(now) if now else SystemClock(TIMEZONE)
+    """`now` sets the time for both the clinic and the engine, for reproducible runs. It only
+    moves when the run says so."""
+    clock = FixedClock(now) if now else None
     clinic = create_clinic_app(
-        clinic_clock, chaos=chaos or ChaosConfig(), verification_code=VERIFICATION_CODE
+        clock or SystemClock(TIMEZONE),
+        chaos=chaos or ChaosConfig(),
+        verification_code=VERIFICATION_CODE,
     )
     backend = ClinicHttpBackend(
         httpx.AsyncClient(transport=httpx.ASGITransport(app=clinic), base_url="http://clinic")
@@ -59,9 +71,9 @@ async def eval_environment(
             llm=llm,
             judge_llm=judge_llm,
             backend=backend,
-            clock=(lambda: now) if now else None,
+            clock=clock.now if clock else None,
             guards=guards,
         ) as service:
-            yield EvalEnvironment(service=service, clinic=clinic)
+            yield EvalEnvironment(service=service, clinic=clinic, clock=clock)
     finally:
         await backend.aclose()
