@@ -75,12 +75,13 @@ class Agent:
     async def run_turn(
         self,
         *,
-        system_prompt: str,
+        system_prompt: Sequence[str],
         history: list[ChatMessage],
         user_message: ChatMessage,
         ctx: ToolContext,
     ) -> TurnResult:
-        messages = [ChatMessage.system(system_prompt), *history, user_message]
+        # One system message per part: what never changes first, so it can be cached.
+        messages = [*map(ChatMessage.system, system_prompt), *history, user_message]
         ctx.transcript = [*history, user_message]
         turn = TurnResult(
             reply="", new_messages=[user_message], events=[], handoff=None, usage=ctx.usage, steps=0

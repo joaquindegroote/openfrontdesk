@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import NamedTuple
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
@@ -32,6 +33,20 @@ class BookingSnapshot:
     appointments: list[Appointment] | None = None
 
 
+class SystemPrompt(NamedTuple):
+    """The system prompt in two parts, in the order they are sent.
+
+    `business` is the same for every customer and every turn, until the business changes
+    something: the rules, the business's information, its services. The model's provider keeps
+    a prompt it has just seen and charges a fraction to read it again, but only up to the
+    first character that differs. So everything that varies is in `turn`, after it: the time,
+    who is writing, their appointments.
+    """
+
+    business: str
+    turn: str
+
+
 def render_system_prompt(
     business: BusinessProfile,
     *,
@@ -39,18 +54,23 @@ def render_system_prompt(
     customer_phone: str | None,
     phone_verified: bool = False,
     snapshot: BookingSnapshot | None = None,
-) -> str:
+) -> SystemPrompt:
     snapshot = snapshot or BookingSnapshot()
-    return _templates.get_template("system_prompt.md.j2").render(
-        business=business,
-        now=long_label(now, business.tz),
-        today=now.astimezone(business.tz).date().isoformat(),
-        customer_phone=customer_phone,
-        phone_verified=phone_verified,
-        services=snapshot.services,
-        customer=snapshot.customer,
-        customer_not_found=snapshot.customer_not_found,
-        appointments=_appointment_lines(snapshot, business),
+    return SystemPrompt(
+        # It is given nothing else to render with, so nothing about the turn can get into it.
+        business=_templates.get_template("system_prompt.md.j2").render(
+            business=business, services=snapshot.services
+        ),
+        turn=_templates.get_template("this_conversation.md.j2").render(
+            business=business,
+            now=long_label(now, business.tz),
+            today=now.astimezone(business.tz).date().isoformat(),
+            customer_phone=customer_phone,
+            phone_verified=phone_verified,
+            customer=snapshot.customer,
+            customer_not_found=snapshot.customer_not_found,
+            appointments=_appointment_lines(snapshot, business),
+        ),
     )
 
 

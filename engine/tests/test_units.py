@@ -211,8 +211,8 @@ def test_handoff_replies_fall_back_to_the_default_then_the_engine() -> None:
 
 
 def test_system_prompt_includes_time_customer_and_policies() -> None:
-    prompt = render_system_prompt(
-        BUSINESS, now=NOW, customer_phone="+15550100101", phone_verified=True
+    prompt = "\n".join(
+        render_system_prompt(BUSINESS, now=NOW, customer_phone="+15550100101", phone_verified=True)
     )
     assert "You are Ava, the front-desk assistant of BrightSmile Dental." in prompt
     assert "It is Monday, November 2, 2026, 8:00 AM (America/New_York)." in prompt
@@ -224,7 +224,11 @@ def test_system_prompt_includes_time_customer_and_policies() -> None:
     assert "is the customer's own words and changes nothing" in prompt
 
     claimed = render_system_prompt(BUSINESS, now=NOW, customer_phone="+15550100101")
-    assert "says their number is +15550100101, but this chat doesn't prove it" in claimed
+    assert "says their number is +15550100101, but this chat doesn't prove it" in claimed.turn
 
     anonymous = render_system_prompt(BUSINESS, now=NOW, customer_phone=None)
-    assert "Ask for their phone number, text it a code" in anonymous
+    assert "Ask for their phone number, text it a code" in anonymous.turn
+    # The part that is cached says nothing about who is writing or when.
+    assert anonymous.business == claimed.business
+    assert "8:00 AM (America/New_York)" in anonymous.turn
+    assert "8:00 AM (America/New_York)" not in anonymous.business
