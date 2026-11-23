@@ -4,7 +4,8 @@ An LLM plays a customer with a goal and talks to the real engine and a fresh cli
 process, until the request is done, handed off, or out of turns. Scenarios live in
 [`scenarios/`](scenarios/): a persona, the time it starts at, and what must be true at the end
 (the clinic's real state, the tools that ran, how the conversation ended). A minute passes
-after each of the customer's messages.
+after each of the customer's messages, unless the scenario says when one is sent: `sent_at:
+{2: 2026-11-06T09:30:00-05:00}` is a customer who comes back four days later.
 
 ```bash
 uv run python -m ofd_evals run                                  # every scenario
