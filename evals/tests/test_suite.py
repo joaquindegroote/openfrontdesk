@@ -63,6 +63,33 @@ async def test_a_minute_passes_between_the_customer_s_messages(
     assert "It is Monday, November 2, 2026, 8:01 AM" in second
 
 
+async def test_a_scenario_can_have_the_customer_come_back_days_later(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+    )
+    [scenario] = [
+        s for s in load_scenarios() if s.id == "comes-back-after-the-free-cancellation-ended"
+    ]
+    customer = ScriptedLLM([says("Does it cost anything?"), says("Cancel it."), says("Thanks.")])
+    customer.extend([says("", done=True)])
+    engine = ScriptedLLM([reply("Let me check."), reply("One moment."), reply("Sure.")])
+
+    await run_scenario(
+        scenario, settings, customer_llm=customer, llm=engine, judge_llm=ScriptedLLM()
+    )
+
+    times = [call.messages[1].content.splitlines()[1][:42] for call in engine.calls]
+    assert times == [
+        "It is Monday, November 2, 2026, 8:00 AM (A",
+        "It is Friday, November 6, 2026, 9:30 AM (A",
+        "It is Friday, November 6, 2026, 9:31 AM (A",
+    ]
+
+
 @pytest.mark.parametrize(
     ("guards", "status", "checked"),
     [

@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass
+from itertools import count
 
 from clinic_api.chaos import ChaosConfig
 from clinic_api.models import Appointment
@@ -56,11 +57,12 @@ async def run_scenario(
         for service in services:
             amounts |= {service.price, service.deposit, service.price - service.deposit}
         customer = SimulatedCustomer(customer_llm, scenario.customer)
+        next_message = count(2)
         record = await run_conversation(
             env.service,
             customer,
             max_turns=scenario.max_turns,
-            after_turn=env.a_minute_passes,
+            after_turn=lambda: env.time_passes(scenario.sent_at.get(next(next_message))),
         )
         return ScenarioRun(
             scenario=scenario,

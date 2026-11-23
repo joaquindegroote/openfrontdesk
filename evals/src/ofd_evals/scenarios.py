@@ -64,6 +64,9 @@ class Scenario(_Strict):
     # Requests the clinic fails for the whole conversation, as "METHOD /path" prefixes:
     # ["POST /appointments"] is a booking system that answers reads and fails every write.
     clinic_down: list[str] = []
+    # When a message of the customer's is sent, by its number, for the ones that don't come a
+    # minute after the reply before: {2: Friday at 9:30} is a customer who comes back days later.
+    sent_at: dict[int, datetime] = {}
     customer: Persona
     expect: Expectations = Expectations()
 

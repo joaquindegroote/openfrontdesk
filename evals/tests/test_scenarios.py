@@ -41,6 +41,7 @@ def test_bundled_scenarios_are_valid() -> None:
         "asks-for-a-discount-that-doesnt-exist",
         "changes-service-before-confirming",
         "changes-the-time-right-after-booking",
+        "comes-back-after-the-free-cancellation-ended",
     }
     for scenario in scenarios:
         assert scenario.now.tzinfo is not None, scenario.id
