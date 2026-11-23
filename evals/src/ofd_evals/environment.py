@@ -30,12 +30,12 @@ class EvalEnvironment:
     # Set when the run has its own time, which the clinic and the engine both read.
     clock: FixedClock | None = None
 
-    def a_minute_passes(self) -> None:
-        """Between a reply and the customer's next message. With time standing still, every
-        turn's prompt says the same minute, and the suite reads from the model's prompt cache
-        what a real conversation can't."""
+    def time_passes(self, until: datetime | None = None) -> None:
+        """Between a reply and the customer's next message: a minute, or up to `until`. With
+        time standing still, every turn's prompt says the same minute, and the suite reads
+        from the model's prompt cache what a real conversation can't."""
         if self.clock:
-            self.clock.at += timedelta(minutes=1)
+            self.clock.at = until or self.clock.at + timedelta(minutes=1)
 
     @property
     def store(self) -> ClinicStore:
