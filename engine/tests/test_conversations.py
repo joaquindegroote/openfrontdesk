@@ -2,11 +2,13 @@
 The model is scripted, so these tests pin down the system's behavior, not the model's."""
 
 import asyncio
+from datetime import datetime
 
 import pytest
 from clinic_api.chaos import ChaosConfig
 from fastapi.testclient import TestClient
 from openfrontdesk.api.app import create_app
+from openfrontdesk.backends import BackendError
 from openfrontdesk.guardrails import NoDuplicateBooking
 from openfrontdesk.llm.scripted import reply, tool_call, tool_calls
 from openfrontdesk.settings import Settings
@@ -14,6 +16,7 @@ from support import (
     CARLOS,
     DEFAULT_HANDOFF_REPLY,
     EMILY,
+    NOW,
     OUTAGE_HANDOFF_REPLY,
     PRIYA,
     PROFILE,
@@ -476,6 +479,81 @@ def test_judge_failure_fails_closed(harness: Harness) -> None:
     assert result["events"][0]["status"] == "blocked"
     assert "Could not verify" in result["events"][0]["result"]["reason"]
     assert upcoming(harness, "pat_0003") == []
+
+
+def test_a_fee_that_changed_since_the_quote_is_quoted_again(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Carlos was told on Monday that cancelling is free. He comes back on Friday, after the
+    free cancellation ended, and says yes to the cancellation he was offered."""
+    conversation = harness.start(CARLOS)
+    harness.llm.extend(
+        [
+            tool_call("get_cancellation_quote", appointment_id="apt_00002"),
+            reply("No fee: it's free to cancel until Friday at 9:00 AM. Cancel it?"),
+        ]
+    )
+    assert (
+        harness.say(conversation, "Would cancelling cost anything?")["events"][0]["result"][
+            "quote"
+        ]["fee"]
+        == 0
+    )
+
+    friday = datetime(2026, 11, 6, 9, 30, tzinfo=NOW.tzinfo)
+    monkeypatch.setattr(harness.store.clock, "at", friday)
+    harness.llm.extend(
+        [
+            tool_call("cancel_appointment", appointment_id="apt_00002"),
+            tool_call("get_cancellation_quote", appointment_id="apt_00002"),
+            reply("Cancelling now has a $50 late fee. Do you still want to cancel?"),
+        ]
+    )
+    later = harness.say(conversation, "Yes, cancel it please")
+
+    blocked, quoted = later["events"]
+    assert blocked["status"] == "blocked"
+    assert blocked["result"]["check"] == "cancellation_fee_disclosed"
+    assert "costs $50, not $0" in blocked["result"]["reason"]
+    assert quoted["result"]["quote"]["fee"] == 50
+    assert harness.store.appointments["apt_00002"].status == "confirmed"
+    # Stopped by a rule: no judge was asked.
+    assert harness.judge.calls == []
+
+
+def test_the_fee_check_fails_closed_when_the_booking_system_cant_quote(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conversation = harness.start(CARLOS)
+    harness.llm.extend(
+        [
+            tool_call("get_cancellation_quote", appointment_id="apt_00002"),
+            reply("No fee. Cancel it?"),
+        ]
+    )
+    harness.say(conversation, "Would cancelling cost anything?")
+
+    async def unavailable(appointment_id: str) -> None:
+        raise BackendError("timeout", "The booking system did not respond in time.")
+
+    backend = harness.client.app.state.service.backend
+    monkeypatch.setattr(backend, "cancellation_quote", unavailable)
+    harness.llm.extend(
+        [tool_call("cancel_appointment", appointment_id="apt_00002"), reply("Sorry, one moment.")]
+    )
+    [event] = harness.say(conversation, "Yes, cancel it")["events"]
+
+    assert event["status"] == "blocked"
+    assert event["checks"][0] == {
+        "name": "cancellation_fee_disclosed",
+        "passed": False,
+        "detail": (
+            "Could not check the cancellation fee (The booking system did not respond in "
+            "time.). Try once more; if it keeps failing, hand off."
+        ),
+        "error": True,
+    }
+    assert harness.store.appointments["apt_00002"].status == "confirmed"
 
 
 def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -> None:

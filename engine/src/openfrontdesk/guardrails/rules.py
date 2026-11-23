@@ -30,7 +30,12 @@ class StartsInFuture:
 
 
 class CancellationFeeDisclosed:
-    """Cancelling needs a quote from this conversation and, if there's a fee, its acceptance."""
+    """Cancelling needs a quote from this conversation, the fee it named must still be the fee,
+    and if there is one, the customer must have accepted it.
+
+    The booking system is asked again right before cancelling. A quote can be days old, and a
+    free cancellation becomes a late one when its window closes: the customer who was told
+    "no fee" on Monday would be charged on Friday without a word."""
 
     kind: Literal["rule"] = "rule"
     name = "cancellation_fee_disclosed"
@@ -48,7 +53,29 @@ class CancellationFeeDisclosed:
                     "get_cancellation_quote and tell the customer whether a fee applies."
                 ),
             )
+        try:
+            now = await ctx.backend.cancellation_quote(appointment_id)
+        except BackendError as exc:
+            return CheckResult(
+                name=self.name,
+                passed=False,
+                detail=(
+                    f"Could not check the cancellation fee ({exc.message}). Try once more; if it "
+                    "keeps failing, hand off."
+                ),
+                error=True,
+            )
         fee = quote["fee"]
+        if now.fee != fee:
+            return CheckResult(
+                name=self.name,
+                passed=False,
+                detail=(
+                    f"The fee changed since the customer was told: cancelling now costs "
+                    f"${now.fee}, not ${fee}. Call get_cancellation_quote again, tell the "
+                    "customer, and cancel only if they accept the new fee."
+                ),
+            )
         if fee > 0 and not arguments.get("fee_acknowledged", False):
             return CheckResult(
                 name=self.name,
