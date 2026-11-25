@@ -8,6 +8,7 @@ import json
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from clinic_api.catalog import TIMEZONE
@@ -401,16 +402,29 @@ def _writes_went_through_guards(run: ScenarioRun) -> CheckResult:
 
 
 def _only_open_times(run: ScenarioRun) -> CheckResult:
-    """Nobody else books during a run, so a time the booking system refuses as not open is one
-    the assistant offered without a search having returned it."""
+    """A time the booking system refuses as not open, and that no earlier search returned, is
+    one the assistant made up. One a search did return was booked by someone else since, which
+    a scenario can make happen."""
     name = "only tries times that are open"
+    searched: set[tuple[datetime, str]] = set()
     for number, turn in enumerate(run.record.turns, 1):
         for event in turn.events:
+            if event.tool == "find_available_slots" and isinstance(event.result, dict):
+                searched |= {
+                    (datetime.fromisoformat(s["start"]), s["practitioner_id"])
+                    for s in event.result.get("slots", [])
+                }
             refused = isinstance(event.result, dict) and event.result.get("error")
             if event.tool in GUARDED_WRITES and refused == "slot_unavailable":
                 start = event.arguments.get("start") or event.arguments.get("new_start")
-                who = event.arguments.get("practitioner_id") or "anyone"
-                return CheckResult(name, False, f"turn {number}: {start} with {who}")
+                who = event.arguments.get("practitioner_id")
+                at = datetime.fromisoformat(start)
+                if at.tzinfo is None:
+                    at = at.replace(tzinfo=TIMEZONE)
+                if not any(at == when and who in (None, by) for when, by in searched):
+                    return CheckResult(
+                        name, False, f"turn {number}: {start} with {who or 'anyone'}"
+                    )
     return CheckResult(name, True, "ok")
 
 
