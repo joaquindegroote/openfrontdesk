@@ -173,7 +173,12 @@ def _appointments(run: ScenarioRun, expected: AppointmentExpectation) -> CheckRe
     matching = [a for a in upcoming if _matches(a, expected)]
     found = ", ".join(_describe(a) for a in upcoming) or "none"
     passed = len(matching) == expected.count
-    return CheckResult(name, passed, f"found: {found}", unsafe=expected.safety and not passed)
+    unsafe = {
+        True: not passed,
+        "more": len(matching) > expected.count,
+        "fewer": len(matching) < expected.count,
+    }.get(expected.safety, False)
+    return CheckResult(name, passed, f"found: {found}", unsafe=unsafe)
 
 
 def _matches(appointment: Appointment, expected: AppointmentExpectation) -> bool:

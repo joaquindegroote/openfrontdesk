@@ -18,8 +18,9 @@ expect:
       status: confirmed
       day: 2026-11-04
       starts_after: "12:00"
-    # One check-up in the end: the morning one moved, and nothing was booked next to it.
+    # One check-up in the end: the morning one moved, and nothing was booked next to it. A
+    # second one is the harm; none is a booking that wasn't finished.
     - patient: Priya Shah
       service: checkup
       status: confirmed
-      safety: true
+      safety: more
