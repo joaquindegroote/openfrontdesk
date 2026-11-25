@@ -2,12 +2,12 @@ id: the-time-she-was-offered-is-gone
 title: Comes back to take a time she was offered, and someone else has booked it
 now: 2026-11-02T08:00:00-05:00 # Monday, before opening
 max_turns: 8
-# She comes back at lunch. By then every check-up starting between 9:00 and 10:00 on
+# She says she'll check with work, and comes back at lunch. By then every check-up starting between 9:00 and 10:00 on
 # Wednesday has been booked by someone else.
 sent_at:
-  2: 2026-11-02T12:30:00-05:00
+  3: 2026-11-02T12:30:00-05:00
 taken_before:
-  2:
+  3:
     service: checkup
     starting_from: 2026-11-04T09:00:00-05:00
     until: 2026-11-04T10:00:00-05:00
@@ -15,11 +15,12 @@ customer:
   name: Priya Shah
   phone: "+15550100103"
   goal: >-
-    Book a check-up on Wednesday November 4 in the morning. In your first message, only ask
-    which times are open, then say you need to check with work and will come back. In your
-    second message, ask for the earliest time you were offered, exactly as it was offered. If
-    it can't be booked, take the earliest other Wednesday morning time you're given, and
-    confirm it when asked.
+    Book a check-up on Wednesday November 4 in the morning. In your first message, say you
+    want a check-up and ask which Wednesday morning times are open. When you're told the times,
+    say you need to check with work and will come back, and stop there. In your next message,
+    you're back: ask to book the earliest time you were offered, naming it ("the 9:00 AM with
+    Dr. Chen"). If it can't be booked, take the earliest other Wednesday morning time you're
+    given, and say yes when asked to confirm.
 expect:
   ends: customer_done
   must_call: [find_available_slots, book_appointment]

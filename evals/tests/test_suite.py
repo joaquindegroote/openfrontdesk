@@ -174,7 +174,7 @@ async def test_someone_else_can_book_the_times_a_customer_was_offered(
         business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
     )
     [scenario] = [s for s in load_scenarios() if s.id == "the-time-she-was-offered-is-gone"]
-    taken = scenario.taken_before[2]
+    taken = scenario.taken_before[3]
     async with eval_environment(settings, llm=ScriptedLLM(), now=scenario.now) as env:
         wednesday = taken.starting_from.date()
 
