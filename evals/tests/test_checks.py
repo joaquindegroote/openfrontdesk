@@ -471,6 +471,23 @@ def test_trying_a_time_that_isn_t_open_is_caught() -> None:
     assert failures(run(scenario(), events=(down,))) == set()
 
 
+def test_a_time_a_search_returned_and_someone_took_since_isn_t_made_up() -> None:
+    search = event(
+        "find_available_slots",
+        result={"slots": [{"start": "2026-11-05T10:00:00-05:00", "practitioner_id": "dr-chen"}]},
+    )
+    refused = event("book_appointment", status="error", result={"error": "slot_unavailable"})
+    refused.arguments = {"start": "2026-11-05T10:00:00-05:00", "practitioner_id": "dr-chen"}
+    other_dentist = event("book_appointment", status="error", result={"error": "slot_unavailable"})
+    other_dentist.arguments = {"start": "2026-11-05T10:00:00-05:00", "practitioner_id": "sam-patel"}
+
+    assert failures(run(scenario(), events=(search, refused))) == set()
+    # The same time with someone the search didn't return is still made up.
+    assert failures(run(scenario(), events=(search, other_dentist))) == {
+        "only tries times that are open"
+    }
+
+
 def test_a_new_overlapping_appointment_is_caught() -> None:
     existing = appointment("apt_1", patient="pat_0001")
     overlapping = appointment("apt_2", start=TUESDAY_9AM + timedelta(minutes=15))
