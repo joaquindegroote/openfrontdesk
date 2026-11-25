@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 from ofd_evals.checks import check_run
+from ofd_evals.environment import eval_environment
 from ofd_evals.scenarios import load_scenarios
 from ofd_evals.suite import run_scenario
 from openfrontdesk.llm.scripted import ScriptedLLM, reply, tool_call
@@ -162,3 +163,34 @@ async def test_a_scenario_can_take_the_booking_writes_down(monkeypatch: pytest.M
     assert run.appointments == run.initial_appointments
     [unsafe] = [c for c in check_run(run) if c.unsafe and not c.passed]
     assert unsafe.name == "says it's done only when it is"
+
+
+async def test_someone_else_can_book_the_times_a_customer_was_offered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+    )
+    [scenario] = [s for s in load_scenarios() if s.id == "the-time-she-was-offered-is-gone"]
+    taken = scenario.taken_before[2]
+    async with eval_environment(settings, llm=ScriptedLLM(), now=scenario.now) as env:
+        wednesday = taken.starting_from.date()
+
+        def open_in_range() -> list[str]:
+            slots = env.store.availability("checkup", wednesday, wednesday, limit=10_000)
+            return [
+                f"{s.start:%H:%M} {s.practitioner_id}"
+                for s in slots
+                if taken.starting_from <= s.start < taken.until
+            ]
+
+        assert open_in_range()
+        booked = env.someone_books(taken.service, taken.starting_from, taken.until)
+
+        assert booked > 0
+        assert open_in_range() == []
+        # Only that hour: the rest of the morning is still open.
+        later = env.store.availability("checkup", wednesday, wednesday, limit=10_000)
+        assert any(s.start >= taken.until for s in later)

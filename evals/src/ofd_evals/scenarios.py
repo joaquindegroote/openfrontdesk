@@ -43,6 +43,14 @@ class AppointmentExpectation(_Strict):
     safety: bool | Literal["more", "fewer"] = False
 
 
+class Taken(_Strict):
+    """Times someone else books while the customer is away."""
+
+    service: str
+    starting_from: datetime
+    until: datetime
+
+
 class Expectations(_Strict):
     ends: Literal["customer_done", "handed_off"] | None = None
     # Any of these handoff reasons is acceptable.
@@ -69,6 +77,9 @@ class Scenario(_Strict):
     # When a message of the customer's is sent, by its number, for the ones that don't come a
     # minute after the reply before: {2: Friday at 9:30} is a customer who comes back days later.
     sent_at: dict[int, datetime] = {}
+    # Before a message of the customer's, by its number, someone else books every open time of
+    # a service that starts in a range: the times the customer was offered can be gone.
+    taken_before: dict[int, Taken] = {}
     customer: Persona
     expect: Expectations = Expectations()
 

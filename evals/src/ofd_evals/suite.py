@@ -58,11 +58,18 @@ async def run_scenario(
             amounts |= {service.price, service.deposit, service.price - service.deposit}
         customer = SimulatedCustomer(customer_llm, scenario.customer)
         next_message = count(2)
+
+        def while_the_customer_is_away() -> None:
+            number = next(next_message)
+            env.time_passes(scenario.sent_at.get(number))
+            if taken := scenario.taken_before.get(number):
+                env.someone_books(taken.service, taken.starting_from, taken.until)
+
         record = await run_conversation(
             env.service,
             customer,
             max_turns=scenario.max_turns,
-            after_turn=lambda: env.time_passes(scenario.sent_at.get(next(next_message))),
+            after_turn=while_the_customer_is_away,
         )
         return ScenarioRun(
             scenario=scenario,

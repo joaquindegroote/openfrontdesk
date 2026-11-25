@@ -10,6 +10,7 @@ from clinic_api.catalog import TIMEZONE
 from clinic_api.chaos import ChaosConfig
 from clinic_api.clock import FixedClock, SystemClock
 from clinic_api.main import create_app as create_clinic_app
+from clinic_api.models import AppointmentCreate, PatientCreate
 from clinic_api.store import ClinicStore
 from fastapi import FastAPI
 from openfrontdesk.agent.executor import GuardMode
@@ -36,6 +37,34 @@ class EvalEnvironment:
         from the model's prompt cache what a real conversation can't."""
         if self.clock:
             self.clock.at = until or self.clock.at + timedelta(minutes=1)
+
+    def someone_books(self, service_id: str, starting_from: datetime, until: datetime) -> int:
+        """Other patients book every open time of a service that starts in [starting_from,
+        until), with any practitioner. Returns how many."""
+        store = self.store
+        day = starting_from.astimezone(TIMEZONE).date()
+        booked = 0
+        while True:
+            open_times = [
+                slot
+                for slot in store.availability(service_id, day, day, limit=10_000)
+                if starting_from <= slot.start < until
+            ]
+            if not open_times:
+                return booked
+            booked += 1
+            # One patient each: nobody can be in two chairs at once.
+            other = store.create_patient(
+                PatientCreate(name=f"Other Patient {booked}", phone=f"+1555018{booked:04d}")
+            )
+            store.book(
+                AppointmentCreate(
+                    patient_id=other.id,
+                    service_id=service_id,
+                    start=open_times[0].start,
+                    practitioner_id=open_times[0].practitioner_id,
+                )
+            )
 
     @property
     def store(self) -> ClinicStore:
