@@ -6,6 +6,7 @@ from datetime import datetime
 
 import pytest
 from clinic_api.chaos import ChaosConfig
+from clinic_api.models import AppointmentCreate, PatientCreate
 from fastapi.testclient import TestClient
 from openfrontdesk.api.app import create_app
 from openfrontdesk.backends import BackendError
@@ -457,6 +458,55 @@ def test_a_time_that_isn_t_open_comes_back_with_what_to_do(harness: Harness) -> 
     assert not refused["result"]["retryable"]
     assert "Don't tell the customer it was just taken" in refused["result"]["message"]
     assert "find_available_slots" in refused["result"]["message"]
+    assert upcoming(harness, "pat_0003") == []
+
+
+def test_a_time_taken_after_it_was_offered_is_said_to_be_taken(harness: Harness) -> None:
+    """Offered in the morning, booked by someone else before the customer came back."""
+    conversation = harness.start(PRIYA)
+    harness.llm.extend(
+        [
+            tool_call(
+                "find_available_slots",
+                service_id="checkup",
+                date_from="2026-11-04",
+                date_to="2026-11-04",
+                part_of_day="morning",
+            ),
+            reply("On Wednesday I have 9:00 AM with Dr. Chen. Does that work?"),
+        ]
+    )
+    offered = harness.say(conversation, "A check-up on Wednesday morning?")
+    nine = offered["events"][0]["result"]["slots"][0]
+    assert (nine["start"], nine["practitioner_id"]) == ("2026-11-04T09:00:00-05:00", "dr-chen")
+
+    other = harness.store.create_patient(PatientCreate(name="Someone Else", phone="+15550177777"))
+    harness.store.book(
+        AppointmentCreate(
+            patient_id=other.id,
+            service_id="checkup",
+            start=datetime.fromisoformat(nine["start"]),
+            practitioner_id="dr-chen",
+        )
+    )
+    harness.llm.extend(
+        [
+            tool_call(
+                "book_appointment",
+                customer_id="pat_0003",
+                service_id="checkup",
+                start=nine["start"],
+                practitioner_id="dr-chen",
+            ),
+            reply("Sorry, someone booked 9:00 in the meantime."),
+        ]
+    )
+    harness.judge.extend([verdict(True, "Yes, book it")])
+    [refused] = harness.say(conversation, "Yes, book it")["events"]
+
+    assert refused["result"]["error"] == "slot_unavailable"
+    assert "it has been booked since" in refused["result"]["message"]
+    assert "Tell the customer it was taken" in refused["result"]["message"]
     assert upcoming(harness, "pat_0003") == []
 
 
