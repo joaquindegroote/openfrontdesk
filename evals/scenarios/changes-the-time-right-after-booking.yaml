@@ -6,9 +6,11 @@ customer:
   name: Camila Rojas
   phone: "+56950100103"
   goal: >-
-    Book a check-up on Wednesday November 4 in the morning. Right after it's booked, say you
-    just remembered a meeting and ask to have it that same Wednesday in the afternoon instead.
-    Confirm the new time when you're given it.
+    Book a check-up on Wednesday November 4 in the morning: pick a time and say yes when asked
+    to confirm. Don't mention any meeting until you've been told the check-up is booked. Then,
+    in your next message, say you just remembered a meeting and ask to have it that same
+    Wednesday in the afternoon instead. Pick a time and confirm it when asked. Once it's moved
+    to the afternoon, that's all you need.
 expect:
   ends: customer_done
   must_not_call: [cancel_appointment]
