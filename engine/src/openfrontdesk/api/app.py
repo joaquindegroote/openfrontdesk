@@ -178,8 +178,9 @@ def _routes(
         outcome = await service.handle_customer_message(
             conversation_id, body.text, message_id=body.message_id
         )
-        # The tool events and the summary written for staff are for staff. A channel gets the
-        # replies, and calling this directly doesn't get anyone more than that.
+        # The tool events, the turn's model and token counts, and the summary written for
+        # staff are for staff. A channel gets the replies, and calling this directly doesn't
+        # get anyone more than that.
         for_staff = _holds_staff_key(authorization, staff_key)
         conversation = ConversationOut.model_validate(outcome.conversation)
         if not for_staff:
@@ -188,7 +189,7 @@ def _routes(
             conversation=conversation,
             messages=visible_messages(outcome.messages),
             events=outcome.events if for_staff else [],
-            turn=TurnOut.model_validate(outcome.turn) if outcome.turn else None,
+            turn=TurnOut.model_validate(outcome.turn) if outcome.turn and for_staff else None,
             duplicate=outcome.duplicate,
         )
 
