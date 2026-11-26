@@ -187,6 +187,8 @@ async def test_duplicate_booking_rule_fails_closed_when_it_cannot_check() -> Non
     result = await NoDuplicateBooking().check(ctx, ProposedAction("book_appointment", params, ""))
     assert not result.passed
     assert "Could not check the customer's appointments" in result.detail
+    # Counted as a check that couldn't decide, apart from the ones that said no.
+    assert result.error
 
 
 async def test_writes_without_a_key_are_never_retried() -> None:
