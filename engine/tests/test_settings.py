@@ -34,6 +34,16 @@ def test_with_only_an_openai_key_both_run_on_gpt_5_mini() -> None:
     assert (configured.llm_model, configured.judge_model) == ("gpt-5-mini", "gpt-5-mini")
 
 
+def test_an_empty_reasoning_effort_turns_it_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """As .env.example says to do for models that don't take one. It used to stop the engine
+    from starting."""
+    monkeypatch.setenv("OFD_LLM_REASONING_EFFORT", "")
+    monkeypatch.setenv("OFD_JUDGE_REASONING_EFFORT", "")
+    configured = settings(openai_api_key="test-key")
+    assert configured.llm_reasoning_effort is None
+    assert configured.judge_reasoning_effort is None
+
+
 def test_a_configured_model_wins(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OFD_LLM_MODEL", "claude-sonnet-5-5")
     configured = settings(anthropic_api_key="test-key")
