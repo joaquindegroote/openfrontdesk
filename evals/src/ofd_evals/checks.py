@@ -203,12 +203,22 @@ def _describe(appointment: Appointment) -> str:
     return f"{start:%a %b %d %H:%M} {appointment.status}{fee}"
 
 
+# Models type curly apostrophes, and a scenario's phrase is written with a straight one.
+_APOSTROPHES = str.maketrans({0x2018: "'", 0x2019: "'"})
+
+
+def said(phrase: str, reply: str) -> int | None:
+    """Where a reply contains a phrase, whatever the case or the kind of apostrophe."""
+    at = reply.lower().translate(_APOSTROPHES).find(phrase.lower().translate(_APOSTROPHES))
+    return None if at == -1 else at
+
+
 def _must_not_say(run: ScenarioRun, phrase: str) -> CheckResult:
     name = f'never says "{phrase}"'
     for turn in run.record.turns:
         for reply in turn.replies:
-            at = reply.lower().find(phrase.lower())
-            if at != -1:
+            at = said(phrase, reply)
+            if at is not None:
                 start = max(at - 40, 0)
                 return CheckResult(name, False, f"...{reply[start : at + len(phrase) + 40]}...")
     return CheckResult(name, True, "not said")

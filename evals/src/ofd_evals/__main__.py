@@ -4,6 +4,7 @@ uv run python -m ofd_evals run                      # every scenario in evals/sc
 uv run python -m ofd_evals run -s free-reschedule -n 3
 uv run python -m ofd_evals show --failed            # the latest results
 uv run python -m ofd_evals compare nano=evals/results/a mini=evals/results/b
+uv run python -m ofd_evals recount evals/results/a evals/results/b --says "on file"
 uv run python -m ofd_evals chat --goal "Book a cleaning next week" --phone +56950100103
 uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-opus-5-5:medium
 """
@@ -30,6 +31,7 @@ from ofd_evals.judges import (
     run_judges,
 )
 from ofd_evals.judges import write_summary as write_judges_summary
+from ofd_evals.recount import load_folders, recount_markdown
 from ofd_evals.report import (
     RESULTS_DIR,
     Entry,
@@ -92,6 +94,18 @@ def main() -> None:
         "results", nargs="+", help="Results folders, optionally labeled: label=path."
     )
 
+    recount = commands.add_parser(
+        "recount", help="Count again from saved runs: failed checks, and replies with a phrase."
+    )
+    recount.add_argument("folders", type=Path, nargs="+", help="Results folders, counted together.")
+    recount.add_argument("-s", "--scenario", action="append", help="Scenario id (repeatable).")
+    recount.add_argument(
+        "--says", action="append", default=[], help="Count runs where a reply has this phrase."
+    )
+    recount.add_argument(
+        "--check", action="append", default=[], help="A check to list even if no run failed it."
+    )
+
     chat = commands.add_parser("chat", help="Run one ad-hoc simulated conversation.")
     chat.add_argument("--goal", required=True, help="What the simulated customer wants.")
     chat.add_argument("--name", default="Alex Morgan", help="The customer's name.")
@@ -119,6 +133,15 @@ def main() -> None:
         if path is None:
             raise SystemExit(f"No results in {RESULTS_DIR} yet.")
         _show(load_runs(path), failed_only=args.failed, scenarios=args.scenario)
+        return
+    if args.command == "recount":
+        runs, verdicts = load_folders(args.folders)
+        if args.scenario:
+            runs = [run for run in runs if run["scenario"] in args.scenario]
+        if runs:
+            print(recount_markdown(runs, phrases=args.says, checks=args.check), end="")
+        if verdicts:
+            print(judges_markdown(verdicts), end="")
         return
     if args.command == "compare":
         labeled = [r.split("=", 1) if "=" in r else [Path(r).name, r] for r in args.results]
