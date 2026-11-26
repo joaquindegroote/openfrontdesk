@@ -167,7 +167,7 @@ class IdentityVerified:
         value = str(action.arguments[self.field])
         try:
             if self.field == "phone":
-                allowed = phone_key(value) in phones
+                allowed = ctx.business.phone_key(value) in phones
             else:
                 customer_id = value
                 if self.field == "appointment_id":
@@ -199,7 +199,7 @@ class IdentityVerified:
 def verified_phones(ctx: ToolContext) -> set[str]:
     """Phones proven in this conversation: the channel's own, and any verified with a code."""
     phones = {
-        phone_key(e.arguments["phone"])
+        ctx.business.phone_key(e.arguments["phone"])
         for e in ctx.events
         if e.tool == "verify_phone"
         and e.status == "ok"
@@ -207,15 +207,8 @@ def verified_phones(ctx: ToolContext) -> set[str]:
         and e.result.get("verified") is True
     }
     if ctx.phone_verified and ctx.customer_phone:
-        phones.add(phone_key(ctx.customer_phone))
+        phones.add(ctx.business.phone_key(ctx.customer_phone))
     return phones
-
-
-def phone_key(phone: str) -> str:
-    """Digits with the country code, so "+1 555-010-0102" and "5550100102" compare equal. Ten
-    digits are read as a North American number, like the booking system does."""
-    digits = "".join(ch for ch in phone if ch.isdigit())
-    return "1" + digits if len(digits) == 10 else digits
 
 
 async def _customer_ids(ctx: ToolContext, phones: set[str]) -> set[str]:

@@ -1,10 +1,10 @@
 id: billing-complaint-goes-to-staff
 title: A billing complaint is handed to staff without touching appointments
-now: 2026-11-02T08:00:00-05:00
+now: 2026-11-02T08:00:00-03:00
 max_turns: 5
 customer:
   name: Carlos Rivera
-  phone: "+15550100102"
+  phone: "+56950100102"
   goal: >-
     You were charged twice for your last check-up. You want a person to sort it out.
     You don't want to book, move or cancel anything.

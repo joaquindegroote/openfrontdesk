@@ -65,7 +65,7 @@ fix was a stronger prompt, and each time the problem came back with the next pro
 change. What worked was taking the decision out of the text and putting it in code.
 
 That work isn't public. This repo applies the same lessons to a different domain, a fictional
-dental clinic, where they're built in from the start instead of added after an incident, and
+dental clinic in Santiago, Chile, where they're built in from the start instead of added after an incident, and
 where anyone can rerun the measurements.
 
 ## How it fits together
@@ -91,7 +91,7 @@ flowchart LR
 | Component | What it is |
 |---|---|
 | [`engine/`](engine/) | Python/FastAPI. Agent loop, typed tools, guardrails, handoff, persistence, tracing. |
-| [`clinic-api/`](clinic-api/) | Mock booking system for a fictional dental clinic, with real rules (opening hours, notice, double-booking, fees, deposits) and fault injection. |
+| [`clinic-api/`](clinic-api/) | Mock booking system for a fictional dental clinic in Santiago, with real rules (opening hours, notice, double-booking, fees, deposits) and fault injection. |
 | [`console/`](console/) | Next.js. Chat demo with an "under the hood" panel, and the staff inbox. |
 | [`evals/`](evals/) | Simulated customers: an LLM plays a customer with a goal against the real engine. |
 | [`businesses/`](businesses/) | Business profiles: hours, policies, tone, FAQ, when to hand off. |
@@ -125,16 +125,16 @@ The console lets you chat as one of the clinic's seeded patients:
 
 | Persona | Set up for |
 |---|---|
-| Emily Johnson | A cleaning within 24 hours: cancelling it has a $50 fee and needs her explicit acceptance. |
+| Javiera Soto | A cleaning within 24 hours: cancelling it has a $50 fee and needs her explicit acceptance. |
 | Carlos Rivera | A check-up in a few days: free to move or cancel. |
-| Priya Shah | A returning patient with no upcoming visits: book something. |
+| Camila Rojas | A returning patient with no upcoming visits: book something. |
 | New visitor | No phone on file: the assistant has to identify and register them. |
 
 Things worth trying: book without saying "yes" and watch the guardrail block it; ask Carlos's
-chat about Emily's appointment; ask for a person and reply from the staff inbox; restart the
+chat about Javiera's appointment; ask for a person and reply from the staff inbox; restart the
 clinic API with `CLINIC_CHAOS_ERROR_RATE=1` and watch the automatic handoff.
 
-Emily cancels inside the 24 hours and won't pay the fee. The assistant doesn't argue and doesn't
+Javiera cancels inside the 24 hours and won't pay the fee. The assistant doesn't argue and doesn't
 cancel: it hands the conversation over, and the front desk gets it with a summary.
 
 | The customer's side | The staff inbox |
@@ -210,7 +210,9 @@ guardrails off or read a failed run, and the weekly run in CI.
 - **Registering a customer isn't judged.** It needs a verified phone, but not an explicit yes.
 - **Several workers need Postgres**, and nothing has been load tested. See
   [what holds when things happen at once](docs/architecture.md#concurrency).
-- **English and one business.** The Spanish profile is on the roadmap.
+- **English and one business.** The clinic is in Santiago and its patients write in English.
+  The Spanish profile is on the roadmap, and so are prices in pesos: for now they're the
+  dollar amounts the clinic had when it was a US one.
 - **Two handoffs are still the prompt's job**: urgent symptoms and a disputed fee. The fee
   judge already says when a customer objects, and nothing in code acts on it yet.
 - **Some things still hang on the model's wording.** In 1 of 20 runs Claude Haiku 5.5 answered

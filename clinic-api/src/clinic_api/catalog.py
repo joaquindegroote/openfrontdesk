@@ -5,7 +5,10 @@ from zoneinfo import ZoneInfo
 
 from clinic_api.models import Practitioner, Service
 
-TIMEZONE = ZoneInfo("America/New_York")
+TIMEZONE = ZoneInfo("America/Santiago")
+# A phone written without a country code is a Chilean one: nine digits, mobile or landline.
+CALLING_CODE = "56"
+LOCAL_PHONE_DIGITS = 9
 
 SERVICES = [
     Service(
@@ -52,8 +55,8 @@ SERVICES = [
 
 PRACTITIONERS = [
     Practitioner(
-        id="dr-chen",
-        name="Dr. Maya Chen",
+        id="dr-fuentes",
+        name="Dr. Daniela Fuentes",
         title="General dentist",
         service_ids=["checkup", "filling", "emergency", "whitening"],
     ),
@@ -64,8 +67,8 @@ PRACTITIONERS = [
         service_ids=["checkup", "filling", "whitening", "emergency"],
     ),
     Practitioner(
-        id="sam-patel",
-        name="Sam Patel",
+        id="rodrigo-pizarro",
+        name="Rodrigo Pizarro",
         title="Dental hygienist",
         service_ids=["cleaning"],
     ),
@@ -88,4 +91,4 @@ BOOKING_HORIZON = timedelta(days=60)
 MAX_SEARCH_DAYS = 14
 FREE_CANCELLATION_WINDOW = timedelta(hours=24)
 LATE_CANCELLATION_FEE = 50
-PAYMENT_URL_TEMPLATE = "https://pay.example.com/brightsmile/{appointment_id}"
+PAYMENT_URL_TEMPLATE = "https://pay.example.com/loscanelos/{appointment_id}"

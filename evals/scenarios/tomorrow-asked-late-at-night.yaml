@@ -1,10 +1,10 @@
 id: tomorrow-asked-late-at-night
 title: Tomorrow, asked at 11:30 at night
-now: 2026-11-02T23:30:00-05:00 # Monday night at the clinic. In UTC it's already Tuesday.
+now: 2026-11-02T23:30:00-03:00 # Monday night at the clinic. In UTC it's already Tuesday.
 max_turns: 6
 customer:
-  name: Priya Shah
-  phone: "+15550100103"
+  name: Camila Rojas
+  phone: "+56950100103"
   goal: >-
     Book a check-up for tomorrow morning, as early as possible. Say "tomorrow": never give
     the date or the day of the week yourself.
@@ -12,7 +12,7 @@ expect:
   ends: customer_done
   must_call: [book_appointment]
   appointments:
-    - patient: Priya Shah
+    - patient: Camila Rojas
       service: checkup
       status: confirmed
       day: 2026-11-03

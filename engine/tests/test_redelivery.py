@@ -4,19 +4,19 @@ nothing runs again."""
 
 import pytest
 from openfrontdesk.llm.scripted import reply, tool_call
-from support import EMILY, PRIYA, Harness, verdict
+from support import CAMILA, JAVIERA, Harness, verdict
 
 
 def test_a_message_delivered_twice_is_answered_once(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call(
                 "book_appointment",
                 customer_id="pat_0003",
                 service_id="checkup",
-                start="2026-11-03T09:00:00-05:00",
-                practitioner_id="dr-chen",
+                start="2026-11-03T09:00:00-03:00",
+                practitioner_id="dr-fuentes",
             ),
             reply("You're booked for Tuesday at 9:00 AM. See you then!"),
         ]
@@ -38,7 +38,7 @@ def test_a_message_delivered_twice_is_answered_once(harness: Harness) -> None:
 
 
 def test_another_id_or_no_id_is_a_new_message(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend([reply("Which day?"), reply("Which day works?"), reply("Any day?")])
 
     outcomes = [
@@ -53,7 +53,7 @@ def test_another_id_or_no_id_is_a_new_message(harness: Harness) -> None:
 
 
 def test_staff_don_t_get_the_same_message_twice(harness: Harness) -> None:
-    conversation = harness.start(EMILY)
+    conversation = harness.start(JAVIERA)
     harness.client.post(f"/v1/conversations/{conversation}/takeover", json={})
 
     first = harness.say(conversation, "Hello?", message_id="wamid.7")
@@ -69,13 +69,13 @@ def test_a_crash_after_the_booking_and_before_the_save_books_once(harness: Harne
     """The worst moment to die: the clinic has the appointment and the engine has no record of
     the turn. The channel delivers the message again, the turn runs again, and the booking
     goes out with the same idempotency key, so the clinic answers with the first one."""
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     booking = tool_call(
         "book_appointment",
         customer_id="pat_0003",
         service_id="checkup",
-        start="2026-11-03T09:00:00-05:00",
-        practitioner_id="dr-chen",
+        start="2026-11-03T09:00:00-03:00",
+        practitioner_id="dr-fuentes",
     )
     service = harness.client.app.state.service  # type: ignore[attr-defined]
     save_turn = service.repo.save_turn

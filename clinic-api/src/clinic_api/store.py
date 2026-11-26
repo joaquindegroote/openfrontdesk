@@ -29,19 +29,19 @@ VERIFICATION_TTL = timedelta(minutes=10)
 MAX_VERIFICATION_ATTEMPTS = 5
 
 DEMO_PATIENTS = [
-    ("Emily Johnson", "+15550100101", "emily.j@example.com"),
-    ("Carlos Rivera", "+15550100102", None),
-    ("Priya Shah", "+15550100103", "priya.shah@example.com"),
+    ("Javiera Soto", "+56950100101", "javiera.s@example.com"),
+    ("Carlos Rivera", "+56950100102", None),
+    ("Camila Rojas", "+56950100103", "camila.rojas@example.com"),
 ]
 FILLER_NAMES = [
-    "Olivia Brown",
-    "Noah Davis",
-    "Ava Wilson",
-    "Liam Moore",
-    "Mia Taylor",
-    "Ethan Anderson",
-    "Sofia Thomas",
-    "Lucas Martin",
+    "Fernanda Castro",
+    "Diego Tapia",
+    "Antonia Vega",
+    "Felipe Araya",
+    "Constanza Reyes",
+    "Ignacio Contreras",
+    "Catalina Bravo",
+    "Vicente Molina",
 ]
 
 
@@ -51,8 +51,8 @@ def normalize_phone(raw: str) -> str:
         raise ClinicError(422, "invalid_phone", f"'{raw}' is not a valid phone number.")
     if raw.strip().startswith("+"):
         return "+" + digits
-    if len(digits) == 10:
-        return "+1" + digits
+    if len(digits) == catalog.LOCAL_PHONE_DIGITS:
+        return f"+{catalog.CALLING_CODE}{digits}"
     return "+" + digits
 
 
@@ -419,21 +419,21 @@ class ClinicStore:
 
     def _seed(self, rng: random.Random, *, filler: bool) -> None:
         now = self.clock.now()
-        emily, carlos, priya = (self._add_patient(*p) for p in DEMO_PATIENTS)
+        javiera, carlos, camila = (self._add_patient(*p) for p in DEMO_PATIENTS)
 
-        # Emily has a cleaning soon (usually within 24h) to demo late-cancellation fees.
-        self._seed_upcoming(emily, "cleaning", not_before=now + timedelta(hours=3))
+        # Javiera has a cleaning soon (usually within 24h) to demo late-cancellation fees.
+        self._seed_upcoming(javiera, "cleaning", not_before=now + timedelta(hours=3))
         # Carlos has a check-up about five days out, so it can be moved or cancelled for free.
         self._seed_upcoming(carlos, "checkup", not_before=now + timedelta(days=5))
-        # Priya is a returning patient with a past visit.
+        # Camila is a returning patient with a past visit.
         past_visit = datetime.combine(
             (now - timedelta(days=95)).date(), datetime.min.time(), tzinfo=catalog.TIMEZONE
         ) + timedelta(hours=10)
-        self._create_appointment(priya.id, self.services["checkup"], "dr-chen", past_visit)
+        self._create_appointment(camila.id, self.services["checkup"], "dr-fuentes", past_visit)
 
         if filler:
             fillers = [
-                self._add_patient(name, f"+1555019{i:04d}", None)
+                self._add_patient(name, f"+5695019{i:04d}", None)
                 for i, name in enumerate(FILLER_NAMES)
             ]
             self._seed_busy_calendar(rng, fillers, now.date())

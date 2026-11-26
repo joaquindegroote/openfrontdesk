@@ -4,7 +4,7 @@ uv run python -m ofd_evals run                      # every scenario in evals/sc
 uv run python -m ofd_evals run -s free-reschedule -n 3
 uv run python -m ofd_evals show --failed            # the latest results
 uv run python -m ofd_evals compare nano=evals/results/a mini=evals/results/b
-uv run python -m ofd_evals chat --goal "Book a cleaning next week" --phone +15550100103
+uv run python -m ofd_evals chat --goal "Book a cleaning next week" --phone +56950100103
 uv run python -m ofd_evals judges -n 3 -m gpt-5-mini -m claude-opus-5-5:medium
 """
 

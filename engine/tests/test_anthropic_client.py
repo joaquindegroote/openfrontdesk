@@ -9,7 +9,7 @@ from openfrontdesk.llm import ChatMessage, Completion, ToolCall, ToolSpec, Usage
 from openfrontdesk.llm.anthropic_client import FALLBACK_BETA, AnthropicChatClient
 from openfrontdesk.llm.base import ModelRefusedError
 from openfrontdesk.llm.scripted import reply
-from support import PRIYA, Harness
+from support import CAMILA, Harness
 
 THINKING = {"type": "thinking", "thinking": "", "signature": "sig-1"}
 TOOL_USE = {"type": "tool_use", "id": "toolu_1", "name": "list_services", "input": {}}
@@ -65,7 +65,7 @@ async def test_requests_use_the_messages_api_shape() -> None:
     llm = AnthropicChatClient("claude-haiku-5-5", client=client, effort="minimal")
     await llm.complete(
         [
-            ChatMessage.system("You are Ava."),
+            ChatMessage.system("You are Maite."),
             ChatMessage.system("It is Monday."),
             ChatMessage.user("Book a cleaning"),
             ChatMessage(
@@ -78,7 +78,7 @@ async def test_requests_use_the_messages_api_shape() -> None:
             ),
             ChatMessage(role="tool", tool_call_id="call_a", content='{"services": []}'),
             ChatMessage(role="tool", tool_call_id="call_b", content='{"found": false}'),
-            ChatMessage.assistant("[Dana, front-desk staff] Hi, I can help."),
+            ChatMessage.assistant("[Carolina, front-desk staff] Hi, I can help."),
             ChatMessage.user("Thanks"),
         ],
         tools=[SERVICES],
@@ -88,7 +88,7 @@ async def test_requests_use_the_messages_api_shape() -> None:
     # The first system message is the part that repeats: the cache mark goes on it, and the
     # tools, which come before it, are cached with it.
     assert request["system"] == [
-        {"type": "text", "text": "You are Ava.", "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": "You are Maite.", "cache_control": {"type": "ephemeral"}},
         {"type": "text", "text": "It is Monday."},
     ]
     assert request["output_config"] == {"effort": "low"}  # Claude has no "minimal"
@@ -127,7 +127,7 @@ async def test_requests_use_the_messages_api_shape() -> None:
         },
         {
             "role": "assistant",
-            "content": [{"type": "text", "text": "[Dana, front-desk staff] Hi, I can help."}],
+            "content": [{"type": "text", "text": "[Carolina, front-desk staff] Hi, I can help."}],
         },
         {"role": "user", "content": "Thanks"},
     ]
@@ -223,7 +223,7 @@ async def test_sonnet_and_opus_requests_opt_into_server_side_fallback() -> None:
 
 def test_provider_content_lives_only_within_its_turn(harness: Harness) -> None:
     """Replayed on the next step of the same turn, never stored for the next turn."""
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             Completion(

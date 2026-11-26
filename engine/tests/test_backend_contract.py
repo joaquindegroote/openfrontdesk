@@ -57,7 +57,7 @@ async def world(request: pytest.FixtureRequest) -> AsyncIterator[World]:
 
 async def a_customer(world: World) -> Customer:
     number = next(_numbers)
-    return await world.backend.create_customer(f"Test Person {number}", f"+1555777{number:04d}")
+    return await world.backend.create_customer(f"Test Person {number}", f"+5695777{number:04d}")
 
 
 async def open_slots(world: World, service_id: str) -> list[Slot]:
@@ -240,19 +240,19 @@ async def test_a_cancellation_charges_what_was_quoted_and_once(world: World, not
 
 
 async def test_a_customer_is_found_by_the_phone_they_registered(world: World) -> None:
-    phone = "+15557770000"
+    phone = "+56957770000"
     assert await world.backend.find_customer(phone) is None
 
-    created = await world.backend.create_customer("Ana Lopez", phone)
+    created = await world.backend.create_customer("Paula Herrera", phone)
     found = await world.backend.find_customer(phone)
 
     assert found == created
-    assert (created.name, created.phone) == ("Ana Lopez", phone)
+    assert (created.name, created.phone) == ("Paula Herrera", phone)
     assert await world.backend.list_appointments(created.id) == []
 
 
 async def test_only_the_code_that_was_sent_verifies_a_phone(world: World) -> None:
-    phone = "+15557770001"
+    phone = "+56957770001"
     wrong = "000000" if world.code != "000000" else "111111"
 
     await world.backend.send_verification_code(phone)

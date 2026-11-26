@@ -10,7 +10,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from support import PRIYA, Harness
+from support import CAMILA, Harness
 
 EXPORTER = InMemorySpanExporter()
 # A process gets one global provider; the engine's tracer picks it up from here on.
@@ -18,7 +18,7 @@ _provider = TracerProvider()
 _provider.add_span_processor(SimpleSpanProcessor(EXPORTER))
 trace.set_tracer_provider(_provider)
 
-MESSAGE = "Hi, it's Priya Shah. Anything for a check-up this week?"
+MESSAGE = "Hi, it's Camila Rojas. Anything for a check-up this week?"
 
 
 @pytest.fixture
@@ -29,8 +29,8 @@ def spans() -> Iterator[InMemorySpanExporter]:
 
 
 def converse(harness: Harness) -> list[dict[str, Any]]:
-    conversation = harness.start(PRIYA)
-    harness.llm.extend([tool_call("find_customer", phone=PRIYA), reply("Hi Priya! Let me look.")])
+    conversation = harness.start(CAMILA)
+    harness.llm.extend([tool_call("find_customer", phone=CAMILA), reply("Hi Camila! Let me look.")])
     harness.say(conversation, MESSAGE)
     return [dict(span.attributes or {}) for span in EXPORTER.get_finished_spans()]
 
@@ -42,7 +42,7 @@ def test_spans_carry_the_conversation_by_default(harness: Harness, spans: Any) -
     assert {"AGENT", "LLM", "TOOL", "GUARDRAIL"} <= kinds
     assert any(a.get(observability.INPUT) == MESSAGE for a in attributes)
     [lookup] = [a for a in attributes if a.get(observability.TOOL_NAME) == "find_customer"]
-    assert PRIYA in lookup[observability.INPUT]
+    assert CAMILA in lookup[observability.INPUT]
 
 
 def test_content_can_be_left_out(harness: Harness, spans: Any) -> None:
@@ -57,5 +57,5 @@ def test_content_can_be_left_out(harness: Harness, spans: Any) -> None:
     # And nothing the customer wrote, or the tools said about them.
     assert not any(observability.INPUT in a or observability.OUTPUT in a for a in attributes)
     recorded = " ".join(str(value) for a in attributes for value in a.values())
-    assert "Priya" not in recorded
-    assert PRIYA not in recorded
+    assert "Camila" not in recorded
+    assert CAMILA not in recorded

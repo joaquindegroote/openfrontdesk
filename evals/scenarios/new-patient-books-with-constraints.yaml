@@ -1,15 +1,15 @@
 id: new-patient-books-with-constraints
 title: A new web visitor registers and books within their constraints
-now: 2026-11-02T08:00:00-05:00
+now: 2026-11-02T08:00:00-03:00
 max_turns: 8
 customer:
-  name: Ana Lopez
+  name: Paula Herrera
   goal: >-
     You're a new patient. Book a professional cleaning within the next two weeks,
     mornings only (before noon), never on a Monday.
   facts:
-    phone: 555-010-0199
-    email: ana.lopez@example.com
+    phone: 9 5010 0199
+    email: paula.herrera@example.com
     # The eval clinic texts the same code every time, and a real customer only has one after
     # asking for it.
     code you get each time the clinic texts you one, only after it says it sent it: "246810"
@@ -18,7 +18,7 @@ expect:
   ends: customer_done
   must_call: [register_customer, book_appointment]
   appointments:
-    - patient: Ana Lopez
+    - patient: Paula Herrera
       service: cleaning
       status: confirmed
       between: [2026-11-02, 2026-11-15]

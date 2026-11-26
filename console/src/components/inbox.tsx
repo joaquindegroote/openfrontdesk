@@ -18,7 +18,7 @@ export function Inbox() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
-  const [author, setAuthor] = useState("Dana");
+  const [author, setAuthor] = useState("Carolina");
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -144,7 +144,7 @@ export function Inbox() {
               </div>
             )}
 
-            <MessageList messages={detail.messages} assistantName="Ava" viewer="staff" />
+            <MessageList messages={detail.messages} assistantName="Maite" viewer="staff" />
 
             {error && (
               <p className="border-t border-danger/30 bg-danger-soft px-4 py-2 text-xs text-danger">

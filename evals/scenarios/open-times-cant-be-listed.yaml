@@ -1,18 +1,18 @@
 id: open-times-cant-be-listed
 title: The booking system can't list open times, which isn't the same as having none
-now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+now: 2026-11-02T08:00:00-03:00 # Monday, before opening
 max_turns: 5
 # Looking up the patient works. Every search for open times fails.
 clinic_down: ["GET /availability"]
 customer:
-  name: Priya Shah
-  phone: "+15550100103"
+  name: Camila Rojas
+  phone: "+56950100103"
   goal: Book a check-up for tomorrow morning, as early as possible.
 expect:
   ends: handed_off
   handoff_reasons: [system_unavailable, other]
   appointments:
-    - patient: Priya Shah
+    - patient: Camila Rojas
       service: checkup
       count: 0
   rubric:

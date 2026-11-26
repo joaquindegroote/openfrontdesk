@@ -55,7 +55,7 @@ class EvalEnvironment:
             booked += 1
             # One patient each: nobody can be in two chairs at once.
             other = store.create_patient(
-                PatientCreate(name=f"Other Patient {booked}", phone=f"+1555018{booked:04d}")
+                PatientCreate(name=f"Other Patient {booked}", phone=f"+5695018{booked:04d}")
             )
             store.book(
                 AppointmentCreate(

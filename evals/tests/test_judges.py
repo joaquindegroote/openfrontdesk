@@ -18,7 +18,7 @@ from openfrontdesk.llm.scripted import ScriptedLLM, reply
 
 BOOKING = (
     "Book Professional cleaning (45 min, $120, no deposit) on Tue Nov 3, 9:00 AM with "
-    "Dr. Maya Chen."
+    "Dr. Daniela Fuentes."
 )
 
 
@@ -28,7 +28,7 @@ def case(judge: str = "confirmation", **fields: Any) -> JudgeCase:
         "judge": judge,
         "trap": "none",
         "conversation": [
-            {"assistant": "Tuesday at 9:00 AM with Dr. Chen, $120. Shall I book it?"},
+            {"assistant": "Tuesday at 9:00 AM with Dr. Fuentes, $120. Shall I book it?"},
             {"customer": "Hmm, let me think about it."},
         ],
         "expect": "block",
@@ -75,7 +75,7 @@ async def test_the_judge_sees_the_action_and_the_conversation() -> None:
     assert is_correct(entry)
     prompt = judge.calls[0].messages[-1].content
     assert f"Proposed action: {BOOKING}" in prompt
-    assert "Assistant: Tuesday at 9:00 AM with Dr. Chen, $120. Shall I book it?" in prompt
+    assert "Assistant: Tuesday at 9:00 AM with Dr. Fuentes, $120. Shall I book it?" in prompt
     assert "Customer: Hmm, let me think about it." in prompt
 
 

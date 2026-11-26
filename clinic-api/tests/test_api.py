@@ -45,7 +45,7 @@ def test_availability_respects_notice_and_opening_hours(client: TestClient) -> N
             "service_id": "checkup",
             "date_from": "2026-11-02",
             "date_to": "2026-11-02",
-            "practitioner_id": "dr-chen",
+            "practitioner_id": "dr-fuentes",
         },
     ).json()
     found = starts(slots)
@@ -56,7 +56,7 @@ def test_availability_respects_notice_and_opening_hours(client: TestClient) -> N
 
 
 def test_availability_skips_booked_slots(client: TestClient) -> None:
-    # Emily's seeded cleaning is Monday 11:00-11:45 with the hygienist.
+    # Javiera's seeded cleaning is Monday 11:00-11:45 with the hygienist.
     slots = client.get(
         "/availability",
         params={"service_id": "cleaning", "date_from": "2026-11-02", "date_to": "2026-11-02"},
@@ -69,7 +69,7 @@ def test_availability_skips_booked_slots(client: TestClient) -> None:
 
 def test_booking_is_idempotent_and_prevents_double_booking(client: TestClient) -> None:
     body = {
-        "patient_id": patient_id(client, "+15550100103"),
+        "patient_id": patient_id(client, "+56950100103"),
         "service_id": "checkup",
         "start": at(3, 10),
         "practitioner_id": "dr-ortega",
@@ -81,7 +81,7 @@ def test_booking_is_idempotent_and_prevents_double_booking(client: TestClient) -
     assert replay.headers["Idempotent-Replayed"] == "true"
     assert replay.json()["id"] == first.json()["id"]
 
-    other = {**body, "patient_id": patient_id(client, "+15550100102")}
+    other = {**body, "patient_id": patient_id(client, "+56950100102")}
     conflict = client.post("/appointments", json=other)
     assert conflict.status_code == 409
     assert conflict.json()["error"]["code"] == "slot_unavailable"
@@ -89,7 +89,7 @@ def test_booking_is_idempotent_and_prevents_double_booking(client: TestClient) -
 
 def test_reusing_an_idempotency_key_for_another_request_is_rejected(client: TestClient) -> None:
     body = {
-        "patient_id": patient_id(client, "+15550100103"),
+        "patient_id": patient_id(client, "+56950100103"),
         "service_id": "checkup",
         "start": at(3, 10),
     }
@@ -102,7 +102,7 @@ def test_reusing_an_idempotency_key_for_another_request_is_rejected(client: Test
 
 
 def test_late_cancellation_charges_a_fee(client: TestClient) -> None:
-    appointment = first_appointment(client, "+15550100101")
+    appointment = first_appointment(client, "+56950100101")
     quote = client.get(f"/appointments/{appointment['id']}/cancellation-quote").json()
     assert quote == {
         "appointment_id": appointment["id"],
@@ -120,18 +120,18 @@ def test_late_cancellation_charges_a_fee(client: TestClient) -> None:
 
 
 def test_cancellation_is_free_more_than_24_hours_ahead(client: TestClient) -> None:
-    appointment = first_appointment(client, "+15550100102")
+    appointment = first_appointment(client, "+56950100102")
     quote = client.get(f"/appointments/{appointment['id']}/cancellation-quote").json()
     assert quote["fee"] == 0
     assert quote["late"] is False
 
 
 def test_reschedule_rules(client: TestClient) -> None:
-    late = first_appointment(client, "+15550100101")
+    late = first_appointment(client, "+56950100101")
     response = client.post(f"/appointments/{late['id']}/reschedule", json={"start": at(4, 10)})
     assert response.json()["error"]["code"] == "late_change_not_allowed"
 
-    early = first_appointment(client, "+15550100102")
+    early = first_appointment(client, "+56950100102")
     moved = client.post(f"/appointments/{early['id']}/reschedule", json={"start": at(3, 15)})
     assert moved.status_code == 200
     assert moved.json()["start"] == at(3, 15)
@@ -142,7 +142,7 @@ def test_rejects_times_outside_opening_hours(client: TestClient) -> None:
     response = client.post(
         "/appointments",
         json={
-            "patient_id": patient_id(client, "+15550100103"),
+            "patient_id": patient_id(client, "+56950100103"),
             "service_id": "checkup",
             "start": at(8, 10),  # Sunday
         },
@@ -155,7 +155,7 @@ def test_whitening_requires_a_deposit(client: TestClient) -> None:
     booked = client.post(
         "/appointments",
         json={
-            "patient_id": patient_id(client, "+15550100103"),
+            "patient_id": patient_id(client, "+56950100103"),
             "service_id": "whitening",
             "start": at(4, 9),
         },
@@ -168,10 +168,10 @@ def test_whitening_requires_a_deposit(client: TestClient) -> None:
 
 
 def test_new_patients_are_registered_with_normalized_phones(client: TestClient) -> None:
-    created = client.post("/patients", json={"name": "Ana Lopez", "phone": "(555) 010-0199"})
+    created = client.post("/patients", json={"name": "Paula Herrera", "phone": "9 5010 0199"})
     assert created.status_code == 201
-    assert created.json()["phone"] == "+15550100199"
-    duplicate = client.post("/patients", json={"name": "Ana L.", "phone": "+1 555 010 0199"})
+    assert created.json()["phone"] == "+56950100199"
+    duplicate = client.post("/patients", json={"name": "Paula L.", "phone": "+56 9 5010 0199"})
     assert duplicate.json()["error"]["code"] == "patient_exists"
 
 
@@ -187,7 +187,7 @@ def test_chaos_can_take_down_the_writes_and_leave_the_reads() -> None:
     booking = {
         "patient_id": "pat_0003",
         "service_id": "checkup",
-        "start": "2026-11-03T09:00:00-05:00",
+        "start": "2026-11-03T09:00:00-03:00",
     }
 
     assert client.get("/services").status_code == 200
@@ -213,7 +213,7 @@ def test_seeded_calendar_is_busy_but_bookable() -> None:
 
 def test_phone_verification_codes() -> None:
     client = TestClient(create_app(FixedClock(NOW), filler=False, verification_code="246810"))
-    phone = "+15550100103"
+    phone = "+56950100103"
     assert client.post("/verifications", json={"phone": phone}).status_code == 202
 
     def check(code: str) -> object:
@@ -227,7 +227,7 @@ def test_phone_verification_codes() -> None:
 
 def test_too_many_wrong_codes_void_the_code() -> None:
     client = TestClient(create_app(FixedClock(NOW), filler=False, verification_code="246810"))
-    phone = "+15550100103"
+    phone = "+56950100103"
     client.post("/verifications", json={"phone": phone})
     for _ in range(5):
         client.post("/verifications/check", json={"phone": phone, "code": "000000"})

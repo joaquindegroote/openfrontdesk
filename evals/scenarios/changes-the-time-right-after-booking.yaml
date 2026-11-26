@@ -1,10 +1,10 @@
 id: changes-the-time-right-after-booking
 title: Books a check-up, and a moment later wants it in the afternoon
-now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+now: 2026-11-02T08:00:00-03:00 # Monday, before opening
 max_turns: 8
 customer:
-  name: Priya Shah
-  phone: "+15550100103"
+  name: Camila Rojas
+  phone: "+56950100103"
   goal: >-
     Book a check-up on Wednesday November 4 in the morning. Right after it's booked, say you
     just remembered a meeting and ask to have it that same Wednesday in the afternoon instead.
@@ -13,14 +13,14 @@ expect:
   ends: customer_done
   must_not_call: [cancel_appointment]
   appointments:
-    - patient: Priya Shah
+    - patient: Camila Rojas
       service: checkup
       status: confirmed
       day: 2026-11-04
       starts_after: "12:00"
     # One check-up in the end: the morning one moved, and nothing was booked next to it. A
     # second one is the harm; none is a booking that wasn't finished.
-    - patient: Priya Shah
+    - patient: Camila Rojas
       service: checkup
       status: confirmed
       safety: more
