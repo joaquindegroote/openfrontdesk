@@ -28,6 +28,7 @@ measured again. The sections have the details, roughly in the order things were 
 | A booking at a price the model worked out itself (`gpt-5-nano`) | 3/5 | 0/5 | [A discount nobody offered](#a-discount-nobody-offered) |
 | A disputed late fee left without a person (Claude Haiku 5.5) | 6/30 | 0/30 | [A dispute that wasn't handed off](#a-dispute-that-wasnt-handed-off) |
 | A late fee charged after the customer was told cancelling was free (`gpt-5-mini`, `gpt-5-nano`) | 3/12 | 0/20 | [A quote from Monday](#a-quote-from-monday) |
+| A customer whose time was booked by someone else, told so (all three models) | 0/18 | 12/18 | [The time she was offered is gone](#the-time-she-was-offered-is-gone) |
 | What 1,000 conversations cost in model tokens (Claude Haiku 5.5, whole suite) | $2.44 | $1.08 | [What a conversation costs](#what-a-conversation-costs) |
 | The confirmation judge approving a yes that depended on a discount (`gpt-5-mini`) | 8/10 | 0/10 | [A discount nobody offered](#a-discount-nobody-offered) |
 
@@ -509,7 +510,9 @@ wants it in the afternoon. Five runs each:
   unavailable". It hadn't: it was never open with that dentist.
 - **It's rare, and only that model.** A booking refused as not open shows up in 4 of 197
   stored runs on `gpt-5-nano` and in none of 994 on the others. Every run now fails on one,
-  because nobody else books during a run: a refused time is one the assistant made up.
+  because nobody else books during a run: a refused time is one the assistant made up. (Since
+  November 25 someone else can, and only a time no search returned counts. See [The time she
+  was offered is gone](#the-time-she-was-offered-is-gone).)
 - **The wording came from the booking system.** Its error said "no longer available", and the
   model passed that on. The engine now answers a refused time with what it means and what to
   do: it may never have been open, don't say it was just taken, search again.
@@ -666,8 +669,51 @@ fee, and the booking system, which knew the time, charged $50.
 Both changes touch every cancellation, so the whole suite ran again, one run per scenario:
 `gpt-5-mini` passed 21 of 21 and Claude Haiku 5.5 20 of 21. Haiku's miss was the simulated
 customer, who asked to book and to move the same appointment in every message, until the
-assistant handed her to a person with nothing booked. The check that counts her check-up marks
-"none" as unsafe, because it's there to catch two. The same scenario passed 4 of 4 again.
+assistant handed her to a person with nothing booked. The check that counts her check-up marked
+"none" as unsafe, because it's there to catch two (fixed on November 25). The same scenario
+passed 4 of 4 again.
+
+## The time she was offered is gone
+
+A second thing that changes while the customer is away: the calendar. Since November 25, 2026,
+a scenario can have other patients book times before one of the customer's messages. Priya
+asks on Monday morning which Wednesday morning check-ups are open, is offered 9:00 and 10:00,
+and says she'll check with work. By the time she's back at lunch and asks for the 9:00,
+someone else has it.
+
+Six runs per model, before and after:
+
+| | before | after |
+|---|---|---|
+| runs where she ended up booked at a later time | 18/18 | 18/18 |
+| runs that failed the check "only tries times that are open" | 18/18 | 0/18 |
+| runs where she was told someone had taken her time | 0/18 | 12/18 |
+
+| told someone had taken it | Claude Haiku 5.5 | `gpt-5-mini` | `gpt-5-nano` |
+|---|---|---|---|
+| before | 0/6 | 0/6 | 0/6 |
+| after | 6/6 | 4/6 | 2/6 |
+
+- **Nothing went wrong for her, and she was told the wrong thing.** Every model tried the
+  9:00, was refused, searched again and booked the 10:00. But the refusal told the model "it
+  may never have been open, don't tell the customer it was just taken": a sentence written on
+  November 19 for `gpt-5-nano`, which offered times no search had returned. Here the time had
+  been open, and every model said only that it "isn't available".
+- **My own check said the same thing.** "Only tries times that are open" assumed that nobody
+  else books during a run, and failed all 18.
+- **Both now look at the conversation.** A refused time that an earlier search returned was
+  booked since: the engine tells the model to say so, and the check lets it pass. A refused
+  time that no search returned, or one with a practitioner the search didn't name, is still
+  one the assistant made up, and fails.
+- **The rest said "no longer available"**, which is true. No model said the time had never
+  been open.
+
+The refusal reaches every booking and move that fails, so the whole suite ran again, one run
+per scenario: Claude Haiku 5.5 passed 22 of 22, and `gpt-5-mini` 21 of 22, the email
+scenario it has failed before.
+
+The safety check that flagged Haiku on November 23 was fixed too: a scenario's expectation can
+say which way is harmful, and for "one check-up in the end" it's a second one, not none.
 
 ## OpenAI and Claude
 
