@@ -55,6 +55,8 @@ def test_a_visitor_gets_the_replies_and_not_the_tool_events(harness: Harness) ->
     _, body = as_a_visitor(harness, tool_call("cancel_appointment", appointment_id=EMILYS_CLEANING))
 
     assert body["events"] == []
+    # Nor which model answered, or how many tokens it took.
+    assert body["turn"] is None
     assert body["messages"][-1]["text"] == "I can't help with that appointment."
 
 
