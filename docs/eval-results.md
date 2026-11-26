@@ -40,8 +40,10 @@ measured again. The sections have the details, roughly in the order things were 
 | The confirmation judge approving a yes that depended on a discount (`gpt-5-mini`) | 8/10 | 0/10 | [A discount nobody offered](#a-discount-nobody-offered) |
 
 The samples are small, between 3 and 48 runs a side, and the customers are simulated. A
-difference of one run is noise, and none of these zeros rules out a failure that happens one
-time in ten. The transcripts behind them are kept on my machine, not in the repository.
+difference of one run is noise. With no failures in n runs the real rate can still be about 3
+in n: a 0/13 leaves room for one failure in four, and a 0/48 for one in sixteen. The runs
+behind every number are published: [eval-runs.md](eval-runs.md) says where they are and how
+to count them again.
 
 ## Someone else's phone number
 

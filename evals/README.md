@@ -55,7 +55,12 @@ the model's prompt cache and input written to it at their own rates.
 
 ```bash
 uv run python -m ofd_evals show --failed   # transcripts of the latest failed runs
+uv run python -m ofd_evals recount evals/results/a evals/results/b --says "on file"
 ```
+
+`recount` counts again from saved folders, without calling a model: how many runs failed each
+check, and in how many a reply has a phrase. The runs behind the published numbers are
+[a download](../docs/eval-runs.md), with the commands that count them again.
 
 ## Without the guardrails
 

@@ -41,7 +41,8 @@ hanging when the booking system goes down. openfrontdesk is built around those f
 
 Simulated customers talk to the real engine on real models, and each fix is measured before and
 after. These are six of them; [the full table](docs/eval-results.md#at-a-glance) has the rest,
-each with the section it comes from.
+each with the section it comes from. The runs they were counted from
+[are published](docs/eval-runs.md), with the command that counts each of the six again.
 
 | What was counted | Before | After |
 |---|---|---|
@@ -188,10 +189,11 @@ guardrails off or read a failed run, and the weekly run in CI.
   failure that happens one time in ten. After a change the whole suite runs once per scenario,
   which catches what broke and not what got flaky: one scenario that failed 6 times in 30
   passed most single runs.
-- **The runs aren't in the repository.** The numbers come from transcripts kept on my machine.
-  The weekly run in CI attaches its own to the run's page, and every command to repeat a
-  measurement is in the docs, but the "before" columns can't be rerun without checking out
-  the commit before each fix.
+- **The runs are a download, not part of the repository.** [Every saved run](docs/eval-runs.md)
+  is published with an index, and `recount` counts a number again from them without calling a
+  model. Two things they can't give back: counts made by one-off scripts over old
+  transcripts, and a "before" column rerun from scratch, which needs the commit before each
+  fix.
 - **The booking system is a mock.** Adapters for real ones are on the roadmap, and
   [the tests one has to pass](engine/tests/test_backend_contract.py) are written. A system
   without idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
