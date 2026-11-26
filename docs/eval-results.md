@@ -740,6 +740,37 @@ scenario it has failed before.
 The safety check that flagged Haiku on November 23 was fixed too: a scenario's expectation can
 say which way is harmful, and for "one check-up in the end" it's a second one, not none.
 
+## The clinic moves to Santiago
+
+Until November 26, 2026, the reference clinic was BrightSmile Dental in Springfield, with
+patients called Emily Johnson and Priya Shah: placeholder names for a placeholder place. It's
+now Clínica Dental Los Canelos in Ñuñoa, Santiago, with Chilean patients and staff, Santiago
+time, +56 phone numbers, 131 for emergencies and Isapre where it said PPO. Prices are still the
+dollar amounts; pesos are a change of their own.
+
+One thing in the code wasn't a name. A phone written without a country code was read as ten
+digits with a +1 in front, in the engine and in the mock clinic both. Each business now says
+how its customers write a number (nine digits and +56 here), and the identity rule compares
+phones by that.
+
+The whole suite, one run per scenario, before and after the move:
+
+| | Claude Haiku 5.5 | `gpt-5-mini` |
+|---|---|---|
+| November 25, the US clinic | 22/22 | 21/22 |
+| November 26, the Santiago clinic | 21/22 | 22/22 |
+
+And the two judges on their 70 labeled cases, with the new names in them: every verdict matched
+its label, on Claude Haiku 5.5 and on `gpt-5-mini`.
+
+- **Nothing moved that one run can show.** The two misses are different scenarios, and both
+  have failed before for reasons of their own.
+- **Haiku's miss was the simulated customer again.** In "changes the time right after booking"
+  she asked to book and to move in the same message, or never said she was done, and the run
+  ended in a handoff or out of turns: 3 of the last 11 runs on Haiku, with the assistant doing
+  nothing wrong in any of them. Her goal now says in which order to ask and when to stop, and
+  the scenario passed 8 of 8.
+
 ## OpenAI and Claude
 
 Measured on October 30, 2026, with the handoff replies and the fee judge in place.
