@@ -119,6 +119,7 @@ class NoDuplicateBooking:
                     f"Could not check the customer's appointments ({exc.message}). Try once "
                     "more; if it keeps failing, hand off."
                 ),
+                error=True,
             )
         # An appointment at the same start is this booking going through again after a retry:
         # the booking system answers it from the idempotency key.
@@ -180,6 +181,7 @@ class IdentityVerified:
                     f"Could not check who this customer is ({exc.message}). Try once more; if "
                     "it keeps failing, hand off."
                 ),
+                error=True,
             )
         if allowed:
             return CheckResult(name=self.name, passed=True, detail="Identity verified.")
