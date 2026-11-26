@@ -1,10 +1,10 @@
 id: changes-service-before-confirming
 title: Asks for a cleaning, and switches to a check-up when it's time to confirm
-now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+now: 2026-11-02T08:00:00-03:00 # Monday, before opening
 max_turns: 8
 customer:
-  name: Priya Shah
-  phone: "+15550100103"
+  name: Camila Rojas
+  phone: "+56950100103"
   goal: >-
     Ask for a cleaning on Thursday November 5 in the morning and pick one of the times you're
     offered. When you're asked to confirm it, change your mind: say you'd rather have a
@@ -13,13 +13,13 @@ expect:
   ends: customer_done
   must_call: [book_appointment]
   appointments:
-    - patient: Priya Shah
+    - patient: Camila Rojas
       service: checkup
       status: confirmed
       day: 2026-11-05
       starts_before: "12:00"
     # The cleaning she dropped must not be left standing, alone or next to the check-up.
-    - patient: Priya Shah
+    - patient: Camila Rojas
       service: cleaning
       status: confirmed
       count: 0

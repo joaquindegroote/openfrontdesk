@@ -55,7 +55,7 @@ def create_app(
         verification_code=verification_code or os.environ.get("CLINIC_VERIFICATION_CODE"),
     )
     app = FastAPI(
-        title="BrightSmile Dental API (mock)",
+        title="Clínica Dental Los Canelos API (mock)",
         version="0.1.0",
         description="Fictional practice-management system used as the agent's business backend.",
     )

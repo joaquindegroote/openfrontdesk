@@ -14,12 +14,12 @@ from openfrontdesk.guardrails import NoDuplicateBooking
 from openfrontdesk.llm.scripted import reply, tool_call, tool_calls
 from openfrontdesk.settings import Settings
 from support import (
+    CAMILA,
     CARLOS,
     DEFAULT_HANDOFF_REPLY,
-    EMILY,
+    JAVIERA,
     NOW,
     OUTAGE_HANDOFF_REPLY,
-    PRIYA,
     PROFILE,
     STUCK_HANDOFF_REPLY,
     VERIFICATION_CODE,
@@ -36,17 +36,17 @@ def upcoming(harness: Harness, patient_id: str) -> list:
 
 
 def test_books_after_explicit_confirmation(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
-            tool_call("find_customer", phone=PRIYA),
+            tool_call("find_customer", phone=CAMILA),
             tool_call(
                 "find_available_slots",
                 service_id="checkup",
                 date_from="2026-11-03",
                 part_of_day="morning",
             ),
-            reply("Hi Priya! Tomorrow I have 9:00 AM with Dr. Maya Chen. Does that work?"),
+            reply("Hi Camila! Tomorrow I have 9:00 AM with Dr. Daniela Fuentes. Does that work?"),
         ]
     )
     first = harness.say(conversation, "Hi, can I get a check-up tomorrow morning?")
@@ -55,10 +55,12 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
 
     harness.llm.extend(
         [
-            reply("To confirm: a check-up ($95) on Tue Nov 3 at 9:00 AM with Dr. Chen. Book it?"),
+            reply(
+                "To confirm: a check-up ($95) on Tue Nov 3 at 9:00 AM with Dr. Fuentes. Book it?"
+            ),
         ]
     )
-    harness.say(conversation, "9:00 with Dr. Chen please")
+    harness.say(conversation, "9:00 with Dr. Fuentes please")
 
     harness.llm.extend(
         [
@@ -66,8 +68,8 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
                 "book_appointment",
                 customer_id="pat_0003",
                 service_id="checkup",
-                start="2026-11-03T09:00:00-05:00",
-                practitioner_id="dr-chen",
+                start="2026-11-03T09:00:00-03:00",
+                practitioner_id="dr-fuentes",
             ),
             reply("You're booked for Tuesday at 9:00 AM. See you then!"),
         ]
@@ -84,14 +86,14 @@ def test_books_after_explicit_confirmation(harness: Harness) -> None:
         ("customer_confirmed", True),
     ]
     [appointment] = upcoming(harness, "pat_0003")
-    assert appointment.start.isoformat() == "2026-11-03T09:00:00-05:00"
+    assert appointment.start.isoformat() == "2026-11-03T09:00:00-03:00"
     assert appointment.status == "confirmed"
 
     judge_prompt = harness.judge.calls[0].messages[-1].content
     # The judge sees the action in the customer's terms, not internal ids.
     assert (
         "Book Check-up & X-rays (30 min, $95, no deposit) on Tue Nov 3, 9:00 AM "
-        "with Dr. Maya Chen." in judge_prompt
+        "with Dr. Daniela Fuentes." in judge_prompt
     )
     assert "Customer: Yes, book it" in judge_prompt
     # And what it can't read off the conversation: the date, and what the services are called.
@@ -108,7 +110,7 @@ def test_what_changes_from_turn_to_turn_comes_after_what_doesn_t(harness: Harnes
     """The model's provider keeps a prompt it has just seen, up to the first character that
     differs. So the rules and the business's information go first, the same for everyone, and
     the customer and the time go in a second message."""
-    for phone in (PRIYA, EMILY, None):
+    for phone in (CAMILA, JAVIERA, None):
         harness.llm.extend([reply("Hi! How can I help?")])
         harness.say(harness.start(phone), "Hi")
 
@@ -117,18 +119,18 @@ def test_what_changes_from_turn_to_turn_comes_after_what_doesn_t(harness: Harnes
     assert len({m.content for m in firsts}) == 1
     assert len({m.content for m in seconds}) == 3
     assert "Never invent availability" in firsts[0].content
-    assert "Priya" not in firsts[0].content and "2026" not in firsts[0].content
+    assert "Camila" not in firsts[0].content and "2026" not in firsts[0].content
     assert "It is Monday, November 2, 2026, 8:00 AM" in seconds[0].content
-    assert "This customer is Priya Shah" in seconds[0].content
+    assert "This customer is Camila Rojas" in seconds[0].content
 
 
 def test_known_customer_and_services_are_preloaded_into_the_prompt(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
-    harness.llm.extend([reply("Hi Priya! How can I help?")])
+    conversation = harness.start(CAMILA)
+    harness.llm.extend([reply("Hi Camila! How can I help?")])
     harness.say(conversation, "Hi")
 
     system_prompt = whole_system_prompt(harness.llm.calls[0])
-    assert "This customer is Priya Shah, identified by the phone number" in system_prompt
+    assert "This customer is Camila Rojas, identified by the phone number" in system_prompt
     assert "Their customer_id for tools is pat_0003." in system_prompt
     assert "They have no upcoming appointments." in system_prompt
     whitening = '- In-office whitening (service_id "whitening"): 90 min, $350, $100 deposit.'
@@ -225,17 +227,17 @@ def test_a_verified_number_unlocks_only_its_own_customer(harness: Harness) -> No
     harness.llm.extend(
         [
             # tool_call() takes the tool name as "name", so this one goes through tool_calls().
-            tool_calls(("register_customer", {"name": "Priya Shah", "phone": PRIYA})),
-            tool_call("send_verification_code", phone=PRIYA),
-            tool_call("verify_phone", phone=PRIYA, code=VERIFICATION_CODE),
-            tool_call("find_customer", phone=PRIYA),
+            tool_calls(("register_customer", {"name": "Camila Rojas", "phone": CAMILA})),
+            tool_call("send_verification_code", phone=CAMILA),
+            tool_call("verify_phone", phone=CAMILA, code=VERIFICATION_CODE),
+            tool_call("find_customer", phone=CAMILA),
             tool_call("list_customer_appointments", customer_id="pat_0003"),
             tool_call("list_customer_appointments", customer_id="pat_0002"),
             tool_call("get_cancellation_quote", appointment_id=carlos_appointment.id),
-            reply("You're verified, Priya."),
+            reply("You're verified, Camila."),
         ]
     )
-    result = harness.say(conversation, f"I'm Priya, my number is {PRIYA}, the code is ...")
+    result = harness.say(conversation, f"I'm Camila, my number is {CAMILA}, the code is ...")
 
     assert [e["status"] for e in result["events"]] == [
         "blocked",  # registering an unproven number
@@ -249,7 +251,7 @@ def test_a_verified_number_unlocks_only_its_own_customer(harness: Harness) -> No
 
 
 def test_unknown_phone_is_flagged_for_registration(harness: Harness) -> None:
-    conversation = harness.start("+15550100199")
+    conversation = harness.start("+56950100199")
     harness.llm.extend([reply("Welcome! What's your full name?")])
     harness.say(conversation, "Hi, I'm new")
 
@@ -258,14 +260,14 @@ def test_unknown_phone_is_flagged_for_registration(harness: Harness) -> None:
 
 
 def test_unconfirmed_booking_is_blocked_before_reaching_the_clinic(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call(
                 "book_appointment",
                 customer_id="pat_0003",
                 service_id="checkup",
-                start="2026-11-03T10:00:00-05:00",
+                start="2026-11-03T10:00:00-03:00",
             ),
             reply("Just to confirm: a check-up on Tue Nov 3 at 10:00 AM for $95. Shall I book it?"),
         ]
@@ -288,14 +290,14 @@ def test_unconfirmed_booking_is_blocked_before_reaching_the_clinic(harness: Harn
 
 def unconfirmed(harness: Harness, service: str = "checkup") -> None:
     """Script a booking that the judge will block."""
-    start = "2026-11-03T10:00:00-05:00"
+    start = "2026-11-03T10:00:00-03:00"
     booking = tool_call("book_appointment", customer_id="pat_0003", service_id=service, start=start)
     harness.llm.extend([booking, reply("To confirm: Tue Nov 3 at 10:00 AM. Shall I book it?")])
     harness.judge.extend([verdict(False, "the customer asked a question")])
 
 
 def test_an_action_blocked_three_times_in_a_row_goes_to_a_person(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     for _ in range(2):
         unconfirmed(harness)
         assert harness.say(conversation, "Is that the only time?")["turn"]["outcome"] == "replied"
@@ -317,11 +319,11 @@ def test_an_action_blocked_three_times_in_a_row_goes_to_a_person(harness: Harnes
 
 
 def test_a_successful_run_starts_the_count_of_blocks_again(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     for _ in range(2):
         unconfirmed(harness)
         harness.say(conversation, "Is that the only time?")
-    start = "2026-11-03T10:00:00-05:00"
+    start = "2026-11-03T10:00:00-03:00"
     booking = tool_call(
         "book_appointment", customer_id="pat_0003", service_id="checkup", start=start
     )
@@ -340,7 +342,7 @@ def test_booking_a_second_check_up_is_steered_to_a_reschedule(harness: Harness) 
     """Carlos wants a new time for his check-up. Booking one would leave the old one in place."""
     conversation = harness.start(CARLOS)
     [existing] = upcoming(harness, "pat_0002")
-    new_time = "2026-11-10T14:00:00-05:00"
+    new_time = "2026-11-10T14:00:00-03:00"
     harness.llm.extend(
         [
             tool_call(
@@ -348,13 +350,13 @@ def test_booking_a_second_check_up_is_steered_to_a_reschedule(harness: Harness) 
                 customer_id="pat_0002",
                 service_id="checkup",
                 start=new_time,
-                practitioner_id="dr-chen",
+                practitioner_id="dr-fuentes",
             ),
             tool_call(
                 "reschedule_appointment",
                 appointment_id=existing.id,
                 new_start=new_time,
-                practitioner_id="dr-chen",
+                practitioner_id="dr-fuentes",
             ),
             reply("Done! Your check-up is now on Tue Nov 10 at 2:00 PM."),
         ]
@@ -382,7 +384,7 @@ def test_keeping_both_appointments_still_needs_the_customer_to_agree(harness: Ha
                 "book_appointment",
                 customer_id="pat_0002",
                 service_id="checkup",
-                start="2026-11-10T14:00:00-05:00",
+                start="2026-11-10T14:00:00-03:00",
                 keep_existing=True,
             ),
             reply("Booked! You now have both check-ups."),
@@ -407,12 +409,12 @@ def test_keeping_both_appointments_still_needs_the_customer_to_agree(harness: Ha
 def test_a_yes_with_a_discount_on_the_table_is_not_a_yes(harness: Harness) -> None:
     """The judge answers two things and the code combines them: a clear yes isn't enough when
     it came with a price the action doesn't have."""
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     booking = tool_call(
         "book_appointment",
         customer_id="pat_0003",
         service_id="whitening",
-        start="2026-11-04T15:00:00-05:00",
+        start="2026-11-04T15:00:00-03:00",
     )
     harness.llm.extend([booking, reply("To confirm: whitening on Wed Nov 4 at 3:00 PM, $350.")])
     harness.judge.extend([verdict(True, "Yes, with the 20% off", other_amount=True)])
@@ -424,12 +426,12 @@ def test_a_yes_with_a_discount_on_the_table_is_not_a_yes(harness: Harness) -> No
 
 
 def test_a_judge_that_leaves_the_second_answer_out_blocks(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     booking = tool_call(
         "book_appointment",
         customer_id="pat_0003",
         service_id="checkup",
-        start="2026-11-03T10:00:00-05:00",
+        start="2026-11-03T10:00:00-03:00",
     )
     harness.llm.extend([booking, reply("To confirm: a check-up on Tue Nov 3 at 10:00 AM, $95.")])
     harness.judge.extend([reply('{"confirmed": true, "evidence": "Yes"}')])
@@ -440,14 +442,14 @@ def test_a_judge_that_leaves_the_second_answer_out_blocks(harness: Harness) -> N
 
 
 def test_a_time_that_isn_t_open_comes_back_with_what_to_do(harness: Harness) -> None:
-    """Emily has Sam Patel at 11:00 today, so that time isn't open with him."""
-    conversation = harness.start(PRIYA)
+    """Javiera has Rodrigo Pizarro at 11:00 today, so that time isn't open with him."""
+    conversation = harness.start(CAMILA)
     taken = tool_call(
         "book_appointment",
         customer_id="pat_0003",
         service_id="cleaning",
-        start="2026-11-02T11:00:00-05:00",
-        practitioner_id="sam-patel",
+        start="2026-11-02T11:00:00-03:00",
+        practitioner_id="rodrigo-pizarro",
     )
     harness.llm.extend([taken, reply("Let me look at the open times again.")])
     harness.judge.extend([verdict(True, "Yes, book it")])
@@ -463,7 +465,7 @@ def test_a_time_that_isn_t_open_comes_back_with_what_to_do(harness: Harness) -> 
 
 def test_a_time_taken_after_it_was_offered_is_said_to_be_taken(harness: Harness) -> None:
     """Offered in the morning, booked by someone else before the customer came back."""
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call(
@@ -473,20 +475,20 @@ def test_a_time_taken_after_it_was_offered_is_said_to_be_taken(harness: Harness)
                 date_to="2026-11-04",
                 part_of_day="morning",
             ),
-            reply("On Wednesday I have 9:00 AM with Dr. Chen. Does that work?"),
+            reply("On Wednesday I have 9:00 AM with Dr. Fuentes. Does that work?"),
         ]
     )
     offered = harness.say(conversation, "A check-up on Wednesday morning?")
     nine = offered["events"][0]["result"]["slots"][0]
-    assert (nine["start"], nine["practitioner_id"]) == ("2026-11-04T09:00:00-05:00", "dr-chen")
+    assert (nine["start"], nine["practitioner_id"]) == ("2026-11-04T09:00:00-03:00", "dr-fuentes")
 
-    other = harness.store.create_patient(PatientCreate(name="Someone Else", phone="+15550177777"))
+    other = harness.store.create_patient(PatientCreate(name="Someone Else", phone="+56950177777"))
     harness.store.book(
         AppointmentCreate(
             patient_id=other.id,
             service_id="checkup",
             start=datetime.fromisoformat(nine["start"]),
-            practitioner_id="dr-chen",
+            practitioner_id="dr-fuentes",
         )
     )
     harness.llm.extend(
@@ -496,7 +498,7 @@ def test_a_time_taken_after_it_was_offered_is_said_to_be_taken(harness: Harness)
                 customer_id="pat_0003",
                 service_id="checkup",
                 start=nine["start"],
-                practitioner_id="dr-chen",
+                practitioner_id="dr-fuentes",
             ),
             reply("Sorry, someone booked 9:00 in the meantime."),
         ]
@@ -511,14 +513,14 @@ def test_a_time_taken_after_it_was_offered_is_said_to_be_taken(harness: Harness)
 
 
 def test_judge_failure_fails_closed(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call(
                 "book_appointment",
                 customer_id="pat_0003",
                 service_id="checkup",
-                start="2026-11-03T10:00:00-05:00",
+                start="2026-11-03T10:00:00-03:00",
             ),
             reply("Could you confirm Tuesday at 10:00 AM?"),
         ]
@@ -607,7 +609,7 @@ def test_the_fee_check_fails_closed_when_the_booking_system_cant_quote(
 
 
 def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -> None:
-    conversation = harness.start(EMILY)
+    conversation = harness.start(JAVIERA)
     harness.llm.extend(
         [
             tool_call("cancel_appointment", appointment_id="apt_00001"),
@@ -663,7 +665,7 @@ def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -
 
 def test_a_disputed_fee_is_never_charged(harness: Harness) -> None:
     """The fee judge must quote the customer agreeing to pay; a quote they never wrote fails."""
-    conversation = harness.start(EMILY)
+    conversation = harness.start(JAVIERA)
     harness.llm.extend(
         [
             tool_call("get_cancellation_quote", appointment_id="apt_00001"),
@@ -683,7 +685,7 @@ def test_a_disputed_fee_is_never_charged(harness: Harness) -> None:
 
 def test_an_agreement_with_an_objection_is_not_an_agreement(harness: Harness) -> None:
     """The judge answers "agreed" and "objects" apart; any objection blocks the charge."""
-    conversation = harness.start(EMILY)
+    conversation = harness.start(JAVIERA)
     harness.llm.extend(
         [
             tool_call("get_cancellation_quote", appointment_id="apt_00001"),
@@ -708,7 +710,7 @@ def test_an_agreement_with_an_objection_is_not_an_agreement(harness: Harness) ->
 
 def test_agreeing_to_another_amount_is_not_agreeing_to_the_fee(harness: Harness) -> None:
     """The quote is real, but it names $25: not an agreement to the $50 fee."""
-    conversation = harness.start(EMILY)
+    conversation = harness.start(JAVIERA)
     harness.llm.extend(
         [
             tool_call("get_cancellation_quote", appointment_id="apt_00001"),
@@ -746,7 +748,7 @@ def test_a_free_cancellation_skips_the_fee_judge(harness: Harness) -> None:
 
 
 def test_invalid_arguments_go_back_to_the_model(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call("book_appointment", customer_id="pat_0003"),
@@ -763,7 +765,7 @@ def test_invalid_arguments_go_back_to_the_model(harness: Harness) -> None:
 
 def test_booking_system_outage_hands_off_to_staff(make_harness: HarnessFactory) -> None:
     harness = make_harness(chaos=ChaosConfig(error_rate=1.0))
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call("find_available_slots", service_id="cleaning", date_from="2026-11-03"),
@@ -790,14 +792,14 @@ def test_a_failed_turn_leaves_no_tool_call_without_a_result(
         raise RuntimeError("guard crashed")
 
     monkeypatch.setattr(NoDuplicateBooking, "check", crash)
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call(
                 "book_appointment",
                 customer_id="pat_0003",
                 service_id="checkup",
-                start="2026-11-03T09:00:00-05:00",
+                start="2026-11-03T09:00:00-03:00",
             )
         ]
     )
@@ -827,7 +829,7 @@ def test_a_slow_turn_hands_off_instead_of_keeping_the_customer_waiting(
         return reply("Too late.")
 
     monkeypatch.setattr(harness.llm, "complete", slow_model)
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     result = harness.say(conversation, "Hi, can I book a check-up?")
 
     assert result["turn"]["outcome"] == "failed"
@@ -840,17 +842,17 @@ def test_a_phone_is_verified_with_a_texted_code(harness: Harness) -> None:
     conversation = harness.start()
     harness.llm.extend(
         [
-            tool_call("send_verification_code", phone=PRIYA),
+            tool_call("send_verification_code", phone=CAMILA),
             reply("I've texted you a 6-digit code. What is it?"),
         ]
     )
-    sent = harness.say(conversation, "Hi, my number is +1 555-010-0103")
+    sent = harness.say(conversation, "Hi, my number is +56 9 5010 0103")
     assert sent["events"][0]["result"]["sent"] is True
 
     harness.llm.extend(
         [
-            tool_call("verify_phone", phone=PRIYA, code="111111"),
-            tool_call("verify_phone", phone=PRIYA, code=VERIFICATION_CODE),
+            tool_call("verify_phone", phone=CAMILA, code="111111"),
+            tool_call("verify_phone", phone=CAMILA, code=VERIFICATION_CODE),
             reply("Thanks, you're verified."),
         ]
     )
@@ -861,7 +863,7 @@ def test_a_phone_is_verified_with_a_texted_code(harness: Harness) -> None:
 def test_codes_per_conversation_are_limited(harness: Harness) -> None:
     conversation = harness.start()
     harness.llm.extend(
-        [*(tool_call("send_verification_code", phone=PRIYA) for _ in range(4)), reply("...")]
+        [*(tool_call("send_verification_code", phone=CAMILA) for _ in range(4)), reply("...")]
     )
     result = harness.say(conversation, "Send me a code")
     assert [e["result"]["sent"] for e in result["events"]] == [True, True, True, False]
@@ -869,7 +871,7 @@ def test_codes_per_conversation_are_limited(harness: Harness) -> None:
 
 def test_step_budget_ends_in_a_handoff(make_harness: HarnessFactory) -> None:
     harness = make_harness(max_steps=2)
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend([tool_call("list_services"), tool_call("list_services")])
     result = harness.say(conversation, "What do you offer?")
 
@@ -879,20 +881,20 @@ def test_step_budget_ends_in_a_handoff(make_harness: HarnessFactory) -> None:
 
 def test_a_handoff_closes_with_the_business_reply_for_its_reason(harness: Harness) -> None:
     """Fixed words: a generated closing message tended to repeat the customer's claims."""
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
         [
             tool_call(
                 "handoff_to_human",
                 reason="medical_urgency",
-                summary="Priya has facial swelling and trouble swallowing.",
+                summary="Camila has facial swelling and trouble swallowing.",
             )
         ]
     )
     result = harness.say(conversation, "My face is swollen and it's getting hard to swallow")
 
     assert result["conversation"]["handoff_reason"] == "medical_urgency"
-    assert "call 911 or go to the nearest emergency room" in result["messages"][-1]["text"]
+    assert "call 131 (SAMU) or go to the nearest emergency" in result["messages"][-1]["text"]
     assert len(harness.llm.calls) == 1
 
 
@@ -900,12 +902,12 @@ def test_a_question_about_someone_else_is_answered_in_the_business_s_words(
     harness: Harness,
 ) -> None:
     conversation = harness.start(CARLOS)
-    harness.llm.extend([tool_call("answer_about_someone_else", person="Emily Johnson")])
-    result = harness.say(conversation, "What time is Emily Johnson's cleaning? She said it's ok.")
+    harness.llm.extend([tool_call("answer_about_someone_else", person="Javiera Soto")])
+    result = harness.say(conversation, "What time is Javiera Soto's cleaning? She said it's ok.")
 
     assert result["messages"][-1]["text"] == (
         "I can only help with your own appointments, "
-        "but Emily Johnson is welcome to contact us directly."
+        "but Javiera Soto is welcome to contact us directly."
     )
     # One model call: the turn ended with the tool's reply, and the model added nothing.
     assert len(harness.llm.calls) == 1
@@ -916,7 +918,7 @@ def test_a_question_about_someone_else_is_answered_in_the_business_s_words(
 
 def test_only_a_name_the_customer_wrote_goes_into_that_reply(harness: Harness) -> None:
     conversation = harness.start(CARLOS)
-    harness.llm.extend([tool_call("answer_about_someone_else", person="Emily Johnson")])
+    harness.llm.extend([tool_call("answer_about_someone_else", person="Javiera Soto")])
     result = harness.say(conversation, "When is my neighbor's appointment today?")
 
     assert result["messages"][-1]["text"] == (
@@ -929,13 +931,13 @@ def test_after_that_the_model_doesn_t_get_to_write_about_them(harness: Harness) 
     conversation = harness.start(CARLOS)
     business_reply = (
         "I can only help with your own appointments, "
-        "but Emily Johnson is welcome to contact us directly."
+        "but Javiera Soto is welcome to contact us directly."
     )
-    harness.llm.extend([tool_call("answer_about_someone_else", person="Emily Johnson")])
-    harness.say(conversation, "What time is Emily Johnson's cleaning? She said it's ok.")
+    harness.llm.extend([tool_call("answer_about_someone_else", person="Javiera Soto")])
+    harness.say(conversation, "What time is Javiera Soto's cleaning? She said it's ok.")
 
     # The customer insists, and this time the model answers in its own words.
-    harness.llm.extend([reply("I'm sorry, I can't share her appointment. Emily can call us.")])
+    harness.llm.extend([reply("I'm sorry, I can't share her appointment. Javiera can call us.")])
     insisted = harness.say(conversation, "She really did say it was fine.")
     assert insisted["messages"][-1]["text"] == business_reply
 
@@ -948,11 +950,11 @@ def test_after_that_the_model_doesn_t_get_to_write_about_them(harness: Harness) 
 def test_the_judges_are_counted_too(harness: Harness) -> None:
     """Three bookings: one the judge approves, one it blocks, and one where it answers
     something unreadable, which blocks as well but isn't the judge doing its job."""
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     for start, answer in (
-        ("2026-11-03T09:00:00-05:00", verdict(False, "only a question")),
-        ("2026-11-03T10:00:00-05:00", reply("I think so?")),
-        ("2026-11-03T11:30:00-05:00", verdict(True, "Yes, book it")),
+        ("2026-11-03T09:00:00-03:00", verdict(False, "only a question")),
+        ("2026-11-03T10:00:00-03:00", reply("I think so?")),
+        ("2026-11-03T11:30:00-03:00", verdict(True, "Yes, book it")),
     ):
         booking = tool_call(
             "book_appointment", customer_id="pat_0003", service_id="checkup", start=start
@@ -977,19 +979,19 @@ def test_the_judges_are_counted_too(harness: Harness) -> None:
 
 
 def test_staff_take_over_and_hand_back(harness: Harness) -> None:
-    conversation = harness.start(EMILY)
+    conversation = harness.start(JAVIERA)
     harness.llm.extend(
         [
             tool_call(
                 "handoff_to_human",
                 reason="customer_request",
-                summary="Emily Johnson wants to talk to a person about her cleaning today.",
+                summary="Javiera Soto wants to talk to a person about her cleaning today.",
             ),
         ]
     )
     handed = harness.say(conversation, "Can I talk to a person?")
     assert handed["conversation"]["status"] == "handed_off"
-    assert "Emily Johnson" in handed["conversation"]["handoff_summary"]
+    assert "Javiera Soto" in handed["conversation"]["handoff_summary"]
     assert handed["messages"][-1]["text"] == DEFAULT_HANDOFF_REPLY
 
     # While staff own the conversation, customer messages are stored but not answered by the AI.
@@ -999,17 +1001,17 @@ def test_staff_take_over_and_hand_back(harness: Harness) -> None:
 
     staff = harness.client.post(
         f"/v1/conversations/{conversation}/staff-messages",
-        json={"text": "Hi Emily, this is Dana. How can I help?", "author": "Dana"},
+        json={"text": "Hi Javiera, this is Carolina. How can I help?", "author": "Carolina"},
     )
     assert staff.status_code == 201
     resumed = harness.client.post(f"/v1/conversations/{conversation}/resume")
     assert resumed.json()["status"] == "active"
 
     harness.llm.extend([reply("Anything else I can help with?")])
-    harness.say(conversation, "Thanks Dana, all sorted")
+    harness.say(conversation, "Thanks Carolina, all sorted")
     history = harness.llm.calls[-1].messages
     assert any(
-        m.content == "[Dana, front-desk staff] Hi Emily, this is Dana. How can I help?"
+        m.content == "[Carolina, front-desk staff] Hi Javiera, this is Carolina. How can I help?"
         for m in history
     )
 
@@ -1026,8 +1028,8 @@ def test_staff_take_over_and_hand_back(harness: Harness) -> None:
 
 
 def test_inbox_lists_handed_off_conversations(harness: Harness) -> None:
-    active = harness.start(PRIYA)
-    waiting = harness.start(EMILY)
+    active = harness.start(CAMILA)
+    waiting = harness.start(JAVIERA)
     harness.client.post(f"/v1/conversations/{waiting}/takeover", json={"reason": "complaint"})
 
     listed = harness.client.get("/v1/conversations", params={"status": "handed_off"}).json()

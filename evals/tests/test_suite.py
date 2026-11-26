@@ -21,7 +21,7 @@ async def test_a_scenario_starts_at_its_own_time(monkeypatch: pytest.MonkeyPatch
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
     )
     [scenario] = [s for s in load_scenarios() if s.id == "late-cancellation-accepts-fee"]
     customer = ScriptedLLM([reply(json.dumps({"message": "", "done": True}))])
@@ -30,10 +30,10 @@ async def test_a_scenario_starts_at_its_own_time(monkeypatch: pytest.MonkeyPatch
         scenario, settings, customer_llm=customer, llm=ScriptedLLM(), judge_llm=ScriptedLLM()
     )
 
-    emily = next(pid for pid, name in run.patient_names.items() if name == "Emily Johnson")
-    [cleaning] = [a for a in run.appointments if a.patient_id == emily]
+    javiera = next(pid for pid, name in run.patient_names.items() if name == "Javiera Soto")
+    [cleaning] = [a for a in run.appointments if a.patient_id == javiera]
     # Seeded relative to the scenario's clock: same day, inside the late-cancellation window.
-    assert cleaning.start.isoformat() == "2026-11-02T11:00:00-05:00"
+    assert cleaning.start.isoformat() == "2026-11-02T11:00:00-03:00"
     assert run.record.stop_reason == "customer_done"
 
 
@@ -49,7 +49,7 @@ async def test_a_minute_passes_between_the_customer_s_messages(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
     )
     [scenario] = [s for s in load_scenarios() if s.id == "book-earliest-checkup"]
     customer = ScriptedLLM([says("Hi"), says("Are you open today?"), says("", done=True)])
@@ -70,7 +70,7 @@ async def test_a_scenario_can_have_the_customer_come_back_days_later(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
     )
     [scenario] = [
         s for s in load_scenarios() if s.id == "comes-back-after-the-free-cancellation-ended"
@@ -106,7 +106,7 @@ async def test_guard_modes_for_ablation(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
     )
     [scenario] = [s for s in load_scenarios() if s.id == "book-earliest-checkup"]
     customer = ScriptedLLM([says("Is 9:00 tomorrow free?"), says("", done=True)])
@@ -116,7 +116,7 @@ async def test_guard_modes_for_ablation(
                 "book_appointment",
                 customer_id="pat_0003",
                 service_id="checkup",
-                start="2026-11-03T09:00:00-05:00",
+                start="2026-11-03T09:00:00-03:00",
             ),
             reply("Booked."),
         ]
@@ -138,7 +138,7 @@ async def test_a_scenario_can_take_the_booking_writes_down(monkeypatch: pytest.M
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
     )
     [scenario] = [s for s in load_scenarios() if s.id == "booking-system-fails-on-the-write"]
     customer = ScriptedLLM([says("Yes, book 9:00 tomorrow."), says("", done=True)])
@@ -148,7 +148,7 @@ async def test_a_scenario_can_take_the_booking_writes_down(monkeypatch: pytest.M
                 "book_appointment",
                 customer_id="pat_0003",
                 service_id="checkup",
-                start="2026-11-03T09:00:00-05:00",
+                start="2026-11-03T09:00:00-03:00",
             ),
             reply("You're booked for tomorrow at 9:00 AM."),
         ]
@@ -171,7 +171,7 @@ async def test_someone_else_can_book_the_times_a_customer_was_offered(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "brightsmile-dental" / "profile.yaml",
+        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
     )
     [scenario] = [s for s in load_scenarios() if s.id == "the-time-she-was-offered-is-gone"]
     taken = scenario.taken_before[3]

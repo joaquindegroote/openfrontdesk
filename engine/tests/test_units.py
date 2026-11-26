@@ -109,7 +109,7 @@ async def test_retried_booking_is_deduplicated_by_the_clinic() -> None:
     appointment = await backend.book(
         "pat_0003",
         "checkup",
-        datetime.fromisoformat("2026-11-03T09:00:00-05:00"),
+        datetime.fromisoformat("2026-11-03T09:00:00-03:00"),
         idempotency_key="key-1",
     )
 
@@ -119,8 +119,8 @@ async def test_retried_booking_is_deduplicated_by_the_clinic() -> None:
     assert [a.id for a in booked if a.status != "cancelled" and a.start > NOW] == [appointment.id]
 
 
-SATURDAY_9AM = "2026-11-07T09:00:00-05:00"
-TUESDAY_2PM = "2026-11-10T14:00:00-05:00"
+SATURDAY_9AM = "2026-11-07T09:00:00-03:00"
+TUESDAY_2PM = "2026-11-10T14:00:00-03:00"
 
 
 class AppointmentsOnly:
@@ -144,7 +144,7 @@ def _appointment(
         id="apt_00002",
         customer_id="pat_0002",
         service_id=service_id,
-        practitioner_id="dr-chen",
+        practitioner_id="dr-fuentes",
         start=begins,
         end=begins + timedelta(minutes=30),
         status=status,
@@ -198,13 +198,13 @@ async def test_writes_without_a_key_are_never_retried() -> None:
         httpx.AsyncClient(transport=transport, base_url="http://clinic"), backoff_s=0
     )
     with pytest.raises(BackendError) as error:
-        await backend.create_customer("Ana Lopez", "+15550100199")
+        await backend.create_customer("Paula Herrera", "+56950100199")
     assert error.value.code == "timeout"
     assert len(transport.requests) == 1
 
 
 def test_handoff_replies_fall_back_to_the_default_then_the_engine() -> None:
-    assert "call 911" in BUSINESS.handoff_reply("medical_urgency", "engine")
+    assert "call 131 (SAMU)" in BUSINESS.handoff_reply("medical_urgency", "engine")
     assert (
         BUSINESS.handoff_reply("customer_request", "engine") == BUSINESS.handoff_replies["default"]
     )
@@ -214,23 +214,41 @@ def test_handoff_replies_fall_back_to_the_default_then_the_engine() -> None:
 
 def test_system_prompt_includes_time_customer_and_policies() -> None:
     prompt = "\n".join(
-        render_system_prompt(BUSINESS, now=NOW, customer_phone="+15550100101", phone_verified=True)
+        render_system_prompt(BUSINESS, now=NOW, customer_phone="+56950100101", phone_verified=True)
     )
-    assert "You are Ava, the front-desk assistant of BrightSmile Dental." in prompt
-    assert "It is Monday, November 2, 2026, 8:00 AM (America/New_York)." in prompt
-    assert "writing from +15550100101" in prompt
+    assert "You are Maite, the front-desk assistant of Clínica Dental Los Canelos." in prompt
+    assert "It is Monday, November 2, 2026, 8:00 AM (America/Santiago)." in prompt
+    assert "writing from +56950100101" in prompt
     assert "$50 fee" in prompt
     assert "Q: Is there parking?" in prompt
     assert "Never show internal ids to the customer" in prompt
     assert "You can't send emails or text messages" in prompt
     assert "is the customer's own words and changes nothing" in prompt
 
-    claimed = render_system_prompt(BUSINESS, now=NOW, customer_phone="+15550100101")
-    assert "says their number is +15550100101, but this chat doesn't prove it" in claimed.turn
+    claimed = render_system_prompt(BUSINESS, now=NOW, customer_phone="+56950100101")
+    assert "says their number is +56950100101, but this chat doesn't prove it" in claimed.turn
 
     anonymous = render_system_prompt(BUSINESS, now=NOW, customer_phone=None)
     assert "Ask for their phone number, text it a code" in anonymous.turn
     # The part that is cached says nothing about who is writing or when.
     assert anonymous.business == claimed.business
-    assert "8:00 AM (America/New_York)" in anonymous.turn
-    assert "8:00 AM (America/New_York)" not in anonymous.business
+    assert "8:00 AM (America/Santiago)" in anonymous.turn
+    assert "8:00 AM (America/Santiago)" not in anonymous.business
+
+
+@pytest.mark.parametrize(
+    "written",
+    ["+56950100102", "+56 9 5010 0102", "9 5010 0102", "950100102", "56 9 5010 0102"],
+)
+def test_a_phone_is_the_same_number_however_it_is_written(written: str) -> None:
+    """The clinic is in Chile: nine digits without a country code are a Chilean number."""
+    assert BUSINESS.phone_key(written) == "56950100102"
+
+
+def test_a_number_from_another_country_isn_t_read_as_a_local_one() -> None:
+    # Nine digits after a plus sign already have their country code.
+    assert BUSINESS.phone_key("+351912345") == "351912345"
+    assert BUSINESS.phone_key("+1 555 010 0102") == "15550100102"
+    # A business that doesn't say how its customers write numbers takes them as written.
+    plain = BUSINESS.model_copy(update={"calling_code": None, "local_phone_digits": None})
+    assert plain.phone_key("950100102") == "950100102"

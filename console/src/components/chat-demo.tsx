@@ -13,9 +13,9 @@ import { MessageList } from "./message-list";
 // (WhatsApp, SMS, a call) where the number is known.
 const PERSONAS = [
   { id: "new", name: "New visitor", note: "No phone on file", phone: null },
-  { id: "emily", name: "Emily Johnson", note: "Cleaning soon: late-cancel fee", phone: "+15550100101" },
-  { id: "carlos", name: "Carlos Rivera", note: "Check-up in a few days", phone: "+15550100102" },
-  { id: "priya", name: "Priya Shah", note: "Returning patient", phone: "+15550100103" },
+  { id: "javiera", name: "Javiera Soto", note: "Cleaning soon: late-cancel fee", phone: "+56950100101" },
+  { id: "carlos", name: "Carlos Rivera", note: "Check-up in a few days", phone: "+56950100102" },
+  { id: "camila", name: "Camila Rojas", note: "Returning patient", phone: "+56950100103" },
 ] as const;
 
 type Persona = (typeof PERSONAS)[number];
@@ -23,7 +23,7 @@ type Persona = (typeof PERSONAS)[number];
 const SUGGESTIONS = [
   "I'd like a cleaning next week",
   "I need to cancel my appointment",
-  "Do you take insurance?",
+  "Do you take Isapre?",
   "Can I talk to a person?",
 ];
 
@@ -85,7 +85,7 @@ export function ChatDemo() {
     setError(null);
   }
 
-  const assistantName = business?.assistant_name ?? "Ava";
+  const assistantName = business?.assistant_name ?? "Maite";
   const messages = [...(detail?.messages ?? []), ...(optimistic ? [optimistic] : [])];
 
   return (

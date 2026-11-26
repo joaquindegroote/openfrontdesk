@@ -27,7 +27,9 @@ from openfrontdesk.llm import ChatMessage, Completion, LLMClient, ToolSpec
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 CASES_DIR = Path(__file__).resolve().parents[2] / "judge-cases"
-PROFILE = Path(__file__).resolve().parents[3] / "businesses" / "brightsmile-dental" / "profile.yaml"
+PROFILE = (
+    Path(__file__).resolve().parents[3] / "businesses" / "clinica-los-canelos" / "profile.yaml"
+)
 RUNS_FILE = "judges.jsonl"
 SUMMARY_FILE = "summary.md"
 NOW = datetime(2026, 11, 2, 8, 0, tzinfo=TIMEZONE)

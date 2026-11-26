@@ -16,13 +16,13 @@ from openfrontdesk.llm import Completion
 from openfrontdesk.llm.scripted import ScriptedCall, ScriptedLLM, reply
 
 ROOT = Path(__file__).resolve().parents[2]
-PROFILE = ROOT / "businesses" / "brightsmile-dental" / "profile.yaml"
+PROFILE = ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml"
 # Monday 8:00 AM at the clinic, before opening. Matches the clinic's frozen clock.
 NOW = datetime(2026, 11, 2, 8, 0, tzinfo=TIMEZONE)
 
-EMILY = "+15550100101"  # pat_0001, cleaning today at 11:00 (apt_00001): late-cancellation fee
-CARLOS = "+15550100102"  # pat_0002, check-up on Saturday (apt_00002): free to cancel
-PRIYA = "+15550100103"  # pat_0003, no upcoming appointments
+JAVIERA = "+56950100101"  # pat_0001, cleaning today at 11:00 (apt_00001): late-cancellation fee
+CARLOS = "+56950100102"  # pat_0002, check-up on Saturday (apt_00002): free to cancel
+CAMILA = "+56950100103"  # pat_0003, no upcoming appointments
 # The staff key in tests. The harness's client sends it, like the console does.
 STAFF_KEY = "test-staff-key"
 # The integration key in tests. The harness sends it too, so it can open WhatsApp conversations.

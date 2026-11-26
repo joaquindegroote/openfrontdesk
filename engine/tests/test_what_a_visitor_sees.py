@@ -7,9 +7,9 @@ from typing import Any
 
 from openfrontdesk.llm import Completion
 from openfrontdesk.llm.scripted import reply, tool_call
-from support import EMILY, Harness
+from support import JAVIERA, Harness
 
-# Emily's cleaning today at 11:00, in the seeded clinic.
+# Javiera's cleaning today at 11:00, in the seeded clinic.
 EMILYS_CLEANING = "apt_00001"
 NO_KEY = {"Authorization": ""}
 
@@ -36,7 +36,7 @@ def test_a_blocked_try_on_someone_else_s_appointment_doesn_t_describe_it(
         tool_call(
             "reschedule_appointment",
             appointment_id=EMILYS_CLEANING,
-            new_start="2026-11-04T10:00:00-05:00",
+            new_start="2026-11-04T10:00:00-03:00",
         ),
     )
 
@@ -71,8 +71,8 @@ def test_staff_still_get_the_events(harness: Harness) -> None:
 
 
 def test_the_handoff_summary_is_for_staff(harness: Harness) -> None:
-    conversation = harness.start(EMILY)
-    summary = "Emily Johnson asked for a person about her cleaning today."
+    conversation = harness.start(JAVIERA)
+    summary = "Javiera Soto asked for a person about her cleaning today."
     harness.llm.extend([tool_call("handoff_to_human", reason="customer_request", summary=summary)])
     response = harness.client.post(
         f"/v1/conversations/{conversation}/messages",

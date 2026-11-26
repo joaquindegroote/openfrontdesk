@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="OFD_", env_file=".env", extra="ignore")
 
     database_url: str = "sqlite+aiosqlite:///./openfrontdesk.db"
-    business_profile: Path = Path("businesses/brightsmile-dental/profile.yaml")
+    business_profile: Path = Path("businesses/clinica-los-canelos/profile.yaml")
 
     # 127.0.0.1 rather than localhost: on some systems localhost tries IPv6 first and stalls.
     backend_url: str = "http://127.0.0.1:8001"

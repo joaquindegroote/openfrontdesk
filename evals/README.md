@@ -5,7 +5,7 @@ process, until the request is done, handed off, or out of turns. Scenarios live 
 [`scenarios/`](scenarios/): a persona, the time it starts at, and what must be true at the end
 (the clinic's real state, the tools that ran, how the conversation ended). A minute passes
 after each of the customer's messages, unless the scenario says when one is sent: `sent_at:
-{2: 2026-11-06T09:30:00-05:00}` is a customer who comes back four days later. With
+{2: 2026-11-06T09:30:00-03:00}` is a customer who comes back four days later. With
 `taken_before`, other patients book a range of times before one of her messages, so the ones
 she was offered can be gone when she comes back.
 
@@ -14,7 +14,7 @@ uv run python -m ofd_evals run                                  # every scenario
 uv run python -m ofd_evals run -s free-reschedule -n 3          # one scenario, three runs
 uv run python -m ofd_evals --engine-model gpt-5-nano run        # the assistant on another model
 uv run python -m ofd_evals --engine-model claude-haiku-5-5 run  # ... or on Claude
-uv run python -m ofd_evals chat --phone +15550100103 --goal "Book a check-up tomorrow morning"
+uv run python -m ofd_evals chat --phone +56950100103 --goal "Book a check-up tomorrow morning"
 ```
 
 The simulated customer and the grader use `OPENAI_API_KEY`. Claude models need

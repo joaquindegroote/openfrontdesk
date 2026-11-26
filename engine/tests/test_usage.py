@@ -12,7 +12,7 @@ from openfrontdesk.llm.scripted import reply, tool_call
 from openfrontdesk.storage.db import Database
 from openfrontdesk.storage.models import Base
 from sqlalchemy import Connection, inspect, text
-from support import PRIYA, Harness, verdict
+from support import CAMILA, Harness, verdict
 
 
 def used(completion: Completion, model: str, **tokens: int) -> Completion:
@@ -20,18 +20,18 @@ def used(completion: Completion, model: str, **tokens: int) -> Completion:
 
 
 def test_a_turn_keeps_what_every_model_call_used(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     harness.llm.extend(
-        [reply("To confirm: a check-up ($95) on Tue Nov 3 at 9:00 AM with Dr. Chen. Book it?")]
+        [reply("To confirm: a check-up ($95) on Tue Nov 3 at 9:00 AM with Dr. Fuentes. Book it?")]
     )
-    harness.say(conversation, "A check-up tomorrow at 9:00 with Dr. Chen, please")
+    harness.say(conversation, "A check-up tomorrow at 9:00 with Dr. Fuentes, please")
 
     booking = tool_call(
         "book_appointment",
         customer_id="pat_0003",
         service_id="checkup",
-        start="2026-11-03T09:00:00-05:00",
-        practitioner_id="dr-chen",
+        start="2026-11-03T09:00:00-03:00",
+        practitioner_id="dr-fuentes",
     )
     harness.llm.extend(
         [
@@ -69,10 +69,10 @@ def test_a_turn_keeps_what_every_model_call_used(harness: Harness) -> None:
 
 
 def test_a_turn_that_fails_still_counts_what_it_used(harness: Harness) -> None:
-    conversation = harness.start(PRIYA)
+    conversation = harness.start(CAMILA)
     # The script ends after this step, so the model call that follows it fails.
     harness.llm.extend(
-        [used(tool_call("find_customer", phone=PRIYA), "assistant", input_tokens=5000)]
+        [used(tool_call("find_customer", phone=CAMILA), "assistant", input_tokens=5000)]
     )
     turn = harness.say(conversation, "Hi")["turn"]
 

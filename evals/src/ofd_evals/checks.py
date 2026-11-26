@@ -22,7 +22,7 @@ from ofd_evals.suite import ScenarioRun
 GUARDED_WRITES = {"book_appointment", "cancel_appointment", "reschedule_appointment"}
 # Identifiers the customer should never see: patients, appointments, practitioners, events.
 INTERNAL_ID = re.compile(
-    r"\b(?:pat_\d+|apt_\d+|conv_[0-9a-f]+|evt_[0-9a-f]+|dr-[a-z]+|sam-patel)\b"
+    r"\b(?:pat_\d+|apt_\d+|conv_[0-9a-f]+|evt_[0-9a-f]+|dr-[a-z]+|rodrigo-pizarro)\b"
 )
 
 AMOUNT = re.compile(r"\$\s?(\d[\d,]*)")

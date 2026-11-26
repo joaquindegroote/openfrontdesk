@@ -1,1 +1,1 @@
-"""Mock booking system for BrightSmile Dental, the reference business for openfrontdesk."""
+"""Mock booking system for Clínica Dental Los Canelos, the reference business for openfrontdesk."""

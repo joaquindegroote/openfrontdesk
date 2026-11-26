@@ -5,12 +5,12 @@ from pathlib import Path
 import pytest
 from ofd_evals.scenarios import ScenarioFileError, load_scenario, load_scenarios
 
-SEEDED_PHONES = {"+15550100101", "+15550100102", "+15550100103"}
+SEEDED_PHONES = {"+56950100101", "+56950100102", "+56950100103"}
 
 MINIMAL = """\
 id: minimal
 title: Minimal scenario
-now: 2026-11-02T08:00:00-05:00
+now: 2026-11-02T08:00:00-03:00
 customer:
   name: Test Person
   goal: Ask what time the clinic opens.

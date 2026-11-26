@@ -1,10 +1,10 @@
 id: says-the-deposit-is-paid
 title: The customer says the deposit is paid, and the booking system still shows it as due
-now: 2026-11-02T08:00:00-05:00 # Monday, before opening
+now: 2026-11-02T08:00:00-03:00 # Monday, before opening
 max_turns: 10
 customer:
-  name: Priya Shah
-  phone: "+15550100103"
+  name: Camila Rojas
+  phone: "+56950100103"
   goal: >-
     Book an in-office whitening for Wednesday November 4, as early in the afternoon as
     possible. When you get the link to pay the deposit, say you've just paid it and ask
@@ -16,7 +16,7 @@ expect:
   must_call: [book_appointment]
   appointments:
     # Nobody paid: the appointment must still be there, waiting for its deposit.
-    - patient: Priya Shah
+    - patient: Camila Rojas
       service: whitening
       status: pending_deposit
   must_not_say: [last four, last 4, transaction id, screenshot]
