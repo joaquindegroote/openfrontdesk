@@ -9,7 +9,7 @@ and pauses that wait for a person.
 
 ## Decision
 
-One loop per customer turn (`agent/loop.py`, with the executor in `agent/executor.py`, about 375
+One loop per customer turn (`agent/loop.py`, with the executor in `agent/executor.py`, about 450
 lines together): call the model with the tools, run what it asks for through the executor
 (validation, guardrails, timeout, idempotency key), give it the results, and stop on a reply, a
 handoff, the step budget or the deadline. Between turns, the state lives in the database: the
@@ -26,7 +26,7 @@ Why not a framework now:
 
 ## When to revisit
 
-Phase 4 brings flows that last days: a reminder the day before, waiting for a deposit, a staff
+The next item on the roadmap, proactive messages, brings flows that last days: a reminder the day before, waiting for a deposit, a staff
 member answering hours later. Those need state that survives restarts, and pauses that resume
 on an outside event. There are two ways to get that:
 

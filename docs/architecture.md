@@ -48,7 +48,7 @@ sequenceDiagram
 | `agent/executor.py` | Runs one tool call: validation, guards, idempotency key, timeout, and turning every failure into a result the model can act on. |
 | `agent/prompt.py` | Renders the system prompt in two parts: the rules and the business profile, the same for everyone, and then the time in the business's timezone, the customer and their appointments. |
 | `tools/` | Typed tool registry and the standard booking toolset. Arguments are Pydantic models; their JSON schema is what the model sees. |
-| `guardrails/` | Deterministic rules and the confirmation judge. |
+| `guardrails/` | Deterministic rules and the two LLM judges: one for the customer's confirmation, one for a fee. |
 | `backends/` | The `BookingBackend` interface and the clinic API adapter (retries only what is safe to retry). |
 | `llm/` | Provider-neutral chat types, the OpenAI and Claude adapters (picked by model name) and a scripted model for tests. |
 | `storage/` | SQLAlchemy models and the repository. SQLite in development, Postgres in Docker. |
@@ -60,7 +60,7 @@ sequenceDiagram
 |---|---|
 | Model passes invalid arguments | The tool isn't run. The model gets the validation errors and corrects itself. |
 | Model proposes an unconfirmed write | Blocked by the judge. The model gets the reason and asks the customer. |
-| Model keeps proposing an action the guards block | After three blocks in a row of the same action by the same check, automatic handoff with reason `blocked_repeatedly`. Staff read what was tried and why it was stopped. |
+| Model keeps proposing an action the guards block | After the same check blocks the same tool three times in a row, whatever the arguments, automatic handoff with reason `blocked_repeatedly`. Staff read what was tried and why it was stopped. |
 | Judge errors or returns garbage | Blocked (fails closed). |
 | Booking system times out on a write | Retried with the same idempotency key; the booking system returns the original result if the first attempt went through. |
 | Booking system keeps failing | After two consecutive steps of temporary failures, automatic handoff with reason `system_unavailable`. The customer is told the request wasn't finished. |
@@ -111,7 +111,7 @@ everything, which the weekly evals would confirm).
 | Messages in different conversations | They don't wait for each other. | `engine/tests/test_concurrency.py` |
 | Two engine workers get messages for the same conversation, or the same message | On Postgres, one turn at a time across workers, and one answer for a message both received. | `engine/tests/test_two_workers.py`, against a real Postgres in CI |
 | A write retried after a timeout or a lost response | Same idempotency key, so the booking system returns the original result instead of booking twice. | `test_retried_booking_is_deduplicated_by_the_clinic` |
-| The engine dies after a booking and before saving the turn | The channel delivers the message again and the turn runs again. The booking goes out with the same key, and the booking system answers with the first appointment. | `test_a_crash_after_the_booking_and_before_the_save_books_once` |
+| The engine dies after a booking and before saving the turn | The channel delivers the message again and the turn runs again. If the model proposes the booking with the same arguments, it goes out with the same key, which is made from them, and the booking system answers with the first appointment. If it words them differently, the key differs and the booking system refuses it because the patient already has that time: nothing is booked twice, but the assistant has to work it out from an error. | `test_a_crash_after_the_booking_and_before_the_save_books_once` |
 | The same key sent with different arguments | Rejected by the booking system (`idempotency_key_reused`). | `test_reusing_an_idempotency_key_for_another_request_is_rejected` |
 | Two customers going for the same slot | The first gets it, the second gets `slot_unavailable` and is offered other times. | `test_booking_is_idempotent_and_prevents_double_booking` |
 | A second booking for a service the customer already has coming up | Blocked by `NoDuplicateBooking`, unless the customer asked to keep both. | `test_duplicate_booking_rule` |
@@ -170,8 +170,8 @@ patients, so the console holds the integration key too. Keys are compared in con
 `/docs` mark the staff endpoints, and take the key under "Authorize".
 
 What comes back to a caller without the staff key is the replies and the conversation's status.
-The turn's tool events, and the summary the assistant wrote for staff when it handed off, go
-only to a caller with the key: a visitor can get the model to try anything, and the events of a
+The turn's tool events, its model and token counts, and the summary the assistant wrote for
+staff when it handed off, go only to a caller with the key: a visitor can get the model to try anything, and the events of a
 blocked try are not theirs to read.
 
 ## Data model
