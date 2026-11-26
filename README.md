@@ -25,7 +25,7 @@ hanging when the booking system goes down. openfrontdesk is built around those f
 - **Safe retries.** Writes carry idempotency keys, so a booking retried after a lost response
   returns the first appointment, and a message the channel delivers twice is answered once.
 - **Handoff to a person.** On request, on policy (urgent symptoms, complaints, billing), and by
-  itself when the booking system keeps failing or the same action keeps getting blocked. Staff
+  itself when the booking system keeps failing or the same check keeps blocking a tool. Staff
   reply from an inbox and hand the conversation back.
 - **The business's words where they matter.** A handoff, an outage and a question about another
   person are answered with fixed sentences from the business profile, not generated ones.
@@ -40,16 +40,17 @@ hanging when the booking system goes down. openfrontdesk is built around those f
 ## What the evals measured
 
 Simulated customers talk to the real engine on real models, and each fix is measured before and
-after. These are six of them; [the full table](docs/eval-results.md#at-a-glance) has the rest.
+after. These are six of them; [the full table](docs/eval-results.md#at-a-glance) has the rest,
+each with the section it comes from.
 
 | What was counted | Before | After |
 |---|---|---|
 | An impostor typing another patient's number saw and moved his appointment | 3/3 | 0/13 |
 | A disputed late fee charged anyway (gpt-5-nano with no guards, then with all of them) | 2/24 | 0/24 |
 | The fee judge approving a charge it should block (gpt-5-mini) | 10/33 | 0/48 |
-| A payment taken on the customer's word (gpt-5-nano, then all models) | 2/10 | 0/18 |
+| A payment taken on the customer's word (gpt-5-nano) | 2/10 | 0/6 |
 | Something said about another person's appointment | 16/20 | 1/20 |
-| "You're booked" with no tool call behind it, in 616 stored conversations | | 0 of 491 |
+| A late fee charged after the customer was told cancelling was free (gpt-5-mini, gpt-5-nano) | 3/12 | 0/20 |
 
 Claude Haiku 5.5 runs by default: it passes as many scenarios as gpt-5-mini, at 2.5 s per turn
 instead of 6.1 s. The samples are small and the customers are simulated, which is the first
@@ -182,8 +183,15 @@ guardrails off or read a failed run, and the weekly run in CI.
 
 ## Limitations
 
-- **Small samples, simulated customers.** Two to ten runs per scenario, and part of the grading
-  is an LLM's. A difference of one run is noise, which is why checks in code come first.
+- **Small samples, simulated customers.** Between 3 and 48 runs a side, and part of the
+  grading is an LLM's. A difference of one run is noise, and a zero out of 13 can't rule out a
+  failure that happens one time in ten. After a change the whole suite runs once per scenario,
+  which catches what broke and not what got flaky: one scenario that failed 6 times in 30
+  passed most single runs.
+- **The runs aren't in the repository.** The numbers come from transcripts kept on my machine.
+  The weekly run in CI attaches its own to the run's page, and every command to repeat a
+  measurement is in the docs, but the "before" columns can't be rerun without checking out
+  the commit before each fix.
 - **The booking system is a mock.** Adapters for real ones are on the roadmap, and
   [the tests one has to pass](engine/tests/test_backend_contract.py) are written. A system
   without idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
@@ -191,6 +199,10 @@ guardrails off or read a failed run, and the weekly run in CI.
   provider behind the same endpoint.
 - **The console has no sign-in.** Its server holds the staff key, so whoever can open it acts as
   the front desk. It's one shared key, with no per-person accounts or audit trail.
+- **A staff reply only shows in the console.** There's no endpoint for a channel to fetch it and
+  nothing pushes it, so a real WhatsApp or SMS channel couldn't deliver it yet.
+- **A web visitor's conversation id is their only credential**, and a phone verified with a
+  code stays verified for as long as the conversation lasts.
 - **No rate limits.** Anyone who can reach the engine can start conversations, and each message
   is a model call on your key.
 - **Conversations are kept**, with no retention period and no way yet to delete one customer's
@@ -199,6 +211,8 @@ guardrails off or read a failed run, and the weekly run in CI.
 - **Several workers need Postgres**, and nothing has been load tested. See
   [what holds when things happen at once](docs/architecture.md#concurrency).
 - **English and one business.** The Spanish profile is on the roadmap.
+- **Two handoffs are still the prompt's job**: urgent symptoms and a disputed fee. The fee
+  judge already says when a customer objects, and nothing in code acts on it yet.
 - **Some things still hang on the model's wording.** In 1 of 20 runs Claude Haiku 5.5 answered
   a question about another person in its own words. And a customer who keeps insisting on
   something the assistant can't do gets the same refusal each time: only a blocked action or a
