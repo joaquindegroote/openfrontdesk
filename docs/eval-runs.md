@@ -6,7 +6,7 @@ measurement, with each conversation's transcript, tool calls and guardrail check
 `summary.md`. They're 12 MB that grow every day, so they aren't in the repository. They're
 published as a release:
 
-**[eval-runs-2026-11-26.zip](https://github.com/joaquindegroote/openfrontdesk/releases/download/eval-runs-2026-11-26/eval-runs-2026-11-26.zip)**: 175 folders, from October 28 to November 26, 2026.
+**[eval-runs-2026-11-26.zip](https://github.com/joaquindegroote/openfrontdesk/releases/download/eval-runs-2026-11-26/eval-runs-2026-11-26.zip)**: 181 folders, from October 28 to November 26, 2026.
 
 Unzip it into `evals/results/` and count again:
 
@@ -90,7 +90,9 @@ uv run python -m ofd_evals recount evals/results/stalequote-rule6-gpt-5-mini \
 - **The exact code of a run.** Runs were made on a working branch, before the change was
   merged. The index below gives, for each folder, the last commit on `main` when it finished
   and the first one after it, which is usually the change being measured. A "before" run has
-  the code of the first, or close to it, and an "after" run is close to the second.
+  the code of the first, or close to it, and an "after" run is close to the second. The
+  folders named `main-<commit>` are the exception: they ran on a clean checkout of that
+  commit.
 - **Today's names.** Until November 26 the clinic was a US one, so the older folders have
   Emily Johnson where the docs now say Javiera Soto, and so on.
 - **More than the sample.** With no failures in n runs, the real rate can still be about 3 in
@@ -98,9 +100,9 @@ uv run python -m ofd_evals recount evals/results/stalequote-rule6-gpt-5-mini \
 
 ## Every folder
 
-In the order they were made. Times are Santiago's. A result with "unsafe" counts runs where
-something happened that shouldn't have, which the docs report apart from runs that only left
-a task unfinished.
+In the order they were made. Times are Santiago's, and a dash means no commit has come after
+yet. A result with "unsafe" counts runs where something happened that shouldn't have, which
+the docs report apart from runs that only left a task unfinished.
 
 | folder | finished | what ran | assistant and judge | result | `main` before | `main` after |
 |---|---|---|---|---|---|---|
@@ -279,3 +281,9 @@ a task unfinished.
 | `santiago-timechange-haiku` | Nov 26 17:42 | changes-the-time-right-after-booking | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 3/4 passed | `b7a8132` | `f9bb88d` |
 | `santiago-timechange2-haiku` | Nov 26 17:47 | changes-the-time-right-after-booking | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 7/8 passed | `b7a8132` | `f9bb88d` |
 | `santiago-timechange3-haiku` | Nov 26 17:51 | changes-the-time-right-after-booking | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 8/8 passed | `b7a8132` | `f9bb88d` |
+| `main-f976186-haiku-2` | Nov 26 18:39 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `f976186` | `-` |
+| `main-f976186-haiku-3` | Nov 26 18:40 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 21/22 passed | `f976186` | `-` |
+| `main-f976186-haiku-1` | Nov 26 18:40 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `f976186` | `-` |
+| `main-f976186-mini-2` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 20/22 passed, 1 unsafe | `f976186` | `-` |
+| `main-f976186-mini-3` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 21/22 passed | `f976186` | `-` |
+| `main-f976186-mini-1` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 22/22 passed | `f976186` | `-` |
