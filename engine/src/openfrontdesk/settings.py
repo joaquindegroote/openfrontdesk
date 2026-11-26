@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import AliasChoices, Field, SecretStr, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     llm_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = "low"
     judge_reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = "low"
     max_agent_steps: int = 8
+
+    @field_validator("llm_reasoning_effort", "judge_reasoning_effort", mode="before")
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        """`OFD_LLM_REASONING_EFFORT=` in a .env file is how the example says to turn it off."""
+        return None if value == "" else value
+
     tool_timeout_s: float = 20.0
     # A customer waiting longer than this gets a handoff instead of a reply.
     turn_timeout_s: float = 45.0
