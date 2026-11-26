@@ -32,10 +32,13 @@ The judge fails closed: an exception or an unparseable answer blocks the action.
 
 ## Consequences
 
-- Wrong writes need two independent failures (the agent and the judge) instead of one.
+- Wrong writes need two failures (the agent and the judge) instead of one. They aren't fully
+  independent: since November 2026 both run on the same model by default, and the eval results
+  record one case where the judge missed what the assistant had missed.
 - One extra model call per write. Reads are never judged, and rules filter out most bad
   proposals before the judge runs.
 - The judge can be wrong in the other direction (blocking a real confirmation). The cost is one
-  extra "Shall I book it?" message, which is acceptable. The planned eval suite will measure
-  how often it happens.
+  extra "Shall I book it?" message, which is acceptable. The eval suite, planned when this
+  was written, now measures how often it happens:
+  [the judges on their own](../eval-results.md#the-judges-on-their-own).
 - Guards are attached per tool, so new write tools must declare theirs explicitly.
