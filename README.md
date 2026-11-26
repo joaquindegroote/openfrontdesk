@@ -53,9 +53,10 @@ each with the section it comes from. The runs they were counted from
 | Something said about another person's appointment | 16/20 | 1/20 |
 | A late fee charged after the customer was told cancelling was free (gpt-5-mini, gpt-5-nano) | 3/12 | 0/20 |
 
-Claude Haiku 5.5 runs by default: it passes as many scenarios as gpt-5-mini, at 2.5 s per turn
-instead of 6.1 s. The samples are small and the customers are simulated, which is the first
-thing under [Limitations](#limitations).
+Claude Haiku 5.5 runs by default. On [the last pass over the whole suite](docs/eval-results.md#where-it-stands),
+three runs per scenario on commit `f976186`, it passed 65 of 66 runs and gpt-5-mini 63 of 66,
+at 2.2 s and 5.1 s per turn. The samples are small and the customers are simulated, which is
+the first thing under [Limitations](#limitations).
 
 ## Why I built this
 
@@ -186,9 +187,9 @@ guardrails off or read a failed run, and the weekly run in CI.
 
 - **Small samples, simulated customers.** Between 3 and 48 runs a side, and part of the
   grading is an LLM's. A difference of one run is noise, and a zero out of 13 can't rule out a
-  failure that happens one time in ten. After a change the whole suite runs once per scenario,
-  which catches what broke and not what got flaky: one scenario that failed 6 times in 30
-  passed most single runs.
+  failure that happens one time in ten. Until November 26 the whole suite ran once per scenario
+  after a change, which catches what broke and not what got flaky: one scenario that failed 6
+  times in 30 passed most single runs. It runs three times now.
 - **The runs are a download, not part of the repository.** [Every saved run](docs/eval-runs.md)
   is published with an index, and `recount` counts a number again from them without calling a
   model. Two things they can't give back: counts made by one-off scripts over old
