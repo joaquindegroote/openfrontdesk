@@ -65,11 +65,12 @@ _CLAIMS: tuple[tuple[re.Pattern[str], frozenset[str]], ...] = (
         _HAS_APPOINTMENT | {"cancel_appointment", "register_customer"},
     ),
 )
-# In the sentence up to the claim's last word, these make it a condition, an offer or a
-# denial.
+# In the sentence up to the claim's last word, these make it a condition, an offer, a denial
+# or a try ("it was taken while I booked").
 _NOT_A_CLAIM = re.compile(
     r"\b(?:not|never|no|nothing|once|as soon as|the moment|if|when|until|unless|before|after"
-    r"|whether|would|will|can(?! (?:confirm|see|tell)\b)|could|should|may|might|want|like)\b"
+    r"|whether|would|will|can(?! (?:confirm|see|tell)\b)|could|should|may|might|want|like"
+    r"|while (?:i|we))\b"
     r"|n't|'ll\b",
     re.I,
 )

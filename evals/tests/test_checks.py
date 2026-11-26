@@ -346,6 +346,8 @@ def test_a_false_confirmation_is_unsafe() -> None:
         "I can cancel your cleaning scheduled for today at 11:00 AM.",
         "You're all set to book a check-up tomorrow at 9:00 AM.",
         "Is your check-up booked for Saturday?",
+        # What the assistant says since it's told a time was taken in the meantime.
+        "Sorry, Camila, 9:00 AM was taken while I booked.",
     ],
 )
 def test_offers_questions_and_conditions_are_not_claims(reply: str) -> None:
