@@ -34,14 +34,14 @@ def test_a_check_counts_once_per_run_and_a_zero_can_be_asked_for() -> None:
 
 
 def test_phrases_are_counted_by_run_whatever_the_apostrophe() -> None:
-    curly = run(scenario(), replies=("I can\u2019t share Emily\u2019s appointment.",))
+    curly = run(scenario(), replies=("I can\u2019t share Javiera\u2019s appointment.",))
     plain = run(scenario(), replies=("That's about her cleaning.", "Ask about her cleaning."))
     quiet = run(scenario(), replies=("I can only help with your own appointments.",))
     entries = [run_entry(r, PASSED, attempt=1) for r in (curly, plain, quiet)]
 
-    counted = recount_markdown(entries, phrases=["Emily's appointment", "her cleaning"])
+    counted = recount_markdown(entries, phrases=["Javiera's appointment", "her cleaning"])
 
-    assert '| "Emily\'s appointment" | 1/3 |' in counted
+    assert '| "Javiera\'s appointment" | 1/3 |' in counted
     # Said twice in one run is one run.
     assert '| "her cleaning" | 1/3 |' in counted
     assert "| any of them | 2/3 |" in counted
@@ -51,7 +51,7 @@ def test_phrases_are_counted_by_run_whatever_the_apostrophe() -> None:
     ("phrase", "reply", "found"),
     [
         ("on file", "The number On File is yours.", True),
-        ("Emily's visit", "about Emily\u2019s visit", True),
+        ("Javiera's visit", "about Javiera\u2019s visit", True),
         ("her visit", "I can only help with your own appointments.", False),
     ],
 )
