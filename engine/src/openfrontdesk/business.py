@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Self
 from zoneinfo import ZoneInfo
@@ -50,6 +51,10 @@ class BusinessProfile(BaseModel):
     @property
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.timezone)
+
+    def local(self, when: datetime) -> datetime:
+        """A time the model wrote without an offset is in the business's timezone."""
+        return when if when.tzinfo else when.replace(tzinfo=self.tz)
 
     def phone_key(self, phone: str) -> str:
         """Digits with the country code, so "+56 9 5010 0102" and "9 5010 0102" compare equal,

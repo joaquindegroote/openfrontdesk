@@ -387,8 +387,7 @@ def _not_open(
 
 
 def _was_offered(ctx: ToolContext, start: datetime, practitioner_id: str | None) -> bool:
-    if start.tzinfo is None:
-        start = start.replace(tzinfo=ctx.business.tz)
+    start = ctx.business.local(start)
     for event in ctx.events:
         if event.tool != "find_available_slots" or event.status != "ok":
             continue

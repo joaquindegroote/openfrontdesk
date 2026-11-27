@@ -17,9 +17,7 @@ class StartsInFuture:
         self.name = "starts_in_future"
 
     async def check(self, ctx: ToolContext, action: ProposedAction) -> CheckResult:
-        start: datetime = getattr(action.params, self.field)
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=ctx.business.tz)
+        start = ctx.business.local(getattr(action.params, self.field))
         if start > ctx.now:
             return CheckResult(name=self.name, passed=True, detail="Start time is in the future.")
         return CheckResult(
@@ -106,9 +104,7 @@ class NoDuplicateBooking:
             return CheckResult(
                 name=self.name, passed=True, detail="The customer keeps their other appointments."
             )
-        start = datetime.fromisoformat(arguments["start"])
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=ctx.business.tz)
+        start = ctx.business.local(datetime.fromisoformat(arguments["start"]))
         try:
             appointments = await ctx.backend.list_appointments(arguments["customer_id"])
         except BackendError as exc:
