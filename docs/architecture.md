@@ -62,6 +62,7 @@ sequenceDiagram
 | Model proposes an unconfirmed write | Blocked by the judge. The model gets the reason and asks the customer. |
 | Model keeps proposing an action the guards block | After the same check blocks the same tool three times in a row, whatever the arguments, automatic handoff with reason `blocked_repeatedly`. Staff read what was tried and why it was stopped. |
 | Judge errors or returns garbage | Blocked (fails closed). |
+| Customer pushes back on a fee they were quoted | The fee judge is asked when the customer writes while a quoted fee is unpaid, and when a quote comes back with a fee. If it says they object, the turn ends there with the business's reply and reason `fee_dispute`, before the model answers. Only what was written since a person last replied counts. If the judge can't answer, nothing is handed off and the guards on the cancellation still apply. |
 | Booking system times out on a write | Retried with the same idempotency key; the booking system returns the original result if the first attempt went through. |
 | Booking system keeps failing | After two consecutive steps of temporary failures, automatic handoff with reason `system_unavailable`. The customer is told the request wasn't finished. |
 | Model loops | Step budget (default 8) ends the turn with a handoff. |

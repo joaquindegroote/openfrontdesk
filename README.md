@@ -25,8 +25,8 @@ hanging when the booking system goes down. openfrontdesk is built around those f
 - **Safe retries.** Writes carry idempotency keys, so a booking retried after a lost response
   returns the first appointment, and a message the channel delivers twice is answered once.
 - **Handoff to a person.** On request, on policy (urgent symptoms, complaints, billing), and by
-  itself when the booking system keeps failing or the same check keeps blocking a tool. Staff
-  reply from an inbox and hand the conversation back.
+  itself when the booking system keeps failing, the same check keeps blocking a tool, or the
+  customer disputes a fee. Staff reply from an inbox and hand the conversation back.
 - **The business's words where they matter.** A handoff, an outage and a question about another
   person are answered with fixed sentences from the business profile, not generated ones.
 - **Observable.** Every turn records its tool calls, guardrail decisions, latency and tokens,
@@ -216,8 +216,8 @@ guardrails off or read a failed run, and the weekly run in CI.
 - **English and one business.** The clinic is in Santiago and its patients write in English.
   The Spanish profile is on the roadmap, and so are prices in pesos: for now they're the
   dollar amounts the clinic had when it was a US one.
-- **Two handoffs are still the prompt's job**: urgent symptoms and a disputed fee. The fee
-  judge already says when a customer objects, and nothing in code acts on it yet.
+- **Urgent symptoms are still the prompt's to hand off.** A disputed fee was too, until
+  [the fee judge's answer was put to use in code](docs/eval-results.md#a-dispute-decided-in-code).
 - **Some things still hang on the model's wording.** In 1 of 20 runs Claude Haiku 5.5 answered
   a question about another person in its own words. And a customer who keeps insisting on
   something the assistant can't do gets the same refusal each time: only a blocked action or a
