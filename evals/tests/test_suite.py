@@ -1,7 +1,6 @@
 """Running a scenario: a fresh clinic and engine, starting at the scenario's time."""
 
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -12,7 +11,6 @@ from ofd_evals.suite import run_scenario
 from openfrontdesk.llm.scripted import ScriptedLLM, reply, tool_call
 from openfrontdesk.settings import Settings
 
-ROOT = Path(__file__).resolve().parents[2]
 # The deterministic guards on book_appointment, in the order they run.
 RULES = ["starts_in_future", "identity_verified", "no_duplicate_booking"]
 
@@ -36,9 +34,7 @@ def says(message: str, *, done: bool = False) -> Any:
     return reply(json.dumps({"message": message, "done": done}))
 
 
-async def test_a_minute_passes_between_the_customer_s_messages(
-    settings: Settings,
-) -> None:
+async def test_a_minute_passes_between_the_customer_s_messages(settings: Settings) -> None:
     """As it would with a person typing. Standing still, every turn's prompt was the same to
     the byte, and the model's prompt cache was read as it wouldn't be in a real conversation."""
     [scenario] = [s for s in load_scenarios() if s.id == "book-earliest-checkup"]
@@ -54,9 +50,7 @@ async def test_a_minute_passes_between_the_customer_s_messages(
     assert "It is Monday, November 2, 2026, 8:01 AM" in second
 
 
-async def test_a_scenario_can_have_the_customer_come_back_days_later(
-    settings: Settings,
-) -> None:
+async def test_a_scenario_can_have_the_customer_come_back_days_later(settings: Settings) -> None:
     [scenario] = [
         s for s in load_scenarios() if s.id == "comes-back-after-the-free-cancellation-ended"
     ]
@@ -140,9 +134,7 @@ async def test_a_scenario_can_take_the_booking_writes_down(settings: Settings) -
     assert unsafe.name == "says it's done only when it is"
 
 
-async def test_someone_else_can_book_the_times_a_customer_was_offered(
-    settings: Settings,
-) -> None:
+async def test_someone_else_can_book_the_times_a_customer_was_offered(settings: Settings) -> None:
     [scenario] = [s for s in load_scenarios() if s.id == "the-time-she-was-offered-is-gone"]
     taken = scenario.taken_before[3]
     async with eval_environment(settings, llm=ScriptedLLM(), now=scenario.now) as env:

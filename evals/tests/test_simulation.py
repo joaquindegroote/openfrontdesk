@@ -2,7 +2,6 @@
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 from clinic_api.catalog import TIMEZONE
@@ -18,7 +17,6 @@ from openfrontdesk.llm import Completion
 from openfrontdesk.llm.scripted import ScriptedLLM, reply, tool_call
 from openfrontdesk.settings import Settings
 
-ROOT = Path(__file__).resolve().parents[2]
 NOW = datetime(2026, 11, 2, 8, 0, tzinfo=TIMEZONE)  # Monday, before opening
 CAMILA = Persona(
     name="Camila Rojas",
