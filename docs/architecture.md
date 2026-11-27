@@ -138,10 +138,10 @@ A request to the model goes from what changes least to what changes most:
 4. The messages so far.
 
 Model providers keep a prompt they have just seen and charge a fraction to read it again, up
-to the first character that differs. With the time on the prompt's second line, as it used to
-be, no two turns shared anything and each one paid to write the whole prompt to the cache. Now
-1 and 2, about 4,800 of 5,100 tokens, are read from it by any call made within five minutes of
-another, whoever the customer is. The Claude adapter marks the end of 2. OpenAI caches a
+to the first character that differs. Parts 1 and 2, about 4,800 of 5,100 tokens, are read from
+the cache by any call made within five minutes of another, whoever the customer is. A time or
+a name near the top would end that: no two turns would share anything, and each would pay to
+write the whole prompt to the cache. The Claude adapter marks the end of 2. OpenAI caches a
 repeated prefix without being asked.
 
 Three things keep it that way:
