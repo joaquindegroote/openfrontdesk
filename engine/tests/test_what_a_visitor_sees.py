@@ -52,7 +52,9 @@ def test_a_blocked_try_on_someone_else_s_appointment_doesn_t_describe_it(
 
 
 def test_a_visitor_gets_the_replies_and_not_the_tool_events(harness: Harness) -> None:
-    _, body = as_a_visitor(harness, tool_call("cancel_appointment", appointment_id=JAVIERAS_CLEANING))
+    _, body = as_a_visitor(
+        harness, tool_call("cancel_appointment", appointment_id=JAVIERAS_CLEANING)
+    )
 
     assert body["events"] == []
     # Nor which model answered, or how many tokens it took.
