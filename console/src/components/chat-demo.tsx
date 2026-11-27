@@ -85,7 +85,7 @@ export function ChatDemo() {
     setError(null);
   }
 
-  const assistantName = business?.assistant_name ?? "Maite";
+  const assistantName = business?.assistant_name ?? "Assistant";
   const messages = [...(detail?.messages ?? []), ...(optimistic ? [optimistic] : [])];
 
   return (
