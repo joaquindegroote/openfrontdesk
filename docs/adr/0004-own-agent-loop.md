@@ -30,9 +30,9 @@ The next item on the roadmap, proactive messages, brings flows that last days: a
 member answering hours later. Those need state that survives restarts, and pauses that resume
 on an outside event. There are two ways to get that:
 
-- **A graph framework.** LangGraph's checkpointer and interrupts are made for it: the flow is
+- A graph framework. LangGraph's checkpointer and interrupts are made for it: the flow is
   a graph, and a paused run resumes where it stopped.
-- **A queue with the state in the database.** Each flow is a row with a status and a time it's
+- A queue with the state in the database. Each flow is a row with a status and a time it's
   due. A worker picks up what's due, and the model only decides the next step, as it does in a
   turn today. Everything that's waiting is a row that can be listed, retried and fixed by
   hand, and the model never owns the schedule.

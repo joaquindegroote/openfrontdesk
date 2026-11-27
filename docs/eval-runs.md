@@ -84,18 +84,18 @@ uv run python -m ofd_evals recount evals/results/stalequote-rule6-gpt-5-mini \
 
 ## What the archive can't show
 
-- **Counts made by running a newer check over older transcripts**, like "0 of 491 replies" or
+- Counts made by running a newer check over older transcripts, like "0 of 491 replies" or
   "4 of 197 stored runs". They came from one-off scripts that weren't kept. The transcripts
   they read are all here.
-- **The exact code of a run.** Runs were made on a working branch, before the change was
+- The exact code of a run. Runs were made on a working branch, before the change was
   merged. The index below gives, for each folder, the last commit on `main` when it finished
   and the first one after it, which is usually the change being measured. A "before" run has
   the code of the first, or close to it, and an "after" run is close to the second. The
   folders named `main-<commit>` are the exception: they ran on a clean checkout of that
   commit.
-- **Today's names.** Until November 26 the clinic was a US one, so the older folders have
+- Today's names. Until November 26 the clinic was a US one, so the older folders have
   Emily Johnson where the docs now say Javiera Soto, and so on.
-- **More than the sample.** With no failures in n runs, the real rate can still be about 3 in
+- More than the sample. With no failures in n runs, the real rate can still be about 3 in
   n: a 0/13 leaves room for one failure in four, and a 0/48 for one in sixteen.
 
 ## Every folder
