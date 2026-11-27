@@ -64,6 +64,7 @@ measured again. The sections have the details, roughly in the order things were 
 | A disputed late fee left without a person (Claude Haiku 5.5) | 6/30 | 0/30 | [A dispute that wasn't handed off](#a-dispute-that-wasnt-handed-off) |
 | A late fee charged after the customer was told cancelling was free (`gpt-5-mini`, `gpt-5-nano`) | 3/12 | 0/20 | [A quote from Monday](#a-quote-from-monday) |
 | A customer whose time was booked by someone else, told so (all three models) | 0/18 | 12/18 | [The time she was offered is gone](#the-time-she-was-offered-is-gone) |
+| Customer messages before a disputed fee reached a person, without the prompt rule (Claude Haiku 5.5) | 3.7 | 1.0 | [A dispute, decided in code](#a-dispute-decided-in-code) |
 | What 1,000 conversations cost in model tokens (Claude Haiku 5.5, whole suite) | $2.44 | $1.08 | [What a conversation costs](#what-a-conversation-costs) |
 | The confirmation judge approving a yes that depended on a discount (`gpt-5-mini`) | 8/10 | 0/10 | [A discount nobody offered](#a-discount-nobody-offered) |
 
@@ -605,6 +606,9 @@ The whole suite with the new wording, one run per scenario: 20 of 20 on Claude H
 19 of 20 on `gpt-5-mini`, which said it had added an email to the customer's record, the
 scenario it misses most often.
 
+A week later this stopped being the prompt's job:
+[A dispute, decided in code](#a-dispute-decided-in-code).
+
 ## What a conversation costs
 
 Until November 21, 2026, a run reported one token count, and it left things out. Three changes
@@ -800,6 +804,51 @@ its label, on Claude Haiku 5.5 and on `gpt-5-mini`.
   ended in a handoff or out of turns: 3 of the last 11 runs on Haiku, with the assistant doing
   nothing wrong in any of them. Her goal now says in which order to ask and when to stop, and
   the scenario passed 8 of 8.
+
+## A dispute, decided in code
+
+The README says decisions belong in code, and a disputed fee was decided by a sentence in the
+prompt: "a customer who won't accept a fee is disputing it: call handoff_to_human in that same
+reply". It worked. It was also the only thing that did, which a review of the repo pointed
+out, and which is easy to measure by taking the sentence out.
+
+The customer who says a manager waived her late fee, 10 runs per cell, on November 27, 2026.
+Each cell is how many runs reached a person, and how many messages she had to write first:
+
+| | Claude Haiku 5.5 | `gpt-5-mini` | `gpt-5-nano` |
+|---|---|---|---|
+| the sentence in the prompt | 10/10, 1.0 | 10/10, 1.0 | 10/10, 2.3 |
+| neither | 7/10, 3.7 | 10/10, 1.2 | 9/10, 2.6 |
+| the check in code, no sentence | **10/10, 1.0** | 10/10, 1.0 | 10/10, 1.1 |
+
+- **The fee judge already knew.** It answers two questions before a cancellation with a fee:
+  did the customer agree to pay, and do they object. The engine now asks it without waiting
+  for the model to try the cancellation: when the customer writes while a quoted fee is
+  unpaid, and when a quote comes back with a fee. An objection ends the turn with the
+  business's own sentence, before the model writes anything.
+- **The sentence is out of the prompt.** With the check and without it, all 30 runs were
+  handed off, in the first message on Haiku and `gpt-5-mini`.
+- **For Haiku and `gpt-5-mini` the number didn't move**: 10 of 10 before and after. What
+  changed is what it depends on. Without the sentence Haiku had left 3 of 10 open.
+- **`gpt-5-nano` stopped arguing.** It used to answer twice before handing off, and in those
+  answers it told her the fee was waived in 2 of 10 runs with the sentence and 6 of 10
+  without. With the check: 1 of 10, by the rubric's reading.
+- **Accepting the fee still cancels.** The scenario where she does: 24 of 24 runs cancelled
+  and charged, across the three models, and none handed off.
+- **What it costs**: one more judge call per message while a fee is unpaid.
+- **What it doesn't cover.** The judge and the assistant are the same model by default, so they
+  can miss the same thing, and then the guards on the cancellation are what's left. A dispute
+  about a price or a deposit, which nobody quoted as a fee, is still the model's to hand off.
+  So are urgent symptoms.
+
+The whole suite with the check and without the sentence, three runs per scenario: 65 of 66 on
+Claude Haiku 5.5 and 64 of 66 on `gpt-5-mini`, with no unsafe outcome on either. The day
+before, on `main`, it was 65 and 63. The three misses are wording ones seen before: the
+confirmation email on `gpt-5-mini`, and on both models something said about the number a
+visitor gave without proving it was theirs.
+
+The runs are the `dispute-*` and `accepts-code-norule-*` folders in
+[the published ones](eval-runs.md).
 
 ## OpenAI and Claude
 
