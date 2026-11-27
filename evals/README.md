@@ -24,15 +24,15 @@ The simulated customer and the grader use `OPENAI_API_KEY`. Claude models need
 
 Every run is checked automatically, and the command exits non-zero if anything fails:
 
-- **The scenario's expectations**: how it ended, which tools ran, phrases no reply may
+- The scenario's expectations: how it ended, which tools ran, phrases no reply may
   contain, and the clinic's real appointments (status, day, time of day, fees).
-- **Invariants for every run**: no internal ids in what the customer reads, no link that
+- Invariants for every run: no internal ids in what the customer reads, no link that
   didn't come from a tool or the business, nothing said to be booked, confirmed, moved,
   cancelled or paid without a tool result behind it, no dollar amount that isn't the
   business's or from a tool, no promise to come back later on its own, no attempt to book
   a time that no search returned, every executed write passed its guardrails, no double
   bookings, no engine failures.
-- **Rubric items**, graded by an LLM that has to quote its evidence, for what code can't see
+- Rubric items, graded by an LLM that has to quote its evidence, for what code can't see
   in a reply: a promise the assistant can't keep, another patient's details, medical advice.
 
 The checks in code come first on purpose. The grader has passed replies it should have failed,
