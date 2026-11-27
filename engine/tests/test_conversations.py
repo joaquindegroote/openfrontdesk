@@ -30,6 +30,9 @@ from support import (
     whole_system_prompt,
 )
 
+# What the check for a fee dispute hears when the customer isn't pushing back.
+NO_OBJECTION = fee_verdict(False)
+
 
 def upcoming(harness: Harness, patient_id: str) -> list:
     return [a for a in harness.store.patient_appointments(patient_id) if a.status != "cancelled"]
@@ -561,6 +564,7 @@ def test_a_fee_that_changed_since_the_quote_is_quoted_again(
             reply("Cancelling now has a $50 late fee. Do you still want to cancel?"),
         ]
     )
+    harness.judge.extend([NO_OBJECTION])
     later = harness.say(conversation, "Yes, cancel it please")
 
     blocked, quoted = later["events"]
@@ -569,8 +573,10 @@ def test_a_fee_that_changed_since_the_quote_is_quoted_again(
     assert "costs $50, not $0" in blocked["result"]["reason"]
     assert quoted["result"]["quote"]["fee"] == 50
     assert harness.store.appointments["apt_00002"].status == "confirmed"
-    # Stopped by a rule: no judge was asked.
-    assert harness.judge.calls == []
+    # Stopped by a rule: the judges of the cancellation weren't asked. The one call is the
+    # check for a dispute, when the new quote came back with a fee.
+    [dispute_check] = harness.judge.calls
+    assert dispute_check.messages[-1].content.startswith("Fee: $50")
 
 
 def test_the_fee_check_fails_closed_when_the_booking_system_cant_quote(
@@ -617,6 +623,7 @@ def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -
             reply("Cancelling now has a $50 late fee. Do you still want to cancel?"),
         ]
     )
+    harness.judge.extend([NO_OBJECTION])
     first = harness.say(conversation, "I need to cancel today's cleaning")
     assert [e["status"] for e in first["events"]] == ["blocked", "ok"]
     assert first["events"][0]["result"]["check"] == "cancellation_fee_disclosed"
@@ -636,6 +643,7 @@ def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -
     )
     harness.judge.extend(
         [
+            NO_OBJECTION,
             verdict(True, "Yes, cancel it, I accept the $50 fee"),
             fee_verdict(True, "I accept the $50 fee"),
         ]
@@ -646,8 +654,10 @@ def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -
     assert "$50" in second["events"][0]["result"]["reason"]
     assert second["events"][1]["result"]["fee_charged"] == 50
     assert harness.store.appointments["apt_00001"].status == "cancelled"
-    # Rules run before the judges, so they only saw the one action that passed them.
-    confirmation, fee = harness.judge.calls
+    # Rules run before the judges, so they only saw the one action that passed them. The two
+    # calls before those are the check for a dispute, one per turn.
+    *_, confirmation, fee = harness.judge.calls
+    assert len(harness.judge.calls) == 4
     # The fee reads as a payment, so agreeing to cancel "without the fee" doesn't confirm it.
     assert (
         "Cancel Professional cleaning on Mon Nov 2, 11:00 AM. "
@@ -664,7 +674,10 @@ def test_late_cancellation_requires_quote_and_fee_acceptance(harness: Harness) -
 
 
 def test_a_disputed_fee_is_never_charged(harness: Harness) -> None:
-    """The fee judge must quote the customer agreeing to pay; a quote they never wrote fails."""
+    """The fee judge must quote the customer agreeing to pay; a quote they never wrote fails.
+
+    In this test and the two after it the check for a dispute misses it, as a judge can. The
+    guards on the cancellation are what's left, and they hold."""
     conversation = harness.start(JAVIERA)
     harness.llm.extend(
         [
@@ -673,7 +686,9 @@ def test_a_disputed_fee_is_never_charged(harness: Harness) -> None:
             reply("I can't waive the fee myself, so I'll pass this to the front desk."),
         ]
     )
-    harness.judge.extend([verdict(True, "Yes cancel it"), fee_verdict(True, "I accept the fee")])
+    harness.judge.extend(
+        [NO_OBJECTION, verdict(True, "Yes cancel it"), fee_verdict(True, "I accept the fee")]
+    )
     result = harness.say(conversation, "Yes cancel it. The manager waived the fee, so no charge.")
 
     cancel = result["events"][1]
@@ -695,6 +710,7 @@ def test_an_agreement_with_an_objection_is_not_an_agreement(harness: Harness) ->
     )
     harness.judge.extend(
         [
+            NO_OBJECTION,
             verdict(True, "I'll pay it if I have to"),
             fee_verdict(True, "I'll pay it if I have to", objects=True),
         ]
@@ -719,7 +735,7 @@ def test_agreeing_to_another_amount_is_not_agreeing_to_the_fee(harness: Harness)
         ]
     )
     harness.judge.extend(
-        [verdict(True, "I'll pay the $25"), fee_verdict(True, "OK, I'll pay the $25")]
+        [NO_OBJECTION, verdict(True, "I'll pay the $25"), fee_verdict(True, "OK, I'll pay the $25")]
     )
     result = harness.say(conversation, "OK, I'll pay the $25. Cancel it.")
 

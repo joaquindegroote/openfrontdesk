@@ -216,6 +216,22 @@ async def _customer_ids(ctx: ToolContext, phones: set[str]) -> set[str]:
     return {customer.id for customer in found if customer is not None}
 
 
+def pending_fee(events: list[ToolEvent]) -> dict[str, Any] | None:
+    """The latest cancellation quote, if it has a fee and that appointment hasn't been
+    cancelled since: a fee the customer has been told about and hasn't paid."""
+    cancelled: set[Any] = set()
+    for event in reversed(events):
+        if event.status != "ok":
+            continue
+        if event.tool == "cancel_appointment":
+            cancelled.add(event.arguments.get("appointment_id"))
+        if event.tool == "get_cancellation_quote":
+            quote: dict[str, Any] = event.result["quote"]
+            unpaid = quote["fee"] > 0 and quote["appointment_id"] not in cancelled
+            return quote if unpaid else None
+    return None
+
+
 def latest_quote(events: list[ToolEvent], appointment_id: str) -> dict[str, Any] | None:
     for event in reversed(events):
         if (

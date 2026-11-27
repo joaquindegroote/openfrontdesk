@@ -13,6 +13,7 @@ from openfrontdesk.agent.loop import Agent
 from openfrontdesk.backends import BookingBackend
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.business import BusinessProfile
+from openfrontdesk.guardrails import FeeDisputed
 from openfrontdesk.llm import LLMClient
 from openfrontdesk.llm.anthropic_client import AnthropicChatClient
 from openfrontdesk.llm.openai_client import OpenAIChatClient
@@ -59,6 +60,8 @@ async def open_conversation_service(
             executor=ToolExecutor(tools, timeout_s=settings.tool_timeout_s, guards=guards),
             max_steps=settings.max_agent_steps,
             reply_filters=[about_someone_else],
+            # An LLM judge, so it goes with the other judges when an ablation turns them off.
+            watchers=[FeeDisputed(judge)] if guards == "full" else [],
         )
     else:
         logger.warning("no LLM configured; set the API key for the configured models")

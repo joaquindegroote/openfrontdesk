@@ -57,6 +57,9 @@ handoff_replies:
   complaint: >-
     I'm sorry about this. I've passed it to our front-desk team, and someone will reply here
     shortly.
+  fee_dispute: >-
+    I can't change or waive a fee from this chat, and nothing has been cancelled or charged.
+    I've passed this to our front-desk team, and someone will reply here shortly.
   blocked_repeatedly: >-
     I haven't been able to complete this for you here, so I've passed it to our front-desk
     team, and someone will reply here shortly.

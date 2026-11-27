@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
@@ -43,6 +44,17 @@ class FixedReply(BaseModel):
     doesn't get to add anything."""
 
     text: str
+
+
+def staff_message(author: str, text: str) -> str:
+    """How a reply from a person at the front desk reads in the model's history."""
+    return f"[{author}, front-desk staff] {text}"
+
+
+def is_staff_message(message: ChatMessage) -> bool:
+    return message.role == "assistant" and bool(
+        re.match(r"\[[^\]]*, front-desk staff\] ", message.content or "")
+    )
 
 
 class HandoffRequest(BaseModel):

@@ -1,11 +1,18 @@
 import json
 import logging
 import re
-from typing import Literal
+from collections.abc import Sequence
+from typing import Literal, NamedTuple
 
-from openfrontdesk.agent.context import CheckResult, ToolContext
+from openfrontdesk.agent.context import (
+    CheckResult,
+    HandoffRequest,
+    ToolContext,
+    ToolEvent,
+    is_staff_message,
+)
 from openfrontdesk.guardrails.base import ProposedAction
-from openfrontdesk.guardrails.rules import latest_quote
+from openfrontdesk.guardrails.rules import latest_quote, pending_fee
 from openfrontdesk.llm import ChatMessage, LLMClient
 from openfrontdesk.timefmt import long_label
 
@@ -107,7 +114,7 @@ class CustomerConfirmed:
         )
 
     def _transcript(self, ctx: ToolContext) -> str:
-        return _transcript(ctx, self.window)
+        return _transcript(ctx.transcript, self.window)
 
 
 FEE_INSTRUCTIONS = """\
@@ -151,21 +158,10 @@ class FeeAccepted:
         fee = quote["fee"] if quote else 0
         if not fee:
             return CheckResult(name=self.name, passed=True, detail="No fee applies.")
-        prompt = f"Fee: ${fee}\n\nConversation, oldest first:\n{_transcript(ctx, self.window)}"
-        try:
-            completion = await self.llm.complete(
-                [ChatMessage.system(FEE_INSTRUCTIONS), ChatMessage.user(prompt)],
-                json_mode=True,
-            )
-            ctx.count(completion.model or self.llm.model, completion.usage)
-            verdict = json.loads(completion.text or "")
-            # Only an explicit "no objection" counts: a missing answer is an objection.
-            agreed = verdict.get("agreed") is True and verdict.get("objects") is False
-            said = _plain(str(verdict.get("quote", "")))
-            failed = False
-        except Exception:
-            logger.warning("fee judge failed", exc_info=True)
-            agreed, said, failed = False, "", True
+        verdict = await _ask_about_fee(self.llm, ctx, fee, ctx.transcript, self.window)
+        # Only an explicit "no objection" counts: a missing answer is an objection.
+        agreed = verdict.agreed and verdict.objects is False
+        said, failed = verdict.said, verdict.failed
         customer = [_plain(m.content) for m in ctx.transcript if m.role == "user" and m.content]
         # "I'll pay the $25" is a real quote, and still not an agreement to a $50 fee.
         other_amounts = {int(amount) for amount in _DOLLARS.findall(said)} - {fee}
@@ -183,10 +179,98 @@ class FeeAccepted:
         )
 
 
-def _transcript(ctx: ToolContext, window: int) -> str:
+class FeeDisputed:
+    """Hands the conversation to a person when the customer pushes back on a fee.
+
+    Noticing a dispute was the model's job: a rule in the prompt told it to hand off, and
+    without that rule Claude Haiku 5.5 left three conversations in ten open. The fee judge
+    already says whether the customer objects, so the engine asks it at the two moments a
+    dispute can show: when the customer writes while a quoted fee is unpaid, and when a quote
+    comes back with a fee. Only what the customer wrote since a person last answered counts,
+    or a settled dispute would hand off again on "thanks".
+
+    A judge that can't answer changes nothing here. The guards on the cancellation still stand.
+    """
+
+    reason = "fee_dispute"
+
+    def __init__(self, llm: LLMClient, *, window: int = 10) -> None:
+        self.llm = llm
+        self.window = window
+        # The conversation and customer message judged last, not to ask twice in one turn.
+        self._asked: tuple[str, int] | None = None
+
+    async def __call__(
+        self, ctx: ToolContext, event: ToolEvent | None = None
+    ) -> HandoffRequest | None:
+        if event is None:
+            quote = pending_fee(ctx.events)
+        elif event.tool == "get_cancellation_quote" and event.status == "ok":
+            quote = event.result["quote"] if event.result["quote"]["fee"] > 0 else None
+        else:
+            quote = None
+        if quote is None:
+            return None
+        since_staff = _since_staff_answered(ctx.transcript)
+        written = [m.content for m in since_staff if m.role == "user" and m.content]
+        asked = (ctx.conversation_id, len(written))
+        if not written or asked == self._asked:
+            return None
+        self._asked = asked
+        verdict = await _ask_about_fee(self.llm, ctx, quote["fee"], since_staff, self.window)
+        if verdict.failed or verdict.objects is not True:
+            return None
+        return HandoffRequest(
+            reason=self.reason,
+            summary=(
+                f"The customer disputes the ${quote['fee']} late-cancellation fee on appointment "
+                f"{quote['appointment_id']}. Nothing was cancelled or charged. They wrote: "
+                f'"{written[-1].strip()[:300]}"'
+            ),
+            automatic=True,
+        )
+
+
+class _FeeVerdict(NamedTuple):
+    agreed: bool
+    # None when the judge left the answer out.
+    objects: bool | None
+    # The customer's words it quotes as agreement.
+    said: str
+    failed: bool
+
+
+async def _ask_about_fee(
+    llm: LLMClient, ctx: ToolContext, fee: int, messages: Sequence[ChatMessage], window: int
+) -> _FeeVerdict:
+    prompt = f"Fee: ${fee}\n\nConversation, oldest first:\n{_transcript(messages, window)}"
+    try:
+        completion = await llm.complete(
+            [ChatMessage.system(FEE_INSTRUCTIONS), ChatMessage.user(prompt)], json_mode=True
+        )
+        ctx.count(completion.model or llm.model, completion.usage)
+        verdict = json.loads(completion.text or "")
+        objects = verdict.get("objects")
+        return _FeeVerdict(
+            agreed=verdict.get("agreed") is True,
+            objects=objects if isinstance(objects, bool) else None,
+            said=_plain(str(verdict.get("quote", ""))),
+            failed=False,
+        )
+    except Exception:
+        logger.warning("fee judge failed", exc_info=True)
+        return _FeeVerdict(agreed=False, objects=None, said="", failed=True)
+
+
+def _since_staff_answered(transcript: Sequence[ChatMessage]) -> list[ChatMessage]:
+    last = max((i for i, m in enumerate(transcript) if is_staff_message(m)), default=-1)
+    return list(transcript[last + 1 :])
+
+
+def _transcript(messages: Sequence[ChatMessage], window: int) -> str:
     lines = [
         f"{'Customer' if m.role == 'user' else 'Assistant'}: {m.content.strip()}"
-        for m in ctx.transcript
+        for m in messages
         if m.role in ("user", "assistant") and m.content and m.content.strip()
     ]
     return "\n".join(lines[-window:]) or "(empty)"
