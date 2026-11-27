@@ -21,9 +21,7 @@ booking system:
 
 The summary is written only after the rules pass. It reads the booking system (which service,
 what time), and one of the rules is that the customer owns the appointment, so a try on someone
-else's is blocked before anything about it is read. Until November 16, 2026 it was written
-first, and a web visitor who got the model to try cancelling another patient's appointment
-found the service and time in the blocked event that came back.
+else's is blocked before anything about it is read.
 
 If any check fails, the action is not executed and the model receives a `blocked` result with
 the reason and what to do next. Every decision, passed or failed, is stored with the tool event.
@@ -33,12 +31,19 @@ The judge fails closed: an exception or an unparseable answer blocks the action.
 ## Consequences
 
 - Wrong writes need two failures (the agent and the judge) instead of one. They aren't fully
-  independent: since November 2026 both run on the same model by default, and the eval results
-  record one case where the judge missed what the assistant had missed.
+  independent: both run on the same model by default, and the eval results record one case
+  where the judge missed what the assistant had missed.
 - One extra model call per write. Reads are never judged, and rules filter out most bad
   proposals before the judge runs.
 - The judge can be wrong in the other direction (blocking a real confirmation). The cost is one
-  extra "Shall I book it?" message, which is acceptable. The eval suite, planned when this
-  was written, now measures how often it happens:
+  extra "Shall I book it?" message, which is acceptable. How often it happens is measured in
   [the judges on their own](../eval-results.md#the-judges-on-their-own).
 - Guards are attached per tool, so new write tools must declare theirs explicitly.
+
+## Changes since
+
+- November 5, 2026: the judges run on the assistant's model by default. They were `gpt-5-mini`
+  whatever the assistant was.
+- November 16, 2026: the summary is written after the rules pass. It was written first, and a
+  web visitor who got the model to try cancelling another patient's appointment found the
+  service and time in the blocked event that came back.
