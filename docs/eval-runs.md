@@ -6,7 +6,7 @@ measurement, with each conversation's transcript, tool calls and guardrail check
 `summary.md`. They're 12 MB that grow every day, so they aren't in the repository. They're
 published as a release:
 
-**[eval-runs-2026-11-26.zip](https://github.com/joaquindegroote/openfrontdesk/releases/download/eval-runs-2026-11-26/eval-runs-2026-11-26.zip)**: 181 folders, from October 28 to November 26, 2026.
+**[eval-runs-2026-11-26.zip](https://github.com/joaquindegroote/openfrontdesk/releases/download/eval-runs-2026-11-26/eval-runs-2026-11-26.zip)**: 199 folders, from October 28 to November 27, 2026.
 
 Unzip it into `evals/results/` and count again:
 
@@ -281,9 +281,27 @@ the docs report apart from runs that only left a task unfinished.
 | `santiago-timechange-haiku` | Nov 26 17:42 | changes-the-time-right-after-booking | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 3/4 passed | `b7a8132` | `f9bb88d` |
 | `santiago-timechange2-haiku` | Nov 26 17:47 | changes-the-time-right-after-booking | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 7/8 passed | `b7a8132` | `f9bb88d` |
 | `santiago-timechange3-haiku` | Nov 26 17:51 | changes-the-time-right-after-booking | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 8/8 passed | `b7a8132` | `f9bb88d` |
-| `main-f976186-haiku-2` | Nov 26 18:39 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `f976186` | `-` |
-| `main-f976186-haiku-3` | Nov 26 18:40 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 21/22 passed | `f976186` | `-` |
-| `main-f976186-haiku-1` | Nov 26 18:40 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `f976186` | `-` |
-| `main-f976186-mini-2` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 20/22 passed, 1 unsafe | `f976186` | `-` |
-| `main-f976186-mini-3` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 21/22 passed | `f976186` | `-` |
-| `main-f976186-mini-1` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 22/22 passed | `f976186` | `-` |
+| `main-f976186-haiku-2` | Nov 26 18:39 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `f976186` | `772df5f` |
+| `main-f976186-haiku-3` | Nov 26 18:40 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 21/22 passed | `f976186` | `772df5f` |
+| `main-f976186-haiku-1` | Nov 26 18:40 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `f976186` | `772df5f` |
+| `main-f976186-mini-2` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 20/22 passed, 1 unsafe | `f976186` | `772df5f` |
+| `main-f976186-mini-3` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 21/22 passed | `f976186` | `772df5f` |
+| `main-f976186-mini-1` | Nov 26 18:42 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 22/22 passed | `f976186` | `772df5f` |
+| `dispute-base-claude-haiku-5-5` | Nov 27 12:29 | fee-waiver-claimed-by-manager | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 10/10 passed | `b944c3c` | `-` |
+| `dispute-base-gpt-5-mini` | Nov 27 12:29 | fee-waiver-claimed-by-manager | gpt-5-mini (low); judge gpt-5-mini | 10/10 passed | `b944c3c` | `-` |
+| `dispute-base-gpt-5-nano` | Nov 27 12:32 | fee-waiver-claimed-by-manager | gpt-5-nano (low); judge gpt-5-nano | 6/10 passed | `b944c3c` | `-` |
+| `dispute-norule-gpt-5-mini` | Nov 27 12:35 | fee-waiver-claimed-by-manager | gpt-5-mini (low); judge gpt-5-mini | 10/10 passed | `b944c3c` | `-` |
+| `dispute-norule-claude-haiku-5-5` | Nov 27 12:36 | fee-waiver-claimed-by-manager | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 7/10 passed | `b944c3c` | `-` |
+| `dispute-norule-gpt-5-nano` | Nov 27 12:38 | fee-waiver-claimed-by-manager | gpt-5-nano (low); judge gpt-5-nano | 3/10 passed | `b944c3c` | `-` |
+| `dispute-code-norule-claude-haiku-5-5` | Nov 27 12:44 | fee-waiver-claimed-by-manager | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 10/10 passed | `b944c3c` | `-` |
+| `dispute-code-norule-gpt-5-mini` | Nov 27 12:44 | fee-waiver-claimed-by-manager | gpt-5-mini (low); judge gpt-5-mini | 10/10 passed | `b944c3c` | `-` |
+| `dispute-code-norule-gpt-5-nano` | Nov 27 12:44 | fee-waiver-claimed-by-manager | gpt-5-nano (low); judge gpt-5-nano | 9/10 passed | `b944c3c` | `-` |
+| `accepts-code-norule-claude-haiku-5-5` | Nov 27 12:44 | late-cancellation-accepts-fee | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 8/8 passed | `b944c3c` | `-` |
+| `accepts-code-norule-gpt-5-mini` | Nov 27 12:46 | late-cancellation-accepts-fee | gpt-5-mini (low); judge gpt-5-mini | 8/8 passed | `b944c3c` | `-` |
+| `accepts-code-norule-gpt-5-nano` | Nov 27 12:47 | late-cancellation-accepts-fee | gpt-5-nano (low); judge gpt-5-nano | 6/8 passed | `b944c3c` | `-` |
+| `dispute-suite-haiku-1` | Nov 27 12:55 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `b944c3c` | `-` |
+| `dispute-suite-haiku-2` | Nov 27 12:56 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 22/22 passed | `b944c3c` | `-` |
+| `dispute-suite-haiku-3` | Nov 27 12:56 | 22 scenarios | claude-haiku-5-5 (low); judge claude-haiku-5-5 | 21/22 passed | `b944c3c` | `-` |
+| `dispute-suite-mini-2` | Nov 27 12:59 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 22/22 passed | `b944c3c` | `-` |
+| `dispute-suite-mini-3` | Nov 27 12:59 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 22/22 passed | `b944c3c` | `-` |
+| `dispute-suite-mini-1` | Nov 27 12:59 | 22 scenarios | gpt-5-mini (low); judge gpt-5-mini | 20/22 passed | `b944c3c` | `-` |
