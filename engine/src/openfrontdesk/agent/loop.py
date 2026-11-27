@@ -6,7 +6,8 @@ business's own words for it, never a generated reply.
 """
 
 import json
-from collections.abc import Callable, Sequence
+import logging
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 
 from opentelemetry.trace import Span
@@ -29,12 +30,17 @@ from openfrontdesk.observability import (
 )
 from openfrontdesk.tools import ToolRegistry
 
+logger = logging.getLogger(__name__)
+
 # Used when the business profile has no handoff reply of its own.
 HANDOFF_REPLY = (
     "I've passed this to our front-desk team and someone will reply here shortly. "
     "Thanks for your patience."
 )
 ReplyFilter = Callable[[str, ToolContext], str | None]
+# Looks at the turn when the customer writes (no event) and after each tool call, and may
+# hand the conversation to a person whatever the model was about to do.
+Watcher = Callable[[ToolContext, ToolEvent | None], Awaitable[HandoffRequest | None]]
 # Consecutive steps in which every tool call failed with a temporary error.
 MAX_FAILING_STEPS = 2
 # The same action stopped by the same check this many times in a row. Asking again isn't
@@ -64,9 +70,11 @@ class Agent:
         executor: ToolExecutor | None = None,
         max_steps: int = 8,
         reply_filters: Sequence[ReplyFilter] = (),
+        watchers: Sequence[Watcher] = (),
     ) -> None:
         # Each filter may replace a reply the model wrote with the business's own words.
         self.reply_filters = tuple(reply_filters)
+        self.watchers = tuple(watchers)
         self.llm = llm
         self.registry = registry
         self.executor = executor or ToolExecutor(registry)
@@ -93,6 +101,11 @@ class Agent:
             span.set_attribute(SPAN_KIND, "AGENT")
             span.set_attribute(SESSION_ID, ctx.conversation_id)
             set_content(span, INPUT, user_message.content or "")
+
+            turn.handoff = await self._watch(ctx, None)
+            if turn.handoff:
+                # Decided before the model was asked anything.
+                return self._close_with_handoff(turn, messages, ctx, span)
 
             for step in range(1, self.max_steps + 1):
                 turn.steps = step
@@ -143,7 +156,12 @@ class Agent:
                     )
                     if event.status == "error" and event.result.get("retryable"):
                         temporary_failures += 1
-                    turn.handoff = turn.handoff or handoff or _blocked_too_often(event, ctx)
+                    turn.handoff = (
+                        turn.handoff
+                        or handoff
+                        or _blocked_too_often(event, ctx)
+                        or await self._watch(ctx, event)
+                    )
 
                 all_failed = temporary_failures == len(completion.tool_calls)
                 failing_steps = failing_steps + 1 if all_failed else 0
@@ -169,6 +187,18 @@ class Agent:
                 automatic=True,
             )
             return self._close_with_handoff(turn, messages, ctx, span)
+
+    async def _watch(self, ctx: ToolContext, event: ToolEvent | None) -> HandoffRequest | None:
+        for watcher in self.watchers:
+            try:
+                request = await watcher(ctx, event)
+            except Exception:
+                # A watcher that breaks must not take the turn down with it.
+                logger.warning("watcher failed", exc_info=True)
+                continue
+            if request:
+                return request
+        return None
 
     def _close_with_handoff(
         self, turn: TurnResult, messages: list[ChatMessage], ctx: ToolContext, span: Span

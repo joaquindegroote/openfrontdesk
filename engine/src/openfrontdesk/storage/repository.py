@@ -3,7 +3,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from openfrontdesk.agent.context import ToolEvent
+from openfrontdesk.agent.context import ToolEvent, staff_message
 from openfrontdesk.ids import new_id
 from openfrontdesk.llm import ChatMessage, ToolCall
 from openfrontdesk.storage.db import Database
@@ -148,7 +148,7 @@ def to_chat_message(row: MessageRow) -> ChatMessage:
     """Rebuild the model's view of a stored message. Staff messages read as the front desk."""
     if row.role == "staff":
         author = row.data.get("author", "Front desk")
-        return ChatMessage.assistant(f"[{author}, front-desk staff] {row.content}")
+        return ChatMessage.assistant(staff_message(author, row.content))
     return ChatMessage(
         role=row.role,  # type: ignore[arg-type]
         content=row.content,
