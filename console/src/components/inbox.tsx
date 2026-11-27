@@ -19,7 +19,15 @@ export function Inbox() {
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [author, setAuthor] = useState("Carolina");
+  const [assistantName, setAssistantName] = useState("Assistant");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.business().then(
+      (business) => setAssistantName(business.assistant_name),
+      (e: Error) => setError(e.message),
+    );
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -144,7 +152,7 @@ export function Inbox() {
               </div>
             )}
 
-            <MessageList messages={detail.messages} assistantName="Maite" viewer="staff" />
+            <MessageList messages={detail.messages} assistantName={assistantName} viewer="staff" />
 
             {error && (
               <p className="border-t border-danger/30 bg-danger-soft px-4 py-2 text-xs text-danger">
