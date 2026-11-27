@@ -15,9 +15,8 @@ from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.llm import ChatMessage, Completion, ToolSpec
 from openfrontdesk.llm.scripted import ScriptedLLM, reply
 from openfrontdesk.service import ConversationService
-from openfrontdesk.settings import Settings
 from openfrontdesk.wiring import open_conversation_service
-from support import NOW, PROFILE, VERIFICATION_CODE
+from support import NOW, VERIFICATION_CODE, engine_settings
 
 
 class SlowLLM:
@@ -52,12 +51,10 @@ async def service_on(llm: SlowLLM, folder: Path) -> AsyncIterator[ConversationSe
     )
     transport = httpx.ASGITransport(app=clinic)
     async with httpx.AsyncClient(transport=transport, base_url="http://clinic") as http:
-        settings = Settings(
-            _env_file=None,  # type: ignore[call-arg]
+        settings = engine_settings(
             # A file, as a real deployment has: an in-memory database is one shared
             # connection, which can't run two conversations' transactions at once.
             database_url=f"sqlite+aiosqlite:///{(folder / 'engine.db').as_posix()}",
-            business_profile=PROFILE,
         )
         async with open_conversation_service(
             settings,

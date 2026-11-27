@@ -16,7 +16,7 @@ from openfrontdesk.business import BusinessProfile
 from openfrontdesk.guardrails import NoDuplicateBooking, ProposedAction
 from openfrontdesk.llm.scripted import ScriptedLLM
 from openfrontdesk.tools.booking import BookParams, build_booking_tools
-from support import NOW, PROFILE
+from support import NOW, PROFILE, tool_event
 
 BUSINESS = BusinessProfile.load(PROFILE)
 
@@ -55,19 +55,6 @@ def _ctx(events: list[ToolEvent]) -> ToolContext:
     )
 
 
-def _event(status: str, arguments: dict) -> ToolEvent:
-    return ToolEvent(
-        id="evt",
-        call_id="call",
-        tool="book_appointment",
-        side_effect="write",
-        arguments=arguments,
-        status=status,  # type: ignore[arg-type]
-        result={},
-        created_at=datetime.now(UTC),
-    )
-
-
 def test_idempotency_key_is_stable_across_retries_but_not_after_success() -> None:
     tool = build_booking_tools(ScriptedLLM()).get("book_appointment")
     assert tool is not None
@@ -77,8 +64,12 @@ def test_idempotency_key_is_stable_across_retries_but_not_after_success() -> Non
     arguments = params.model_dump(mode="json")
 
     first = idempotency_key(_ctx([]), tool, params)
-    after_failure = idempotency_key(_ctx([_event("error", arguments)]), tool, params)
-    after_success = idempotency_key(_ctx([_event("ok", arguments)]), tool, params)
+    after_failure = idempotency_key(
+        _ctx([tool_event("book_appointment", "error", arguments=arguments)]), tool, params
+    )
+    after_success = idempotency_key(
+        _ctx([tool_event("book_appointment", arguments=arguments)]), tool, params
+    )
 
     assert first == after_failure
     assert first != after_success

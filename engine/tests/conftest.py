@@ -9,15 +9,14 @@ from fastapi.testclient import TestClient
 from openfrontdesk.api.app import create_app
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.llm.scripted import ScriptedLLM
-from openfrontdesk.settings import Settings
 from support import (
     INTEGRATION_KEY,
     NOW,
-    PROFILE,
     STAFF_KEY,
     VERIFICATION_CODE,
     Harness,
     HarnessFactory,
+    engine_settings,
 )
 
 
@@ -44,10 +43,7 @@ def make_harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[HarnessFactory]:
             backoff_s=0,
         )
         llm, judge = ScriptedLLM(), ScriptedLLM()
-        settings = Settings(
-            _env_file=None,  # type: ignore[call-arg]
-            database_url="sqlite+aiosqlite:///:memory:",
-            business_profile=PROFILE,
+        settings = engine_settings(
             max_agent_steps=max_steps,
             turn_timeout_s=turn_timeout_s,
             staff_key=staff_key,

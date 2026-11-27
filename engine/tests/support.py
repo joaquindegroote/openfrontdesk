@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -11,9 +11,11 @@ from clinic_api.chaos import ChaosConfig
 from clinic_api.store import ClinicStore
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from openfrontdesk.agent.context import ToolEvent
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.llm import Completion
 from openfrontdesk.llm.scripted import ScriptedCall, ScriptedLLM, reply
+from openfrontdesk.settings import Settings
 
 ROOT = Path(__file__).resolve().parents[2]
 PROFILE = ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml"
@@ -35,6 +37,40 @@ DEFAULT_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["default"]
 OUTAGE_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["system_unavailable"]
 # And when the guards stopped the same action three times in a row.
 STUCK_HANDOFF_REPLY = BusinessProfile.load(PROFILE).handoff_replies["blocked_repeatedly"]
+
+
+def engine_settings(**values: Any) -> Settings:
+    """Settings that read no .env file: the reference clinic and a database in memory, unless
+    the test says otherwise."""
+    defaults = {"database_url": "sqlite+aiosqlite:///:memory:", "business_profile": PROFILE}
+    return Settings(_env_file=None, **(defaults | values))  # type: ignore[call-arg, arg-type]
+
+
+class NoBackend:
+    """The booking system in tests that never reach it."""
+
+    async def aclose(self) -> None:
+        pass
+
+
+def tool_event(
+    tool: str,
+    status: str = "ok",
+    *,
+    arguments: dict[str, Any] | None = None,
+    result: dict[str, Any] | None = None,
+) -> ToolEvent:
+    writes = ("book_appointment", "cancel_appointment", "reschedule_appointment")
+    return ToolEvent(
+        id="evt",
+        call_id="call",
+        tool=tool,
+        side_effect="write" if tool in writes else "read",
+        arguments=arguments or {},
+        status=status,  # type: ignore[arg-type]
+        result=result or {},
+        created_at=datetime.now(UTC),
+    )
 
 
 def whole_system_prompt(call: ScriptedCall) -> str:
