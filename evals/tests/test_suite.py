@@ -17,12 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RULES = ["starts_in_future", "identity_verified", "no_duplicate_booking"]
 
 
-async def test_a_scenario_starts_at_its_own_time(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
-    )
+async def test_a_scenario_starts_at_its_own_time(settings: Settings) -> None:
     [scenario] = [s for s in load_scenarios() if s.id == "late-cancellation-accepts-fee"]
     customer = ScriptedLLM([reply(json.dumps({"message": "", "done": True}))])
 
@@ -42,15 +37,10 @@ def says(message: str, *, done: bool = False) -> Any:
 
 
 async def test_a_minute_passes_between_the_customer_s_messages(
-    monkeypatch: pytest.MonkeyPatch,
+    settings: Settings,
 ) -> None:
     """As it would with a person typing. Standing still, every turn's prompt was the same to
     the byte, and the model's prompt cache was read as it wouldn't be in a real conversation."""
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
-    )
     [scenario] = [s for s in load_scenarios() if s.id == "book-earliest-checkup"]
     customer = ScriptedLLM([says("Hi"), says("Are you open today?"), says("", done=True)])
     engine = ScriptedLLM([reply("Hi! How can I help?"), reply("Yes, from 9 to 5.")])
@@ -65,13 +55,8 @@ async def test_a_minute_passes_between_the_customer_s_messages(
 
 
 async def test_a_scenario_can_have_the_customer_come_back_days_later(
-    monkeypatch: pytest.MonkeyPatch,
+    settings: Settings,
 ) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
-    )
     [scenario] = [
         s for s in load_scenarios() if s.id == "comes-back-after-the-free-cancellation-ended"
     ]
@@ -100,14 +85,9 @@ async def test_a_scenario_can_have_the_customer_come_back_days_later(
     ],
 )
 async def test_guard_modes_for_ablation(
-    monkeypatch: pytest.MonkeyPatch, guards: str, status: str, checked: list[str]
+    settings: Settings, guards: str, status: str, checked: list[str]
 ) -> None:
     """An unconfirmed booking: the judge blocks it, so it only goes through without the judge."""
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
-    )
     [scenario] = [s for s in load_scenarios() if s.id == "book-earliest-checkup"]
     customer = ScriptedLLM([says("Is 9:00 tomorrow free?"), says("", done=True)])
     engine = ScriptedLLM(
@@ -133,13 +113,8 @@ async def test_guard_modes_for_ablation(
     assert run.guards == guards
 
 
-async def test_a_scenario_can_take_the_booking_writes_down(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_a_scenario_can_take_the_booking_writes_down(settings: Settings) -> None:
     """The booking fails on the clinic's side, and a reply that says otherwise is caught."""
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
-    )
     [scenario] = [s for s in load_scenarios() if s.id == "booking-system-fails-on-the-write"]
     customer = ScriptedLLM([says("Yes, book 9:00 tomorrow."), says("", done=True)])
     engine = ScriptedLLM(
@@ -166,13 +141,8 @@ async def test_a_scenario_can_take_the_booking_writes_down(monkeypatch: pytest.M
 
 
 async def test_someone_else_can_book_the_times_a_customer_was_offered(
-    monkeypatch: pytest.MonkeyPatch,
+    settings: Settings,
 ) -> None:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
-    )
     [scenario] = [s for s in load_scenarios() if s.id == "the-time-she-was-offered-is-gone"]
     taken = scenario.taken_before[3]
     async with eval_environment(settings, llm=ScriptedLLM(), now=scenario.now) as env:

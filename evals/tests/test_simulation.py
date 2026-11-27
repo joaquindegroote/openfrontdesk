@@ -33,15 +33,6 @@ def says(message: str, *, done: bool = False) -> Completion:
     return reply(json.dumps({"message": message, "done": done}))
 
 
-@pytest.fixture
-def settings(monkeypatch: pytest.MonkeyPatch) -> Settings:
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    return Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        business_profile=ROOT / "businesses" / "clinica-los-canelos" / "profile.yaml",
-    )
-
-
 async def test_customer_sees_its_goal_and_the_conversation() -> None:
     llm = ScriptedLLM([says("Is 9:00 free?")])
     customer = SimulatedCustomer(llm, CAMILA)

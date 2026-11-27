@@ -12,7 +12,6 @@ from openfrontdesk.api.app import create_app
 from openfrontdesk.backends import BackendError
 from openfrontdesk.guardrails import NoDuplicateBooking
 from openfrontdesk.llm.scripted import reply, tool_call, tool_calls
-from openfrontdesk.settings import Settings
 from support import (
     CAMILA,
     CARLOS,
@@ -20,11 +19,12 @@ from support import (
     JAVIERA,
     NOW,
     OUTAGE_HANDOFF_REPLY,
-    PROFILE,
     STUCK_HANDOFF_REPLY,
     VERIFICATION_CODE,
     Harness,
     HarnessFactory,
+    NoBackend,
+    engine_settings,
     fee_verdict,
     verdict,
     whole_system_prompt,
@@ -167,14 +167,9 @@ def test_a_web_visitor_s_number_is_only_a_claim(harness: Harness) -> None:
 
 def test_verified_channels_need_the_integration_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        database_url="sqlite+aiosqlite:///:memory:",
-        business_profile=PROFILE,
-        integration_key="test-key",
-    )
+    settings = engine_settings(integration_key="test-key")
     whatsapp = {"channel": "whatsapp", "customer_phone": CARLOS}
-    with TestClient(create_app(settings, backend=_NoBackend())) as client:
+    with TestClient(create_app(settings, backend=NoBackend())) as client:
         refused = client.post("/v1/conversations", json=whatsapp)
         wrong = client.post("/v1/conversations", json=whatsapp, headers={"X-Integration-Key": "x"})
         allowed = client.post(
@@ -187,12 +182,8 @@ def test_verified_channels_need_the_integration_key(monkeypatch: pytest.MonkeyPa
 
 def test_without_an_integration_key_only_web_chats_open(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        database_url="sqlite+aiosqlite:///:memory:",
-        business_profile=PROFILE,
-    )
-    with TestClient(create_app(settings, backend=_NoBackend())) as client:
+    settings = engine_settings()
+    with TestClient(create_app(settings, backend=NoBackend())) as client:
         whatsapp = client.post(
             "/v1/conversations",
             json={"channel": "whatsapp", "customer_phone": CARLOS},
@@ -1055,18 +1046,9 @@ def test_inbox_lists_handed_off_conversations(harness: Harness) -> None:
 
 def test_messages_return_503_without_an_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        database_url="sqlite+aiosqlite:///:memory:",
-        business_profile=PROFILE,
-    )
-    with TestClient(create_app(settings, backend=_NoBackend())) as client:
+    settings = engine_settings()
+    with TestClient(create_app(settings, backend=NoBackend())) as client:
         conversation = client.post("/v1/conversations", json={}).json()["id"]
         response = client.post(f"/v1/conversations/{conversation}/messages", json={"text": "hi"})
     assert response.status_code == 503
     assert "OPENAI_API_KEY" in response.json()["detail"]
-
-
-class _NoBackend:
-    async def aclose(self) -> None:
-        pass

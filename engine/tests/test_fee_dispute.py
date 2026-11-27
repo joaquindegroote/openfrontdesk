@@ -6,16 +6,22 @@ business's own words. The model's script in these tests has nothing left for tha
 to it would fail the test.
 """
 
-from datetime import UTC, datetime
 from typing import Any
 
 from openfrontdesk.agent.context import ToolEvent
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.guardrails.rules import pending_fee
 from openfrontdesk.llm.scripted import ScriptedLLM, reply, tool_call
-from openfrontdesk.settings import Settings
 from openfrontdesk.wiring import open_conversation_service
-from support import JAVIERA, PROFILE, Harness, fee_verdict
+from support import (
+    JAVIERA,
+    PROFILE,
+    Harness,
+    NoBackend,
+    engine_settings,
+    fee_verdict,
+    tool_event,
+)
 
 CLEANING = "apt_00001"  # Javiera's, today at 11:00: cancelling it has a $50 fee
 FEE_DISPUTE_REPLY = BusinessProfile.load(PROFILE).handoff_replies["fee_dispute"]
@@ -119,16 +125,7 @@ def test_only_what_was_written_since_a_person_answered_counts(harness: Harness) 
 
 
 def event(tool: str, status: str = "ok", **result: Any) -> ToolEvent:
-    return ToolEvent(
-        id="evt",
-        call_id="call",
-        tool=tool,
-        side_effect="write" if tool == "cancel_appointment" else "read",
-        arguments={"appointment_id": CLEANING},
-        status=status,  # type: ignore[arg-type]
-        result=result,
-        created_at=datetime.now(UTC),
-    )
+    return tool_event(tool, status, arguments={"appointment_id": CLEANING}, result=result)
 
 
 def quote(fee: int) -> ToolEvent:
@@ -148,26 +145,17 @@ def test_a_fee_is_pending_from_its_quote_until_the_cancellation() -> None:
 
 async def test_the_check_goes_with_the_judges_when_an_ablation_turns_them_off() -> None:
     """It is an LLM judge, so "rules only" and "no guards" run without it."""
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        database_url="sqlite+aiosqlite:///:memory:",
-        business_profile=PROFILE,
-    )
+    settings = engine_settings()
     watching = {}
     for guards in ("full", "rules", "off"):
         async with open_conversation_service(
             settings,
             llm=ScriptedLLM(),
             judge_llm=ScriptedLLM(),
-            backend=_NoBackend(),  # type: ignore[arg-type]
+            backend=NoBackend(),  # type: ignore[arg-type]
             guards=guards,  # type: ignore[arg-type]
         ) as service:
             assert service.agent is not None
             watching[guards] = len(service.agent.watchers)
 
     assert watching == {"full": 1, "rules": 0, "off": 0}
-
-
-class _NoBackend:
-    async def aclose(self) -> None:
-        pass

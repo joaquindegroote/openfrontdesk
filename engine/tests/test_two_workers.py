@@ -15,10 +15,9 @@ from clinic_api.main import create_app as create_clinic_app
 from openfrontdesk.backends.clinic_http import ClinicHttpBackend
 from openfrontdesk.llm.scripted import ScriptedLLM
 from openfrontdesk.service import ConversationService
-from openfrontdesk.settings import Settings
 from openfrontdesk.storage.db import Database
 from openfrontdesk.wiring import open_conversation_service
-from support import NOW, PROFILE, VERIFICATION_CODE
+from support import NOW, VERIFICATION_CODE, engine_settings
 from test_concurrency import SlowLLM
 
 POSTGRES = os.environ.get("OFD_TEST_POSTGRES_URL")
@@ -32,11 +31,7 @@ async def two_workers(llm: SlowLLM) -> AsyncIterator[tuple[ConversationService, 
     clinic = create_clinic_app(
         FixedClock(NOW), chaos=ChaosConfig(), filler=False, verification_code=VERIFICATION_CODE
     )
-    settings = Settings(
-        _env_file=None,  # type: ignore[call-arg]
-        database_url=POSTGRES,
-        business_profile=PROFILE,
-    )
+    settings = engine_settings(database_url=POSTGRES)
     async with AsyncExitStack() as stack:
         workers = []
         for _ in range(2):
