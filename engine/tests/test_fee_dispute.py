@@ -12,7 +12,9 @@ from typing import Any
 from openfrontdesk.agent.context import ToolEvent
 from openfrontdesk.business import BusinessProfile
 from openfrontdesk.guardrails.rules import pending_fee
-from openfrontdesk.llm.scripted import reply, tool_call
+from openfrontdesk.llm.scripted import ScriptedLLM, reply, tool_call
+from openfrontdesk.settings import Settings
+from openfrontdesk.wiring import open_conversation_service
 from support import JAVIERA, PROFILE, Harness, fee_verdict
 
 CLEANING = "apt_00001"  # Javiera's, today at 11:00: cancelling it has a $50 fee
@@ -142,3 +144,30 @@ def test_a_fee_is_pending_from_its_quote_until_the_cancellation() -> None:
     assert pending_fee([quote(50), event("cancel_appointment", cancelled=True)]) is None
     # The newest quote is the one that counts.
     assert pending_fee([quote(50), quote(0)]) is None
+
+
+async def test_the_check_goes_with_the_judges_when_an_ablation_turns_them_off() -> None:
+    """It is an LLM judge, so "rules only" and "no guards" run without it."""
+    settings = Settings(
+        _env_file=None,  # type: ignore[call-arg]
+        database_url="sqlite+aiosqlite:///:memory:",
+        business_profile=PROFILE,
+    )
+    watching = {}
+    for guards in ("full", "rules", "off"):
+        async with open_conversation_service(
+            settings,
+            llm=ScriptedLLM(),
+            judge_llm=ScriptedLLM(),
+            backend=_NoBackend(),  # type: ignore[arg-type]
+            guards=guards,  # type: ignore[arg-type]
+        ) as service:
+            assert service.agent is not None
+            watching[guards] = len(service.agent.watchers)
+
+    assert watching == {"full": 1, "rules": 0, "off": 0}
+
+
+class _NoBackend:
+    async def aclose(self) -> None:
+        pass
