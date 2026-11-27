@@ -10,23 +10,20 @@ from openfrontdesk.llm.types import ChatMessage, Completion, ToolCall, ToolSpec,
 
 
 class OpenAIChatClient:
-    """Chat Completions adapter. Works with OpenAI and any compatible endpoint (via base_url)."""
+    """Chat Completions adapter."""
 
     def __init__(
         self,
         model: str,
         *,
         api_key: str | None = None,
-        base_url: str | None = None,
         client: AsyncOpenAI | None = None,
         timeout_s: float = 60.0,
         reasoning_effort: str | None = None,
     ) -> None:
         self.model = model
         self.reasoning_effort = reasoning_effort
-        self._client = client or AsyncOpenAI(
-            api_key=api_key, base_url=base_url, timeout=timeout_s, max_retries=2
-        )
+        self._client = client or AsyncOpenAI(api_key=api_key, timeout=timeout_s, max_retries=2)
 
     async def complete(
         self,

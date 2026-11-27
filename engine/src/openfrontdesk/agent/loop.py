@@ -8,7 +8,7 @@ business's own words for it, never a generated reply.
 import json
 import logging
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from opentelemetry.trace import Span
 
@@ -58,7 +58,6 @@ class TurnResult:
     usage: dict[str, Usage]
     steps: int
     model: str | None = None
-    errors: list[str] = field(default_factory=list)
 
 
 class Agent:

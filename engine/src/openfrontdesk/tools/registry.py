@@ -2,7 +2,7 @@
 and validation errors go back to the model instead of reaching the booking system."""
 
 import inspect
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, get_type_hints
 
@@ -49,7 +49,6 @@ class ToolRegistry:
         side_effect: SideEffect = "read",
         guards: Sequence[Guard] = (),
         describe: Describe | None = None,
-        name: str | None = None,
     ) -> Callable[[Handler], Handler]:
         """Register `async def handler(ctx, params: Model)`; the docstring is the description."""
 
@@ -59,7 +58,7 @@ class ToolRegistry:
                 raise TypeError(f"{handler.__name__}: annotate `params` with a Pydantic model")
             self.add(
                 Tool(
-                    name=name or handler.__name__,
+                    name=handler.__name__,
                     description=inspect.getdoc(handler) or "",
                     params=params,
                     handler=handler,
@@ -77,12 +76,6 @@ class ToolRegistry:
 
     def specs(self) -> list[ToolSpec]:
         return [tool.spec() for tool in self._tools.values()]
-
-    def __iter__(self) -> Iterator[Tool]:
-        return iter(self._tools.values())
-
-    def __len__(self) -> int:
-        return len(self._tools)
 
 
 def _schema(model: type[BaseModel]) -> dict[str, Any]:
