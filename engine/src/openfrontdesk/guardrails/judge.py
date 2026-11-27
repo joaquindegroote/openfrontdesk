@@ -182,12 +182,10 @@ class FeeAccepted:
 class FeeDisputed:
     """Hands the conversation to a person when the customer pushes back on a fee.
 
-    Noticing a dispute was the model's job: a rule in the prompt told it to hand off, and
-    without that rule Claude Haiku 5.5 left three conversations in ten open. The fee judge
-    already says whether the customer objects, so the engine asks it at the two moments a
-    dispute can show: when the customer writes while a quoted fee is unpaid, and when a quote
-    comes back with a fee. Only what the customer wrote since a person last answered counts,
-    or a settled dispute would hand off again on "thanks".
+    The fee judge is asked at the two moments a dispute can show: when the customer writes
+    while a quoted fee is unpaid, and when a quote comes back with a fee. Only what the
+    customer wrote since a person last answered counts, or a settled dispute would hand off
+    again on "thanks".
 
     A judge that can't answer changes nothing here. The guards on the cancellation still stand.
     """
