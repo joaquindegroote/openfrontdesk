@@ -185,52 +185,54 @@ guardrails off or read a failed run, and the weekly run in CI.
 
 ## Limitations
 
-- **Small samples, simulated customers.** Between 3 and 48 runs a side, and part of the
-  grading is an LLM's. A difference of one run is noise, and a zero out of 13 can't rule out a
-  failure that happens one time in ten. Until November 26 the whole suite ran once per scenario
-  after a change, which catches what broke and not what got flaky: one scenario that failed 6
-  times in 30 passed most single runs. It runs three times now.
-- **The runs are a download, not part of the repository.** [Every saved run](docs/eval-runs.md)
-  is published with an index, and `recount` counts a number again from them without calling a
-  model. Two things they can't give back: counts made by one-off scripts over old
-  transcripts, and a "before" column rerun from scratch, which needs the commit before each
-  fix.
-- **The booking system is a mock.** Adapters for real ones are on the roadmap, and
-  [the tests one has to pass](engine/tests/test_backend_contract.py) are written. A system
-  without idempotency keys would need a lookup before every retry ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
-- **Codes aren't really texted.** The mock clinic accepts a fixed code; a deployment needs an SMS
-  provider behind the same endpoint.
-- **The console has no sign-in.** Its server holds the staff key, so whoever can open it acts as
-  the front desk. It's one shared key, with no per-person accounts or audit trail.
-- **A staff reply only shows in the console.** There's no endpoint for a channel to fetch it and
-  nothing pushes it, so a real WhatsApp or SMS channel couldn't deliver it yet.
-- **A web visitor's conversation id is their only credential**, and a phone verified with a
-  code stays verified for as long as the conversation lasts.
-- **No rate limits.** Anyone who can reach the engine can start conversations, and each message
-  is a model call on your key.
-- **Conversations are kept**, with no retention period and no way yet to delete one customer's
-  data. `OFD_TRACE_CONTENT=false` keeps them out of the traces, not out of the database.
-- **Registering a customer isn't judged.** It needs a verified phone, but not an explicit yes.
-- **Several workers need Postgres**, and nothing has been load tested. See
+The numbers come from small samples and simulated customers: between 3 and 48 runs a side, with
+part of the grading done by an LLM. A difference of one run is noise, and a zero out of 13
+can't rule out a failure that happens one time in ten. After a change the whole suite runs
+three times per scenario, which shows what got flaky and still can't show a rare failure.
+
+[Every saved run](docs/eval-runs.md) is published with an index, and `recount` counts a number
+again from them without calling a model. Two things they can't give back: counts made by
+one-off scripts over old transcripts, and a "before" column rerun from scratch, which needs the
+commit before each fix.
+
+What a deployment would still need:
+
+- A real booking system. This one is a mock.
+  [The tests an adapter has to pass](engine/tests/test_backend_contract.py) are written, and a
+  system without idempotency keys would need a lookup before every retry
+  ([ADR 0003](docs/adr/0003-idempotency-keys.md)).
+- An SMS provider. The mock clinic accepts a fixed verification code.
+- Sign-in for the console. Its server holds the staff key, so whoever can open it acts as the
+  front desk: one shared key, no per-person accounts, no audit trail.
+- A way for a channel to get a staff reply. It only shows in the console: there's no endpoint
+  to fetch it and nothing pushes it, so a real WhatsApp or SMS channel couldn't deliver it yet.
+- Rate limits. Anyone who can reach the engine can start conversations, and each message is a
+  model call on your key.
+- A retention period, and a way to delete one customer's data. Conversations are kept, and
+  `OFD_TRACE_CONTENT=false` keeps them out of the traces, not out of the database.
+- Postgres for more than one worker, and a load test, which nothing here has had. See
   [what holds when things happen at once](docs/architecture.md#concurrency).
-- **English and one business.** The clinic is in Santiago and its patients write in English.
-  The Spanish profile is on the roadmap, and so are prices in pesos: for now they're the
-  dollar amounts the clinic had when it was a US one.
-- **Urgent symptoms are still the prompt's to hand off.** A disputed fee was too, until
-  [the fee judge's answer was put to use in code](docs/eval-results.md#a-dispute-decided-in-code).
-- **Some things still hang on the model's wording.** In 1 of 20 runs Claude Haiku 5.5 answered
-  a question about another person in its own words. And a customer who keeps insisting on
+
+What is still up to the model, or not checked:
+
+- Urgent symptoms are handed off because the prompt says so, not by a check in code.
+- Registering a customer needs a verified phone, but nothing checks for an explicit yes.
+- Some replies hang on the model's wording. In 1 of 20 runs Claude Haiku 5.5 answered a
+  question about another person in its own words. And a customer who keeps insisting on
   something the assistant can't do gets the same refusal each time: only a blocked action or a
   failing booking system ends that in code.
+- A web visitor's conversation id is their only credential, and a phone verified with a code
+  stays verified for as long as the conversation lasts.
+
+It's also one business, in English: the clinic is in Santiago, its patients write in English
+and its prices are still in dollars.
 
 ## Roadmap
 
-- [x] Agent loop, typed tools, clinic booking backend, persistence, tracing
-- [x] Guardrails on irreversible actions, idempotent writes, human handoff and staff inbox
-- [x] Evals: simulated customers (including adversarial ones) run against the agent in CI, with a results table per model
-- [ ] WhatsApp channel and proactive messages (reminders, deposit received)
-- [ ] Voice: phone calls through Twilio Media Streams and a realtime speech model, same tools
-- [ ] Adapters for real booking systems (Cal.com, Google Calendar) and a second business profile in Spanish
+- WhatsApp channel and proactive messages (reminders, deposit received)
+- Voice: phone calls through Twilio Media Streams and a realtime speech model, same tools
+- Adapters for real booking systems (Cal.com, Google Calendar)
+- A second business profile in Spanish, and prices in pesos
 
 ## Design decisions
 
